@@ -1,0 +1,20 @@
+@startuml
+
+participant NCEI
+participant Adapter
+participant GMN
+
+loop until all records retrieved
+  Adapter->NCEI: get_CSW_catalog_record
+  activate NCEI
+  NCEI->Adapter: iso_record
+  deactivate NCEI
+
+  activate Adapter
+  Adapter->Adapter: stage_data_package
+
+  Adapter->GMN: create_data_package
+  deactivate Adapter
+end
+
+@enduml
