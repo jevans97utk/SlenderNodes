@@ -4,6 +4,8 @@
 """:Mod: scimeta_bundle
 
 :Synopsis:
+    To aggregate science metadata and system metadata for insertion into the
+    NCEI GMN member node.
 
 :Author:
     servilla
@@ -15,11 +17,10 @@
 import logging
 import StringIO
 
-import requests
-
 from d1_client import mnclient
 from d1_common.types import dataoneTypes as d1_types
 
+import settings
 
 logging.basicConfig(format='%(asctime)s %(levelname)s (%(name)s): %(message)s',
                     datefmt='%Y%m%d-%H:%M:%S')
@@ -28,10 +29,6 @@ logger = logging.getLogger('sciemeta_bundle')
 
 __author__ = "servilla"
 
-
-MN_BASE_URL = 'https://ncei-node.dataone.org/mn'
-CERTIFICATE_FOR_CREATE = '/Users/servilla/Certs/DataONE/urn_node_mnTestNCEI/urn_node_mnTestNCEI.crt'
-CERTIFICATE_FOR_CREATE_KEY = '/Users/servilla/Certs/DataONE/urn_node_mnTestNCEI/private/urn_node_mnTestNCEI.key'
 
 
 class Scimeta_Bundle(object):
@@ -44,30 +41,43 @@ class Scimeta_Bundle(object):
         self.doc = doc
         self.sysmeta = d1_types.CreateFromDocument(sysmeta_xml)
         self.pid = self.sysmeta.identifier.value()
-        pass
+
+    def get_sysmeta_binding(self):
+        """Returns the pyxb XML binding for an XML system metadata document.
+
+        :return: pyxb XML binding
+        """
+        return self.sysmeta
 
     def gmn_create(self):
-        client = mnclient.MemberNodeClient(MN_BASE_URL,
-                                           cert_path=CERTIFICATE_FOR_CREATE,
-                                           key_path=CERTIFICATE_FOR_CREATE_KEY)
-        client.create(self.pid, StringIO.StringIO(self.doc), self.sysmeta)
+        """Create a new science metadata object into the NCEI GMN
 
-    def _get_scimeta(self, iso_url):
-        iso = None
+        :return: None
+        """
         try:
-            iso = requests.get(iso_url)
-        except (requests.RequestException,
-                requests.ConnectionError,
-                requests.HTTPError,
-                requests.URLRequired,
-                requests.TooManyRedirects,
-                requests.Timeout) as e:
-            logger.error('Error connecting to NCEI for CSW metadata - {0}'.format(e.message))
-        else:
-            if iso.status_code != requests.codes.ok:
-                logger.error('NCEI CSW metadata response code not OK: {0}'.format(iso.status_code))
-                raise ValueError('NCEI CSW metadata response code not OK: {0}'.format(iso.status_code))
-            return iso.content
+            client = mnclient.MemberNodeClient(settings.MN_BASE_URL,
+                                               cert_path=settings.CERTIFICATE_FOR_CREATE,
+                                               key_path=settings.CERTIFICATE_FOR_CREATE_KEY)
+            client.create(self.pid, StringIO.StringIO(self.doc), self.sysmeta)
+        except Exception as e:
+            logger.error('GMN create error in science metadata bundle: {0}'.format(e.message))
+
+    def gmn_update(self, old_pid):
+        """Update an existing science metadata object with a new science
+           metadata object in the NCEI GMN - requires the previous pid to set
+           obsolescence chain.
+
+        :param old_pid: String
+        :return: None
+        """
+        try:
+            client = mnclient.MemberNodeClient(settings.MN_BASE_URL,
+                                               cert_path=settings.CERTIFICATE_FOR_CREATE,
+                                               key_path=settings.CERTIFICATE_FOR_CREATE_KEY)
+            client.update(old_pid, StringIO.StringIO(self.doc), self.pid, self.sysmeta)
+        except Exception as e:
+            logger.error('GMN update error in science metadata bundle: {0}'.format(e.message))
+
 
 
 def main():
