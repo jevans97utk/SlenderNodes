@@ -4,6 +4,8 @@
 """:Mod: ncei_catalog
 
 :Synopsis:
+    Iterates through the NCEI data catalog using the CSW endpoint for the
+    purpose building data packages and inserting into the NCEI member node.
 
 :Author:
     servilla
