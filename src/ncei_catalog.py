@@ -19,6 +19,7 @@ import logging
 from nodc_connector import ogc_content_iterator
 from nodc_connector import nodc_package
 import scimeta_bundle
+import ncei_package
 
 logging.basicConfig(format='%(asctime)s %(levelname)s (%(name)s): %(message)s',
                     datefmt='%Y%m%d-%H:%M:%S')
@@ -49,9 +50,9 @@ def main():
                 print('{0:6d}: {1}'.format(record_cnt, e))
                 record_cnt += 1
                 try:
-                    package = packager.fromIteratorEntry(e)
-                    sysmeta = package['science_metadata']['sysmeta']
-                    doc = package['science_metadata']['document']
+                    scimeta = ncei_package.Science_Metadata(e)
+                    doc = scimeta.get_document()
+                    sysmeta = scimeta.get_sysmeta()
                     smb = scimeta_bundle.Scimeta_Bundle(doc, sysmeta)
                     smb.gmn_create()
                 except Exception as e:
