@@ -25,7 +25,7 @@ logger = logging.getLogger('ncei_package')
 __author__ = "servilla"
 
 
-class NCEIPackage(object):
+class Package(object):
 
     def __init__(self, csw_record=None):
         try:
@@ -52,6 +52,14 @@ class NCEIPackage(object):
     def get_resource_map(self):
         return self.package['resource_map']
 
+
+class Science_Metadata(Package):
+
+    def get_document(self):
+        return self.package['science_metadata']['document']
+
+    def get_sysmeta(self):
+        return self.package['science_metadata']['sysmeta']
 
 
 def main():
