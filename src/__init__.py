@@ -12,15 +12,6 @@
     2/12/16
 """
 
-import logging
-
-logging.basicConfig(format='%(asctime)s %(levelname)s (%(name)s): %(message)s',
-                    datefmt='%Y%m%d-%H:%M:%S')
-logging.getLogger('').setLevel(logging.WARN)
-logger = logging.getLogger('__init__.py')
-
-__author__ = "servilla"
-
 
 def main():
     return 0
