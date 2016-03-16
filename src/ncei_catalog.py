@@ -21,12 +21,8 @@ from nodc_connector import nodc_package
 import scimeta_bundle
 import ncei_package
 
-logging.basicConfig(format='%(asctime)s %(levelname)s (%(name)s): %(message)s',
-                    datefmt='%Y%m%d-%H:%M:%S')
-logging.getLogger('').setLevel(logging.ERROR)
-logger = logging.getLogger('ncei_catalog')
 
-__author__ = "servilla"
+logger = logging.getLogger('ncei_catalog')
 
 
 def main():
@@ -56,7 +52,7 @@ def main():
                     smb = scimeta_bundle.Scimeta_Bundle(doc, sysmeta)
                     smb.gmn_create()
                 except Exception as e:
-                   logger.error("Unknown fromIteratorEntry error: {0}".format(e.message))
+                    logger.error("Unknown fromIteratorEntry error: {0}".format(e.message))
 
             entries = []
             start = start + n
