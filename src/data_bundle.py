@@ -14,12 +14,8 @@
 
 import logging
 
-logging.basicConfig(format='%(asctime)s %(levelname)s (%(name)s): %(message)s',
-                    datefmt='%Y%m%d-%H:%M:%S')
-logging.getLogger('').setLevel(logging.WARN)
-logger = logging.getLogger('data_bundle')
 
-__author__ = "servilla"
+logger = logging.getLogger('data_bundle')
 
 
 def main():
