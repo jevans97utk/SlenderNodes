@@ -14,33 +14,35 @@
     3/4/16
 """
 
-import logging
 import StringIO
+import logging
 
 from d1_client import mnclient
 from d1_common.types import dataoneTypes as d1_types
 
 import settings
 
-logging.basicConfig(format='%(asctime)s %(levelname)s (%(name)s): %(message)s',
-                    datefmt='%Y%m%d-%H:%M:%S')
-logging.getLogger('').setLevel(logging.WARN)
-logger = logging.getLogger('sciemeta_bundle')
 
-__author__ = "servilla"
+logger = logging.getLogger('scimeta_bundle')
 
 
 
 class Scimeta_Bundle(object):
 
-    def __init__(self, doc=None, sysmeta_xml=None):
+    def __init__(self, pid=None, doc=None, sysmeta_xml=None):
 
-        if not doc or not sysmeta_xml:
-            raise ValueError('Either science metadata "doc" or "sysmeta_xml" is None.')
+        if not pid or not doc or not sysmeta_xml:
+            raise ValueError(
+                'Either "pid" or science metadata "doc" or "sysmeta_xml" is None.')
 
-        self.doc = doc
+        self.doc = doc.encode('utf-8')
         self.sysmeta = d1_types.CreateFromDocument(sysmeta_xml)
-        self.pid = self.sysmeta.identifier.value()
+        self.pid = pid
+
+        if self.pid != self.sysmeta.identifier.value():
+            raise ValueError(
+                'PID "{0}" does not match system metadata identifier "{1}".'.format(
+                    self.pid, self.sysmeta.identifier.value()))
 
     def get_sysmeta_binding(self):
         """Returns the pyxb XML binding for an XML system metadata document.
@@ -59,8 +61,14 @@ class Scimeta_Bundle(object):
                                                cert_path=settings.CERTIFICATE_FOR_CREATE,
                                                key_path=settings.CERTIFICATE_FOR_CREATE_KEY)
             client.create(self.pid, StringIO.StringIO(self.doc), self.sysmeta)
+        except UnicodeError as e:
+            logger.error(
+                'GMN create error for PID "{0}" in science metadata bundle: {1}'.format(
+                    self.pid, e))
         except Exception as e:
-            logger.error('GMN create error in science metadata bundle: {0}'.format(e.message))
+            logger.error(
+                'GMN create error for PID "{0}" in science metadata bundle: {1}'.format(
+                    self.pid, e))
 
     def gmn_update(self, old_pid):
         """Update an existing science metadata object with a new science
@@ -76,7 +84,9 @@ class Scimeta_Bundle(object):
                                                key_path=settings.CERTIFICATE_FOR_CREATE_KEY)
             client.update(old_pid, StringIO.StringIO(self.doc), self.pid, self.sysmeta)
         except Exception as e:
-            logger.error('GMN update error in science metadata bundle: {0}'.format(e.message))
+            logger.error(
+                'GMN update error for PID "{0}" in science metadata bundle: {1}'.format(
+                    self.pid, e))
 
 
 
