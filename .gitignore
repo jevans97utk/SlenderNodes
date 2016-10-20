@@ -1,15 +1,16 @@
-# PyCharm
-.idea
+# DataONE
+certificates/
+certs/
+settings_site.py
+stores/
 
-# Virtual Environment
-venv
-
-# Private configurations
-*.conf
-
+# IntelliJ / PyCharm
+.idea/
+ 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*$py.class
 
 # C extensions
 *.so
@@ -51,6 +52,7 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *,cover
+.hypothesis/
 
 # Translations
 *.mo
@@ -61,6 +63,10 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+docutils/
 
 # PyBuilder
 target/
+
+#Ipython Notebook
+.ipynb_checkpoints
