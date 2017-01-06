@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<?xml-stylesheet type="text/xsl" href="population_queue.xsl"?>
+<population_queue>
+  {% for p in population_queue %}
+  <package>
+    <id>{{ p.id }}</id>
+    <scope>{{ p.package_scope }}</scope>
+    <identifier>{{ p.package_identifier }}</identifier>
+    <revision>{{ p.package_revision }}</revision>
+    <timestamp_queued>{{p.timestamp_queued }}</timestamp_queued>
+
+    <timestamp_processed>{{p.timestamp_processed }}</timestamp_processed>
+    <status>{{p.status}}</status>
+    <return_code>{{ p.return_code }}</return_code>
+    <return_body>{{ p.return_body }}</return_body>
+  </package>
+  {% endfor %}
+</population_queue>

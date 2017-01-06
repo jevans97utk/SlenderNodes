@@ -1,0 +1,7 @@
+*.pyc
+*.log
+*.gz
+.idea
+settings.py
+/certificates
+/old

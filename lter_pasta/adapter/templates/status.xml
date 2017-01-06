@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<?xml-stylesheet type="text/xsl" href="../status.xsl"?>
+<status_log>
+  {% for s in status %}
+  <status>
+    <id>{{ s.id }}</id>
+    <timestamp>{{ s.timestamp }}</timestamp>
+    <return_code>{{ s.return_code }}</return_code>
+    <return_body>{{ s.return_body }}</return_body>
+  </status>
+  {% endfor %}
+</status_log>

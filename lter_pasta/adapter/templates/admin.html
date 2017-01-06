@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>PASTA GMN Adapter -- Administrator</title>
+
+<script type="text/javascript">
+function delete_confirmation() {
+  return confirm('You are about to delete everything in the database. Continue?');
+}
+</script>
+
+  </head>
+  <body>
+    <h2>PASTA GMN Adapter | Admin</h2>
+    
+    <h3>Statistics</h3>
+
+    <ul>
+      <li><a href="statistics">Get statistics</a>
+    </ul>
+
+    <h3>Population Queue</h3>
+
+    <ul>
+      <li><a href="population_queue">Get population queue</a>
+      <li><a href="population_queue?excludecompleted">Get population queue, excluding completed</a>
+    </ul>
+
+{% if debug  %}
+
+    <h3>Misc</h3>
+    
+    <ul>
+      <li><a href="?clear_database" onclick="return delete_confirmation();">Clear database</a>
+    </ul>
+
+{% endif %}
+    
+  </body>
+</html>
