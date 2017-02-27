@@ -29,7 +29,7 @@ $ nano SlenderNodes/r2r/r2r_connecter.py
 
 ```sh
 $ crontab -e
-10 * * * * cd /var/local/dataone/SlenderNodes/r2r && /var/local/dataone/gmn/bin/python ./r2r_connector.py >> log.txt 2>&1
+10 * * * * cd /var/local/dataone/SlenderNodes/r2r && /var/local/dataone/gmn/bin/python ./r2r_connector.py >> r2r.log 2>&1
 ```
 
 ### Operation
