@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 '''
 :mod:`urls`
 ===========
@@ -23,12 +22,13 @@
 
 from django.conf.urls import patterns, url
 
-
-urlpatterns = patterns('pasta_gmn_adapter.adapter.views.pasta',
+urlpatterns = patterns(
+  'pasta_gmn_adapter.adapter.views.pasta',
   (r'^pasta/new_package/?$', 'add_package_to_queue'),
 )
 
-urlpatterns += patterns('pasta_gmn_adapter.adapter.views.admin',
+urlpatterns += patterns(
+  'pasta_gmn_adapter.adapter.views.admin',
   # Admin portal.
   url(r'^admin/$', 'admin'),
   # Statistics.

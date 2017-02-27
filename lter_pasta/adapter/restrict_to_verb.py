@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 ''':mod:`restrict_to_verb`
 ==========================
 
@@ -37,11 +36,14 @@ def _allow_only_verbs(f, verbs):
 def get(f):
   return _allow_only_verbs(f, ['GET'])
 
+
 def put(f):
   return _allow_only_verbs(f, ['PUT'])
 
+
 def post(f):
   return _allow_only_verbs(f, ['POST'])
+
 
 def delete(f):
   return _allow_only_verbs(f, ['DELETE'])

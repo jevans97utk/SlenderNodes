@@ -1,9 +1,10 @@
 # ./generated/eml_access.py
 # -*- coding: utf-8 -*-
 # PyXB bindings for NM:54950fd69a9d9a4d87c44a3e892244ba7b4f017d
-# Generated 2014-03-16 22:56:49.634745 by PyXB version 1.2.3
+# Generated 2017-01-12 00:01:43.088458 by PyXB version 1.2.5 using Python 2.7.12.final.0
 # Namespace eml://ecoinformatics.org/access-2.1.0 [xmlns:acc]
 
+from __future__ import unicode_literals
 import pyxb
 import pyxb.binding
 import pyxb.binding.saxer
@@ -11,21 +12,25 @@ import io
 import pyxb.utils.utility
 import pyxb.utils.domutils
 import sys
-
+import pyxb.utils.six as _six
 # Unique identifier for bindings created at the same time
-_GenerationUID = pyxb.utils.utility.UniqueIdentifier('urn:uuid:8bdde10a-ad90-11e3-bf48-000c294230b4')
+_GenerationUID = pyxb.utils.utility.UniqueIdentifier('urn:uuid:f8e73c56-d894-11e6-9911-000c292ff10e')
 
 # Version of PyXB used to generate the bindings
-_PyXBVersion = '1.2.3'
+_PyXBVersion = '1.2.5'
 # Generated bindings are not compatible across PyXB versions
 if pyxb.__version__ != _PyXBVersion:
     raise pyxb.PyXBVersionError(_PyXBVersion)
+
+# A holder for module-level binding classes so we can access them from
+# inside class definitions where property names may conflict.
+_module_typeBindings = pyxb.utils.utility.Object()
 
 # Import bindings for namespaces imported into schema
 import _nsgroup as _ImportedBinding__nsgroup
 
 # NOTE: All namespace declarations are reserved within the binding
-Namespace = pyxb.namespace.NamespaceForURI(u'eml://ecoinformatics.org/access-2.1.0', create_if_missing=True)
+Namespace = pyxb.namespace.NamespaceForURI('eml://ecoinformatics.org/access-2.1.0', create_if_missing=True)
 Namespace.configureCategories(['typeBinding', 'elementBinding'])
 
 def CreateFromDocument (xml_text, default_namespace=None, location_base=None):
@@ -49,13 +54,13 @@ def CreateFromDocument (xml_text, default_namespace=None, location_base=None):
 
     if pyxb.XMLStyle_saxer != pyxb._XMLStyle:
         dom = pyxb.utils.domutils.StringToDOM(xml_text)
-        return CreateFromDOM(dom.documentElement)
+        return CreateFromDOM(dom.documentElement, default_namespace=default_namespace)
     if default_namespace is None:
         default_namespace = Namespace.fallbackNamespace()
     saxer = pyxb.binding.saxer.make_parser(fallback_namespace=default_namespace, location_base=location_base)
     handler = saxer.getContentHandler()
     xmld = xml_text
-    if isinstance(xmld, unicode):
+    if isinstance(xmld, _six.text_type):
         xmld = xmld.encode(pyxb._InputEncoding)
     saxer.parse(io.BytesIO(xmld))
     instance = handler.rootObject()

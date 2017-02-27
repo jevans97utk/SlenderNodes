@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 ''':mod:`register_existing_packages`
 ====================================
 
@@ -35,7 +34,7 @@ import urlparse
 from django.core.management.base import NoArgsCommand
 
 # Add some PASTA GMN Adapter paths to include path.
-_here = lambda * x: os.path.join(os.path.abspath(os.path.dirname(__file__)), *x)
+_here = lambda *x: os.path.join(os.path.abspath(os.path.dirname(__file__)), *x)
 sys.path.append(_here('../'))
 sys.path.append(_here('../types/generated'))
 
@@ -44,17 +43,14 @@ import settings
 import data_package_manager_client
 import adapter.sql
 
-
 debug_filter = (
   ('knb-lter-mcr', 5008),
   ('knb-lter-mcr', 32),
-
   ('knb-lter-luq', 107),
   ('knb-lter-knz', 205),
   ('knb-lter-knz', 205),
   ('knb-lter-cap', 514),
   ('knb-lter-cap', 514),
-
   ('knb-lter-sev', 190),
   ('knb-lter-knz', 33),
   ('knb-lter-knz', 9),
@@ -63,14 +59,14 @@ debug_filter = (
   ('knb-lter-arc', 10134),
 )
 
+
 class Command(NoArgsCommand):
   help = 'Register existing packages'
 
   def handle_noargs(self, **options):
     self.log_setup()
 
-    logging.info('Running management command: '
-                 'register_existing_packages')
+    logging.info('Running management command: ' 'register_existing_packages')
 
     verbosity = int(options.get('verbosity', 0))
 
@@ -79,11 +75,9 @@ class Command(NoArgsCommand):
 
     self.register_existing_packages()
 
-
   def register_existing_packages(self):
     self._clear_database()
     self._register_packages()
-
 
   def _register_packages(self):
     c = data_package_manager_client.DataPackageManagerClient()
@@ -103,7 +97,6 @@ class Command(NoArgsCommand):
           package_id = '{0}.{1}.{2}'.format(scope, identifier, revision)
           self._add_to_queue(package_id)
 
-
   def _add_to_queue(self, package_id):
     o = urlparse.urlparse(settings.ADAPTER_BASE_URL)
     c = httplib.HTTPConnection(o.netloc)
@@ -111,7 +104,6 @@ class Command(NoArgsCommand):
     c.request('POST', o.path + '/pasta/new_package', package_id, headers)
     response = c.getresponse()
     logging.info('ADD RESPONSE: {0}'.format(response.read()))
-
 
   def _clear_database(self):
     adapter.sql.clear_database()
@@ -122,14 +114,14 @@ class Command(NoArgsCommand):
     #response = c.getresponse()
     #print response.read()
 
-
   def log_setup(self):
     # Set up logging. We output only to stdout. Instead of also writing to a log
     # file, redirect stdout to a log file when the script is executed from cron.
     logging.getLogger('').setLevel(logging.DEBUG)
     formatter = logging.Formatter(
       '%(asctime)s %(levelname)-8s %(name)s %(module)s %(message)s',
-      '%Y-%m-%d %H:%M:%S')
+      '%Y-%m-%d %H:%M:%S'
+    )
     console_logger = logging.StreamHandler(sys.stdout)
     console_logger.setFormatter(formatter)
     logging.getLogger('').addHandler(console_logger)

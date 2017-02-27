@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 ''':mod:`views.pasta`
 =====================
 
@@ -43,6 +42,7 @@ import settings
 # Methods that are called automatically by PASTA
 # ------------------------------------------------------------------------------
 
+
 def _add_http_date_to_response_header(response, date_time):
   response['Date'] = d1_common.date_time.to_http_datetime(date_time)
 
@@ -67,7 +67,8 @@ def _parse_package_id(package_id):
   if not m:
     raise api_types.adapter_error.AdapterError(
       description='Invalid package ID: {0}'.format(package_id),
-      http_status_code=httplib.BAD_REQUEST)
+      http_status_code=httplib.BAD_REQUEST
+    )
   scope = m.group(1)
   identifier = int(m.group(2))
   revision = int(m.group(3))
@@ -75,18 +76,24 @@ def _parse_package_id(package_id):
 
 
 def _raise_if_current_revision_exists(scope, identifier, revision):
-  latest_revision = adapter.sql.select_latest_package_revision(scope, identifier)
+  latest_revision = adapter.sql.select_latest_package_revision(
+    scope, identifier
+  )
   if latest_revision is not None and latest_revision == revision:
     raise api_types.adapter_error.AdapterError(
       description='Invalid package: {0}.{1}.{2}. Package already exists'
       .format(scope, identifier, revision, latest_revision),
-      http_status_code=httplib.BAD_REQUEST)
+      http_status_code=httplib.BAD_REQUEST
+    )
 
 
 def _raise_if_later_revision_exists(scope, identifier, revision):
-  latest_revision = adapter.sql.select_latest_package_revision(scope, identifier)
+  latest_revision = adapter.sql.select_latest_package_revision(
+    scope, identifier
+  )
   if latest_revision is not None and latest_revision > revision:
     raise api_types.adapter_error.AdapterError(
       description='Invalid package: {0}.{1}.{2}. Later revision {3} already exists'
       .format(scope, identifier, revision, latest_revision),
-      http_status_code=httplib.BAD_REQUEST)
+      http_status_code=httplib.BAD_REQUEST
+    )
