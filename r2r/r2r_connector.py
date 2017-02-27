@@ -19,6 +19,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """R2R to GMN slendernode connector.
 """
 
@@ -48,11 +49,11 @@ import d1_common.types.exceptions
 
 # Constants
 MAX_RECORDS_INT = 10 # R2R seems to clamp this to 10.
-SUBMITTER_SUBJECT_STR = 'test_subj'
-OWNER_SUBJECT_STR = 'test_subj'
-AUTHORITATIVE_MEMBER_NODE_URN = 'asdf'
-ORIGIN_MEMBER_NODE_URN = 'asdf'
-SCIOBJ_FORMAT_STR = 'application/octet-stream'
+SUBMITTER_SUBJECT_STR = 'CN=Roger Dahl A1779,O=Google,C=US,DC=cilogon,DC=org'
+OWNER_SUBJECT_STR = 'CN=Roger Dahl A1779,O=Google,C=US,DC=cilogon,DC=org'
+AUTHORITATIVE_MEMBER_NODE_URN = 'urn:node:mnTestR2R'
+ORIGIN_MEMBER_NODE_URN = 'urn:node:mnTestR2R'
+SCIOBJ_FORMAT_STR = 'http://www.isotc211.org/2005/gmd-noaa'
 CERT_PUB_PATH = './client_cert.pem'
 CERT_KEY_PATH = './client_key_nopassword.pem'
 GMN_BASE_URL = 'https://r2r-node.test.dataone.org/mn'
@@ -247,14 +248,16 @@ class R2RConnector(object):
     self._gmn_client.update(obsoleted_pid, xml_str, pid, sysmeta_pyxb)
     self._count_event('Object update')
     logging.info(
-      'Updated object. obsoleted_pid="{}", new_pid="{}"'
-      .format(obsoleted_pid, pid)
+      'Updated object. obsoleted_pid="{}", new_pid="{}"'.
+        format(obsoleted_pid, pid)
     )
 
   def _create_sciobj(self, pid, sysmeta_pyxb, xml_str):
     self._gmn_client.create(pid, xml_str, sysmeta_pyxb)
     self._count_event('Object create')
-    logging.info('Created object. pid="{}"'.format(pid))
+    logging.info(
+      'Created object. pid="{}"'.format(pid)
+    )
 
   def _pid_exists(self, pid):
     """Check if {pid} exists on GMN"""
@@ -285,9 +288,7 @@ class R2RConnector(object):
     """Serialize and normalize the XML subtree"""
     return d1_common.util.pretty_xml(ET.tostring(xml_et)).encode('utf-8')
 
-  def _generate_sysmeta_pyxb(
-    self, metadata_et, xml_str, checksum_pyxb, obsoletes_pid
-  ):
+  def _generate_sysmeta_pyxb(self, metadata_et, xml_str, checksum_pyxb, obsoletes_pid):
     now = datetime.datetime.now()
     sysmeta_pyxb = v2.systemMetadata()
     sysmeta_pyxb.serialVersion = 1
@@ -311,12 +312,11 @@ class R2RConnector(object):
     return sysmeta_pyxb
 
   def _generate_public_access_policy_pyxb(self):
-    access_policy_pyxb = dataoneTypes.accessPolicy()
-    access_rule_pyxb = dataoneTypes.AccessRule()
-    access_rule_pyxb.subject.append(d1_common.const.SUBJECT_PUBLIC)
-    permission_pyxb = dataoneTypes.Permission('read')
-    access_rule_pyxb.permission.append(permission_pyxb)
-    access_policy_pyxb.append(access_rule_pyxb)
+    access_policy_pyxb = v2.AccessPolicy()
+    access_rule_pyxb = v2.AccessRule()
+    access_rule_pyxb.permission = [v2.Permission.read, ]
+    access_rule_pyxb.subject = ["public", ]
+    access_policy_pyxb.allow = [access_rule_pyxb, ]
     return access_policy_pyxb
 
 
