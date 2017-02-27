@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 '''
 :mod:`view_handler`
 ===================
@@ -28,9 +27,10 @@ import logging
 class view_handler():
   def process_view(self, request, view_func, view_args, view_kwargs):
     # Log which view is about the be called.
-    logging.info('View: func_name({0}) method({1}) args({2}) kwargs({3})'
-                 .format(view_func.func_name, request.method, view_args,
-                         view_kwargs))
+    logging.info(
+      'View: func_name({0}) method({1}) args({2}) kwargs({3})'
+      .format(view_func.func_name, request.method, view_args, view_kwargs)
+    )
 
     # Returning None continues regular handling.
     return None

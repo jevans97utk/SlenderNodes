@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 '''
 :mod:`sql`
 ==========
@@ -31,7 +30,6 @@
 '''
 import django.db
 
-
 VCHAR_LENGTH = 2048
 
 
@@ -46,20 +44,26 @@ def dict_fetch_all(cursor):
 def insert_population_queue_item(scope, identifier, revision):
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     insert into adapter_population_queue_package_scope (package_scope)
     select %s where not exists (
       select id from adapter_population_queue_package_scope where package_scope = %s
     );
-    ''', [scope, scope])
+    ''',
+    [scope, scope]
+  )
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     insert into adapter_population_queue
     (package_scope_id, package_identifier, package_revision, "timestamp")
     select id, %s, %s, now() from adapter_population_queue_package_scope
     where package_scope = %s
     returning id;
-    ''', [int(identifier), int(revision), scope])
+    ''',
+    [int(identifier), int(revision), scope]
+  )
 
   queue_id = cursor.fetchone()[0]
 
@@ -69,7 +73,8 @@ def insert_population_queue_item(scope, identifier, revision):
 def select_population_queue_with_latest_status():
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select apq.id, apqps.package_scope, apq.package_identifier,
       apq.package_revision, apss.status, aps.return_code, substring(apsrb.return_body from 1 for 256) as return_body,
       apq.timestamp as timestamp_queued, aps.timestamp as timestamp_processed
@@ -88,7 +93,8 @@ def select_population_queue_with_latest_status():
     )
     order by package_scope, package_identifier, package_revision
   ;
-  ''')
+  '''
+  )
 
   return dict_fetch_all(cursor)
 
@@ -96,7 +102,8 @@ def select_population_queue_with_latest_status():
 def select_population_queue_with_latest_status_uncompleted():
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select apq.id, apqps.package_scope, apq.package_identifier,
       apq.package_revision, apss.status, aps.return_code, substring(apsrb.return_body from 1 for 256) as return_body,
       apq.timestamp as timestamp_queued, aps.timestamp as timestamp_processed
@@ -121,7 +128,8 @@ def select_population_queue_with_latest_status_uncompleted():
     )
     order by package_scope, package_identifier, package_revision
   ;
-  ''')
+  '''
+  )
 
   return dict_fetch_all(cursor)
 
@@ -129,14 +137,17 @@ def select_population_queue_with_latest_status_uncompleted():
 def select_status(population_queue_id):
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select * from adapter_process_status aps
     join adapter_process_status_status apss on (apss.id = aps.status_id)
     join adapter_process_status_return_body apsrb on (apsrb.id = aps.return_body_id)
     where aps.population_queue_item_id = %s
     order by aps.timestamp asc;
     ;
-  ''', [population_queue_id])
+  ''',
+    [population_queue_id]
+  )
 
   return dict_fetch_all(cursor)
 
@@ -144,7 +155,8 @@ def select_status(population_queue_id):
 def select_statistics():
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select status, count(*)
     from adapter_process_status aps
     join adapter_process_status_status apss on (apss.id = aps.status_id)
@@ -156,7 +168,8 @@ def select_statistics():
     or aps.timestamp is null
     group by status
     ;
-  ''')
+  '''
+  )
 
   return dict_fetch_all(cursor)
 
@@ -164,7 +177,8 @@ def select_statistics():
 def select_population_queue_all():
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select apq.*, apq.id as task_id, apqps.*, aps.*, apsrb.*,
       apq.timestamp as timestamp_queued, aps.timestamp as timestamp_processed
     from adapter_population_queue apq
@@ -173,7 +187,8 @@ def select_population_queue_all():
     left join adapter_population_queue_status apqs on (apqs.id = aps.status_id)
     left join adapter_process_status_return_body apsrb on (apsrb.id = aps.return_body_id)
     order by package_scope, package_identifier, package_revision;
-  ''')
+  '''
+  )
 
   return dict_fetch_all(cursor)
 
@@ -183,7 +198,8 @@ def select_population_queue_uncompleted():
   processed.'''
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select apq.id, package_scope, package_identifier, package_revision, "timestamp"
     from adapter_population_queue apq
     left join adapter_population_queue_package_scope apqps on (apq.package_scope_id = apqps.id)
@@ -194,7 +210,8 @@ def select_population_queue_uncompleted():
       where apss.status in ('completed', 'private', 'permanent_error')
     )
     order by package_scope, package_identifier, package_revision;
-  ''')
+  '''
+  )
 
   return dict_fetch_all(cursor)
 
@@ -206,17 +223,21 @@ def select_latest_package_revision(scope, identifier):
   have not been inserted into GMN cannot be updated.'''
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select id from adapter_population_queue_package_scope where package_scope = %s
   ;
-  ''', [scope])
+  ''',
+    [scope]
+  )
 
   try:
     scope_id = cursor.fetchone()[0]
   except TypeError:
     return None
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select max(package_revision) from adapter_population_queue
     where package_scope_id = %s and package_identifier = %s
     and id in (
@@ -226,7 +247,9 @@ def select_latest_package_revision(scope, identifier):
       where apss.status in ('completed')
     )
   ;
-  ''', [scope_id, identifier])
+  ''',
+    [scope_id, identifier]
+  )
 
   return cursor.fetchone()[0]
 
@@ -246,44 +269,60 @@ def insert_process_status(task_id, status, return_code=0, return_body=''):
 
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select id from adapter_process_status_status where status = %s
-    ''', [status])
+    ''',
+    [status]
+  )
   try:
     status_id = cursor.fetchone()[0]
   except TypeError:
-    cursor.execute('''
+    cursor.execute(
+      '''
       insert into adapter_process_status_status (status)
       values (%s)
       returning id;
-      ''', [status])
+      ''',
+      [status]
+    )
     status_id = cursor.fetchone()[0]
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select id from adapter_process_status_return_body where return_body = %s
-    ''', [return_body])
+    ''',
+    [return_body]
+  )
   try:
     return_body_id = cursor.fetchone()[0]
   except TypeError:
-    cursor.execute('''
+    cursor.execute(
+      '''
       insert into adapter_process_status_return_body (return_body)
       values (%s)
       returning id;
-      ''', [return_body])
+      ''',
+      [return_body]
+    )
     return_body_id = cursor.fetchone()[0]
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     insert into adapter_process_status (population_queue_item_id, "timestamp",
       status_id, return_code, return_body_id)
     values (%s, now(), %s, %s, %s)
     ;
-    ''', [task_id, status_id, return_code, return_body_id])
+    ''',
+    [task_id, status_id, return_code, return_body_id]
+  )
 
 
 def select_process_status_by_package_id(scope, identifier, revision):
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     select apss.status, return_code, apsrb.return_body
     from adapter_process_status aps
     left join adapter_process_status_status apss on (apss.id = aps.status_id)
@@ -294,7 +333,9 @@ def select_process_status_by_package_id(scope, identifier, revision):
     and apq.package_identifier = %s
     and apq.package_revision = %s
     ;
-    ''', [scope, identifier, revision])
+    ''',
+    [scope, identifier, revision]
+  )
 
   return dict_fetch_all(cursor)
 
@@ -302,11 +343,13 @@ def select_process_status_by_package_id(scope, identifier, revision):
 def clear_database():
   cursor = django.db.connection.cursor()
 
-  cursor.execute('''
+  cursor.execute(
+    '''
     delete from adapter_process_status;
     delete from adapter_process_status_status;
     delete from adapter_process_status_return_body;
     delete from adapter_population_queue;
     delete from adapter_population_queue_package_scope;
     ;
-    ''')
+    '''
+  )

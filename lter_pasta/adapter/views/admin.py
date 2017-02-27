@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 ''':mod:`views.admin`
 =====================
 
@@ -38,31 +37,37 @@ import settings
 # Admin portal.
 # ------------------------------------------------------------------------------
 
+
 @adapter.restrict_to_verb.get
 def admin(request):
   if settings.GMN_ADAPTER_DEBUG:
     if 'clear_database' in request.GET:
       adapter.sql.clear_database()
-  return render_to_response('admin.html', {'debug': settings.GMN_ADAPTER_DEBUG},
-                            content_type=d1_common.const.CONTENT_TYPE_XHTML)
+  return render_to_response(
+    'admin.html', {'debug': settings.GMN_ADAPTER_DEBUG},
+    content_type=d1_common.const.CONTENT_TYPE_XHTML
+  )
 
 # Statistics
+
 
 @adapter.restrict_to_verb.get
 def get_statistics(request):
   p = adapter.sql.select_statistics()
-  return render_to_response('statistics.xml',
-   {'statistics': p },
-   content_type=d1_common.const.CONTENT_TYPE_XML)
+  return render_to_response(
+    'statistics.xml', {'statistics': p},
+    content_type=d1_common.const.CONTENT_TYPE_XML
+  )
 
 
 @adapter.restrict_to_verb.get
 def get_statistics_xsl(request):
-  return render_to_response('statistics.xsl',
-    content_type=d1_common.const.CONTENT_TYPE_XML)
-
+  return render_to_response(
+    'statistics.xsl', content_type=d1_common.const.CONTENT_TYPE_XML
+  )
 
 # Population Queue
+
 
 @adapter.restrict_to_verb.get
 def get_population_queue(request):
@@ -71,28 +76,31 @@ def get_population_queue(request):
   else:
     p = adapter.sql.select_population_queue_with_latest_status()
   #return HttpResponse(p)
-  return render_to_response('population_queue.xml',
-   {'population_queue': p },
-   content_type=d1_common.const.CONTENT_TYPE_XML)
+  return render_to_response(
+    'population_queue.xml', {'population_queue': p},
+    content_type=d1_common.const.CONTENT_TYPE_XML
+  )
 
 
 @adapter.restrict_to_verb.get
 def get_population_queue_xsl(request):
-  return render_to_response('population_queue.xsl',
-    content_type=d1_common.const.CONTENT_TYPE_XML)
-
+  return render_to_response(
+    'population_queue.xsl', content_type=d1_common.const.CONTENT_TYPE_XML
+  )
 
 # Status
+
 
 @adapter.restrict_to_verb.get
 def get_status(request, population_queue_id):
   p = adapter.sql.select_status(population_queue_id)
-  return render_to_response('status.xml',
-   {'status': p },
-   content_type=d1_common.const.CONTENT_TYPE_XML)
+  return render_to_response(
+    'status.xml', {'status': p}, content_type=d1_common.const.CONTENT_TYPE_XML
+  )
 
 
 @adapter.restrict_to_verb.get
 def get_status_xsl(request):
-  return render_to_response('status.xsl',
-    content_type=d1_common.const.CONTENT_TYPE_XML)
+  return render_to_response(
+    'status.xsl', content_type=d1_common.const.CONTENT_TYPE_XML
+  )

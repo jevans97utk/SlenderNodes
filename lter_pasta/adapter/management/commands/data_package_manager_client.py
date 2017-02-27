@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 ''':mod:`Module data_package_manager_client`
 ============================================
 
@@ -24,11 +23,12 @@
 
 # Stdlib.
 import base64
-import logging
 import httplib
-import urlparse
+import logging
 import StringIO
 import sys
+import urlparse
+import xml.etree.ElementTree as ET
 
 # D1.
 try:
@@ -45,6 +45,12 @@ import settings
 import pasta_gmn_adapter.api_types.eml_access
 
 
+NAMESPACE_DICT = {
+  'eml': 'eml://ecoinformatics.org/eml-2.1.1',
+  'd1v1': 'http://ns.dataone.org/service/types/v1'
+}
+
+
 # Raised when the Data Package Manager returns an error response.
 class DataPackageManagerException(Exception):
   def __init__(self, msg, status, body):
@@ -52,12 +58,14 @@ class DataPackageManagerException(Exception):
     self.status = status
     self.body = body
 
-
   def __str__(self):
-    return ('DataPackageManagerException: message({0}) status({1}) body({2})'
-      .format(self.msg, self.status, self.body))
+    return (
+      'DataPackageManagerException: message({0}) status({1}) body({2})'
+      .format(self.msg, self.status, self.body)
+    )
 
 #=============================================================================
+
 
 class DataPackageManagerClient(d1_common.restclient.RESTClient):
   '''PASTA Data Package Manager web service API methods that are used by the
@@ -65,15 +73,13 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
 
   Error responses are translated into exceptions.
   '''
-  def __init__(self,
-               base_url=settings.PASTA_BASE_URL,
-               timeout=settings.PASTA_RESPONSE_TIMEOUT,
-               defaultHeaders=None,
-               cert_path=None,
-               key_path=None,
-               strict=True,
-               capture_response_body=False,
-               add_basic_auth_header=True):
+
+  def __init__(
+    self, base_url=settings.PASTA_BASE_URL,
+    timeout=settings.PASTA_RESPONSE_TIMEOUT, defaultHeaders=None,
+    cert_path=None, key_path=None, strict=True, capture_response_body=False,
+    add_basic_auth_header=True
+  ):
     '''Connect to the PASTA Data Package Manager web service API.
 
     :param base_url: Data Package Manager web service API Base URL
@@ -113,9 +119,11 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
       defaultHeaders.update((self._mk_http_basic_auth_header(),))
     # Init the RESTClient base class.
     scheme, host, port, selector = self._parse_url(base_url)[:4]
-    d1_common.restclient.RESTClient.__init__(self, host=host, scheme=scheme,
-      port=port, timeout=timeout, defaultHeaders=defaultHeaders,
-      cert_path=cert_path, key_path=key_path, strict=strict)
+    d1_common.restclient.RESTClient.__init__(
+      self, host=host, scheme=scheme, port=port, timeout=timeout,
+      defaultHeaders=defaultHeaders, cert_path=cert_path, key_path=key_path,
+      strict=strict
+    )
     self.base_url = base_url
     self.selector = selector
     self.version = ''
@@ -125,12 +133,15 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     # body attribute of self.last_response_body
     self.capture_response_body = capture_response_body
 
-
   def _mk_http_basic_auth_header(self):
-    return ('Authorization', 'Basic {0}'.format(
-      base64.standard_b64encode('{0}:{1}'.format(
-        settings.PASTA_API_USERNAME, settings.PASTA_API_PASSWORD))))
-
+    return (
+      'Authorization', 'Basic {0}'.format(
+        base64.standard_b64encode(
+          '{0}:{1}'.
+          format(settings.PASTA_API_USERNAME, settings.PASTA_API_PASSWORD)
+        )
+      )
+    )
 
   def _parse_url(self, url):
     parts = urlparse.urlsplit(url)
@@ -166,7 +177,7 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
   #     - Return text document.
   #   Else:
   #     - Raise exception with body of response as error message.
-  
+
   def _get_data_redirect_header(self, redirect_url):
     urlsplit = urlparse.urlparse(redirect_url)
     full_path = urlsplit.path + '?' + urlsplit.query
@@ -180,31 +191,28 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
       self.last_response_body = response_body
     return response_body
 
-
   def _raise_data_package_manager_exception(self, msg, response):
     response_body = self._read_and_capture(response)
     raise DataPackageManagerException(msg, response.status, response_body)
 
-
   def _raise_service_failure_invalid_content_type(self, response):
     msg = StringIO.StringIO()
-    msg.write('Data Package Manager responded with a valid status code but '
-              'failed to include the expected Content-Type\n')
+    msg.write(
+      'Data Package Manager responded with a valid status code but '
+      'failed to include the expected Content-Type\n'
+    )
     msg.write('Status code: {0}\n'.format(response.status))
     msg.write('Content-Type: {0}\n'.format(response.getheader('Content-Type')))
     self._raise_data_package_manager_exception(msg.getvalue(), response)
-
 
   def _content_type_is_xml(self, response):
     return d1_common.util.get_content_type(
       response.getheader('Content-Type')) \
         in d1_common.const.CONTENT_TYPE_XML_MEDIA_TYPES
 
-
   def _content_type_is_text(self, response):
-    return d1_common.util.get_content_type(
-      response.getheader('Content-Type')) == 'text/plain'
-
+    return d1_common.util.get_content_type(response.getheader('Content-Type')
+                                           ) == 'text/plain'
 
   def _status_is_200_ok(self, response):
     return response.status == httplib.OK
@@ -218,14 +226,12 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
       return True
     self._error(response)
 
-
   def _read_xml_response(self, response):
     if not self._status_is_200_ok(response):
       return self._raise_data_package_manager_exception('Error', response)
     if not self._content_type_is_xml(response):
       self._raise_service_failure_invalid_content_type(response)
     return response.read()
-
 
   def _read_text_response(self, response):
     if not self._status_is_200_ok(response):
@@ -234,12 +240,10 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
       self._raise_service_failure_invalid_content_type(response)
     return response.read()
 
-
   def _read_raw_response(self, response):
     if not self._status_is_200_ok(response):
       return self._raise_data_package_manager_exception('Error', response)
     return response.read()
-
 
   def _read_header_response(self, response):
     if not self._status_is_200_ok(response):
@@ -248,7 +252,6 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     # request. Since a HEAD request was used, the body should be empty.
     response.read()
     return dict(response.getheaders())
-
 
   def _read_eml_access_response(self, response):
     if not self._status_is_200_ok(response):
@@ -264,7 +267,9 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     for k in args.keys():
       args[k] = d1_common.url.encodePathElement(args[k])
     path = path_format % args
-    url = '/' + d1_common.url.joinPathElements(self.selector, self.version, path)
+    url = '/' + d1_common.url.joinPathElements(
+      self.selector, self.version, path
+    )
     return url
 
   # ----------------------------------------------------------------------------
@@ -280,13 +285,13 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     identifiers = self._read_text_response(response)
     return sorted(identifiers.strip().split('\n'))
 
-
   @d1_common.util.utf8_to_unicode
   def list_data_entities_response(self, package_id):
-    url = self._rest_url('data/eml/%(scope)s/%(identifier)s/%(revision)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()))
+    url = self._rest_url(
+      'data/eml/%(scope)s/%(identifier)s/%(revision)s',
+      scope=package_id.scope(), identifier=str(package_id.identifier()),
+      revision=str(package_id.revision())
+    )
     return self.GET(url)
 
   # List Data Package Identifiers
@@ -296,7 +301,6 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.list_data_package_identifiers_response(scope)
     identifiers = self._read_text_response(response)
     return sorted(map(int, identifiers.strip().split('\n')))
-
 
   @d1_common.util.utf8_to_unicode
   def list_data_package_identifiers_response(self, scope):
@@ -311,11 +315,11 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     identifiers = self._read_text_response(response)
     return sorted(map(int, identifiers.strip().split('\n')))
 
-
   @d1_common.util.utf8_to_unicode
   def list_data_package_revisions_response(self, scope, identifier):
-    url = self._rest_url('/eml/%(scope)s/%(identifier)s',
-                         scope=scope, identifier=str(identifier))
+    url = self._rest_url(
+      '/eml/%(scope)s/%(identifier)s', scope=scope, identifier=str(identifier)
+    )
     return self.GET(url)
 
   # List Data Package Scopes
@@ -325,7 +329,6 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.list_data_package_scopes_response()
     identifiers = self._read_text_response(response)
     return sorted(identifiers.strip().split('\n'))
-
 
   @d1_common.util.utf8_to_unicode
   def list_data_package_scopes_response(self):
@@ -340,7 +343,6 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     identifiers = self._read_text_response(response)
     return sorted(identifiers.strip().split('\n'))
 
-
   @d1_common.util.utf8_to_unicode
   def list_deleted_packages_response(self):
     url = self._rest_url('/eml/deleted')
@@ -353,14 +355,13 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.read_data_entity_name_response(package_id, entity_id)
     return self._read_raw_response(response)
 
-
   @d1_common.util.utf8_to_unicode
   def read_data_entity_name_response(self, package_id, entity_id):
-    url = self._rest_url('data/eml/%(scope)s/%(identifier)s/%(revision)s/%(entity_id)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()),
-                         entity_id=entity_id)
+    url = self._rest_url(
+      'data/eml/%(scope)s/%(identifier)s/%(revision)s/%(entity_id)s',
+      scope=package_id.scope(), identifier=str(package_id.identifier()),
+      revision=str(package_id.revision()), entity_id=entity_id
+    )
     return self.GET(url)
 
 #   # List Data Package Identifiers
@@ -387,13 +388,13 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.read_data_package_doi_response(package_id)
     return self._read_text_response(response).strip()
 
-
   @d1_common.util.utf8_to_unicode
   def read_data_package_doi_response(self, package_id):
-    url = self._rest_url('doi/eml/%(scope)s/%(identifier)s/%(revision)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()))
+    url = self._rest_url(
+      'doi/eml/%(scope)s/%(identifier)s/%(revision)s', scope=package_id.scope(),
+      identifier=str(package_id.identifier()),
+      revision=str(package_id.revision())
+    )
     return self.GET(url)
 
   # Is Authorized
@@ -403,7 +404,6 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     '''Determine if read access to data entity is authorized'''
     response = self.is_authorized_response(package_id, entity_id)
     return self._read_text_response(response)
-
 
   @d1_common.util.utf8_to_unicode
   def is_authorized_response(self, package_id, entity_id):
@@ -418,13 +418,13 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.read_data_package_acl_response(package_id)
     return self._read_eml_access_response(response)
 
-
   @d1_common.util.utf8_to_unicode
   def read_data_package_acl_response(self, package_id):
-    url = self._rest_url('acl/eml/%(scope)s/%(identifier)s/%(revision)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()))
+    url = self._rest_url(
+      'acl/eml/%(scope)s/%(identifier)s/%(revision)s', scope=package_id.scope(),
+      identifier=str(package_id.identifier()),
+      revision=str(package_id.revision())
+    )
     return self.GET(url)
 
   # Read Data Entity ACL
@@ -434,14 +434,13 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.read_data_entity_acl_response(package_id, entity_id)
     return self._read_eml_access_response(response)
 
-
   @d1_common.util.utf8_to_unicode
   def read_data_entity_acl_response(self, package_id, entity_id):
-    url = self._rest_url('data/acl/eml/%(scope)s/%(identifier)s/%(revision)s/%(entity_id)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()),
-                         entity_id=entity_id)
+    url = self._rest_url(
+      'data/acl/eml/%(scope)s/%(identifier)s/%(revision)s/%(entity_id)s',
+      scope=package_id.scope(), identifier=str(package_id.identifier()),
+      revision=str(package_id.revision()), entity_id=entity_id
+    )
     return self.GET(url)
 
   # Read Data Package Report ACL
@@ -451,13 +450,13 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.read_quality_report_acl_response(package_id)
     return self._read_eml_access_response(response)
 
-
   @d1_common.util.utf8_to_unicode
   def read_quality_report_acl_response(self, package_id):
-    url = self._rest_url('report/acl/eml/%(scope)s/%(identifier)s/%(revision)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()))
+    url = self._rest_url(
+      'report/acl/eml/%(scope)s/%(identifier)s/%(revision)s',
+      scope=package_id.scope(), identifier=str(package_id.identifier()),
+      revision=str(package_id.revision())
+    )
     return self.GET(url)
 
   # Read Metadata ACL
@@ -467,13 +466,13 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.read_metadata_acl_response(package_id)
     return self._read_eml_access_response(response)
 
-
   @d1_common.util.utf8_to_unicode
   def read_metadata_acl_response(self, package_id):
-    url = self._rest_url('metadata/acl/eml/%(scope)s/%(identifier)s/%(revision)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()))
+    url = self._rest_url(
+      'metadata/acl/eml/%(scope)s/%(identifier)s/%(revision)s',
+      scope=package_id.scope(), identifier=str(package_id.identifier()),
+      revision=str(package_id.revision())
+    )
     return self.GET(url)
 
   # Read Data Entity Checksum (SHA-1)
@@ -483,16 +482,14 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.read_data_entity_checksum_response(package_id, entity_id)
     return self._read_text_response(response).strip()
 
-
   @d1_common.util.utf8_to_unicode
   def read_data_entity_checksum_response(self, package_id, entity_id):
-    url = self._rest_url('data/checksum/eml/%(scope)s/%(identifier)s/%(revision)s/%(entity_id)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()),
-                         entity_id=str(entity_id))
+    url = self._rest_url(
+      'data/checksum/eml/%(scope)s/%(identifier)s/%(revision)s/%(entity_id)s',
+      scope=package_id.scope(), identifier=str(package_id.identifier()),
+      revision=str(package_id.revision()), entity_id=str(entity_id)
+    )
     return self.GET(url)
-
 
   # Read Data Package Report Checksum (SHA-1)
 
@@ -501,13 +498,13 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.read_data_package_report_checksum_response(package_id)
     return self._read_text_response(response).strip()
 
-
   @d1_common.util.utf8_to_unicode
   def read_data_package_report_checksum_response(self, package_id):
-    url = self._rest_url('report/checksum/eml/%(scope)s/%(identifier)s/%(revision)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()))
+    url = self._rest_url(
+      'report/checksum/eml/%(scope)s/%(identifier)s/%(revision)s',
+      scope=package_id.scope(), identifier=str(package_id.identifier()),
+      revision=str(package_id.revision())
+    )
     return self.GET(url)
 
   # Read Metadata Checksum (SHA-1)
@@ -517,15 +514,14 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.read_metadata_checksum_response(package_id)
     return self._read_text_response(response).strip()
 
-
   @d1_common.util.utf8_to_unicode
   def read_metadata_checksum_response(self, package_id):
-    url = self._rest_url('metadata/checksum/eml/%(scope)s/%(identifier)s/%(revision)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()))
+    url = self._rest_url(
+      'metadata/checksum/eml/%(scope)s/%(identifier)s/%(revision)s',
+      scope=package_id.scope(), identifier=str(package_id.identifier()),
+      revision=str(package_id.revision())
+    )
     return self.GET(url)
-
 
   # Read Metadata Format ID
 
@@ -535,16 +531,16 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
     response = self.read_metadata_format_id_response(package_id)
     return self._read_text_response(response).strip()
 
-
   @d1_common.util.utf8_to_unicode
   def read_metadata_format_id_response(self, package_id):
-    url = self._rest_url('metadata/format/eml/%(scope)s/%(identifier)s/%(revision)s',
-                         scope=package_id.scope(),
-                         identifier=str(package_id.identifier()),
-                         revision=str(package_id.revision()))
+    url = self._rest_url(
+      'metadata/format/eml/%(scope)s/%(identifier)s/%(revision)s',
+      scope=package_id.scope(), identifier=str(package_id.identifier()),
+      revision=str(package_id.revision())
+    )
     return self.GET(url)
 
-  # misc
+  # Get Data Entry Header
 
   @d1_common.util.utf8_to_unicode
   def get_data_entry_header(self, resource_url):
@@ -556,33 +552,58 @@ class DataPackageManagerClient(d1_common.restclient.RESTClient):
       response = self._get_data_redirect_header(temporary_url)
     return self._read_header_response(response)
 
-
   @d1_common.util.utf8_to_unicode
   def get_data_entry_header_response(self, resource_url):
     return self.HEAD(resource_url)
 
+  # Read EML
+
+  @d1_common.util.utf8_to_unicode
+  def read_eml(self, eml_url):
+    response = self.read_eml_response(eml_url)
+    return self._read_xml_response(response)
+
+  @d1_common.util.utf8_to_unicode
+  def read_eml_response(self, eml_url):
+    return self.GET(eml_url)
+
+  # Utils
+
+  @d1_common.util.utf8_to_unicode
+  def read_metadata_replication_policy(self, package_id):
+    '''Retrieve EML doc from {eml_url}, extract and return the DataONE
+    Replication Policy XML document if one exists. Else return None.
+    '''
+    eml_url = self.metadata_url(package_id)
+    eml_xml = self.read_eml(eml_url)
+    tree = ET.ElementTree(ET.fromstring(eml_xml))
+    root = tree.getroot()
+    replicationPolicy_list = root.findall("additionalMetadata/metadata/d1v1:replicationPolicy", NAMESPACE_DICT)
+    if len(replicationPolicy_list):
+      return ET.tostring(replicationPolicy_list[0])
 
   @d1_common.util.utf8_to_unicode
   def entity_uri(self, package_id, entity_id):
     # TODO: Check that resource IDs will always be the base id + package id + entity id.
-    return '{0}/data/eml/{1}/{2}/{3}/{4}'.format(self.base_url,
-      d1_common.url.encodePathElement(package_id.scope()), package_id.identifier(),
-      package_id.revision(), d1_common.url.encodePathElement(entity_id))
-
+    return '{0}/data/eml/{1}/{2}/{3}/{4}'.format(
+      self.base_url, d1_common.url.encodePathElement(package_id.scope()),
+      package_id.identifier(), package_id.revision(),
+      d1_common.url.encodePathElement(entity_id)
+    )
 
   @d1_common.util.utf8_to_unicode
   def report_uri(self, package_id):
-    return '{0}/report/eml/{1}/{2}/{3}'.format(self.base_url,
-      d1_common.url.encodePathElement(package_id.scope()), package_id.identifier(),
-      package_id.revision())
-
+    return '{0}/report/eml/{1}/{2}/{3}'.format(
+      self.base_url, d1_common.url.encodePathElement(package_id.scope()),
+      package_id.identifier(), package_id.revision()
+    )
 
   @d1_common.util.utf8_to_unicode
-  def metadata_uri(self, package_id):
-    return '{0}/metadata/eml/{1}/{2}/{3}'.format(self.base_url,
-      d1_common.url.encodePathElement(package_id.scope()), package_id.identifier(),
-      package_id.revision())
-
+  def metadata_url(self, package_id):
+    return '{0}/metadata/eml/{1}/{2}/{3}'.format(
+      self.base_url, d1_common.url.encodePathElement(package_id.scope()),
+      package_id.identifier(), package_id.revision()
+    )
 
   # Metadata DOIs are not yet implemented in PASTA.
 

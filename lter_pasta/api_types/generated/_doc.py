@@ -1,9 +1,10 @@
 # ./generated/_doc.py
 # -*- coding: utf-8 -*-
 # PyXB bindings for NM:bec758de7fa76a730a0e1c801a3d4f5de33e25fb
-# Generated 2014-03-16 22:56:49.638127 by PyXB version 1.2.3
+# Generated 2017-01-12 00:01:43.093499 by PyXB version 1.2.5 using Python 2.7.12.final.0
 # Namespace eml://ecoinformatics.org/documentation-2.1.0 [xmlns:doc]
 
+from __future__ import unicode_literals
 import pyxb
 import pyxb.binding
 import pyxb.binding.saxer
@@ -11,22 +12,26 @@ import io
 import pyxb.utils.utility
 import pyxb.utils.domutils
 import sys
-
+import pyxb.utils.six as _six
 # Unique identifier for bindings created at the same time
-_GenerationUID = pyxb.utils.utility.UniqueIdentifier('urn:uuid:8bdde10a-ad90-11e3-bf48-000c294230b4')
+_GenerationUID = pyxb.utils.utility.UniqueIdentifier('urn:uuid:f8e73c56-d894-11e6-9911-000c292ff10e')
 
 # Version of PyXB used to generate the bindings
-_PyXBVersion = '1.2.3'
+_PyXBVersion = '1.2.5'
 # Generated bindings are not compatible across PyXB versions
 if pyxb.__version__ != _PyXBVersion:
     raise pyxb.PyXBVersionError(_PyXBVersion)
 
+# A holder for module-level binding classes so we can access them from
+# inside class definitions where property names may conflict.
+_module_typeBindings = pyxb.utils.utility.Object()
+
 # Import bindings for namespaces imported into schema
-import pyxb.binding.datatypes
 import _txt as _ImportedBinding__txt
+import pyxb.binding.datatypes
 
 # NOTE: All namespace declarations are reserved within the binding
-Namespace = pyxb.namespace.NamespaceForURI(u'eml://ecoinformatics.org/documentation-2.1.0', create_if_missing=True)
+Namespace = pyxb.namespace.NamespaceForURI('eml://ecoinformatics.org/documentation-2.1.0', create_if_missing=True)
 Namespace.configureCategories(['typeBinding', 'elementBinding'])
 
 def CreateFromDocument (xml_text, default_namespace=None, location_base=None):
@@ -50,13 +55,13 @@ def CreateFromDocument (xml_text, default_namespace=None, location_base=None):
 
     if pyxb.XMLStyle_saxer != pyxb._XMLStyle:
         dom = pyxb.utils.domutils.StringToDOM(xml_text)
-        return CreateFromDOM(dom.documentElement)
+        return CreateFromDOM(dom.documentElement, default_namespace=default_namespace)
     if default_namespace is None:
         default_namespace = Namespace.fallbackNamespace()
     saxer = pyxb.binding.saxer.make_parser(fallback_namespace=default_namespace, location_base=location_base)
     handler = saxer.getContentHandler()
     xmld = xml_text
-    if isinstance(xmld, unicode):
+    if isinstance(xmld, _six.text_type):
         xmld = xmld.encode(pyxb._InputEncoding)
     saxer.parse(io.BytesIO(xmld))
     instance = handler.rootObject()
@@ -79,34 +84,34 @@ class CTD_ANON (pyxb.binding.basis.complexTypeDefinition):
     _ContentTypeTag = pyxb.binding.basis.complexTypeDefinition._CT_ELEMENT_ONLY
     _Abstract = False
     _ExpandedName = None
-    _XSDLocation = pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 46, 4)
+    _XSDLocation = pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 46, 4)
     _ElementMap = {}
     _AttributeMap = {}
     # Base type is pyxb.binding.datatypes.anyType
     
     # Element {eml://ecoinformatics.org/documentation-2.1.0}moduleName uses Python identifier moduleName
-    __moduleName = pyxb.binding.content.ElementDeclaration(pyxb.namespace.ExpandedName(Namespace, u'moduleName'), 'moduleName', '__emlecoinformatics_orgdocumentation_2_1_0_CTD_ANON_emlecoinformatics_orgdocumentation_2_1_0moduleName', False, pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 48, 8), )
+    __moduleName = pyxb.binding.content.ElementDeclaration(pyxb.namespace.ExpandedName(Namespace, 'moduleName'), 'moduleName', '__emlecoinformatics_orgdocumentation_2_1_0_CTD_ANON_emlecoinformatics_orgdocumentation_2_1_0moduleName', False, pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 48, 8), )
 
     
     moduleName = property(__moduleName.value, __moduleName.set, None, None)
 
     
     # Element {eml://ecoinformatics.org/documentation-2.1.0}moduleDescription uses Python identifier moduleDescription
-    __moduleDescription = pyxb.binding.content.ElementDeclaration(pyxb.namespace.ExpandedName(Namespace, u'moduleDescription'), 'moduleDescription', '__emlecoinformatics_orgdocumentation_2_1_0_CTD_ANON_emlecoinformatics_orgdocumentation_2_1_0moduleDescription', False, pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 49, 8), )
+    __moduleDescription = pyxb.binding.content.ElementDeclaration(pyxb.namespace.ExpandedName(Namespace, 'moduleDescription'), 'moduleDescription', '__emlecoinformatics_orgdocumentation_2_1_0_CTD_ANON_emlecoinformatics_orgdocumentation_2_1_0moduleDescription', False, pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 49, 8), )
 
     
     moduleDescription = property(__moduleDescription.value, __moduleDescription.set, None, None)
 
     
     # Element {eml://ecoinformatics.org/documentation-2.1.0}recommendedUsage uses Python identifier recommendedUsage
-    __recommendedUsage = pyxb.binding.content.ElementDeclaration(pyxb.namespace.ExpandedName(Namespace, u'recommendedUsage'), 'recommendedUsage', '__emlecoinformatics_orgdocumentation_2_1_0_CTD_ANON_emlecoinformatics_orgdocumentation_2_1_0recommendedUsage', False, pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 50, 8), )
+    __recommendedUsage = pyxb.binding.content.ElementDeclaration(pyxb.namespace.ExpandedName(Namespace, 'recommendedUsage'), 'recommendedUsage', '__emlecoinformatics_orgdocumentation_2_1_0_CTD_ANON_emlecoinformatics_orgdocumentation_2_1_0recommendedUsage', False, pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 50, 8), )
 
     
     recommendedUsage = property(__recommendedUsage.value, __recommendedUsage.set, None, None)
 
     
     # Element {eml://ecoinformatics.org/documentation-2.1.0}standAlone uses Python identifier standAlone
-    __standAlone = pyxb.binding.content.ElementDeclaration(pyxb.namespace.ExpandedName(Namespace, u'standAlone'), 'standAlone', '__emlecoinformatics_orgdocumentation_2_1_0_CTD_ANON_emlecoinformatics_orgdocumentation_2_1_0standAlone', False, pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 51, 8), )
+    __standAlone = pyxb.binding.content.ElementDeclaration(pyxb.namespace.ExpandedName(Namespace, 'standAlone'), 'standAlone', '__emlecoinformatics_orgdocumentation_2_1_0_CTD_ANON_emlecoinformatics_orgdocumentation_2_1_0standAlone', False, pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 51, 8), )
 
     
     standAlone = property(__standAlone.value, __standAlone.set, None, None)
@@ -120,39 +125,39 @@ class CTD_ANON (pyxb.binding.basis.complexTypeDefinition):
     _AttributeMap.update({
         
     })
+_module_typeBindings.CTD_ANON = CTD_ANON
 
 
-
-tooltip = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'tooltip'), pyxb.binding.datatypes.string, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 55, 2))
+tooltip = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'tooltip'), pyxb.binding.datatypes.string, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 55, 2))
 Namespace.addCategoryObject('elementBinding', tooltip.name().localName(), tooltip)
 
-summary = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'summary'), pyxb.binding.datatypes.string, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 56, 2))
+summary = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'summary'), pyxb.binding.datatypes.string, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 56, 2))
 Namespace.addCategoryObject('elementBinding', summary.name().localName(), summary)
 
-lineage = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'lineage'), pyxb.binding.datatypes.string, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 59, 2))
+lineage = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'lineage'), pyxb.binding.datatypes.string, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 59, 2))
 Namespace.addCategoryObject('elementBinding', lineage.name().localName(), lineage)
 
-module = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'module'), pyxb.binding.datatypes.string, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 60, 2))
+module = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'module'), pyxb.binding.datatypes.string, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 60, 2))
 Namespace.addCategoryObject('elementBinding', module.name().localName(), module)
 
-moduleDocs = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'moduleDocs'), CTD_ANON, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 45, 2))
+moduleDocs = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'moduleDocs'), CTD_ANON, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 45, 2))
 Namespace.addCategoryObject('elementBinding', moduleDocs.name().localName(), moduleDocs)
 
-description = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'description'), _ImportedBinding__txt.TextType, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 57, 2))
+description = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'description'), _ImportedBinding__txt.TextType, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 57, 2))
 Namespace.addCategoryObject('elementBinding', description.name().localName(), description)
 
-example = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'example'), _ImportedBinding__txt.TextType, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 58, 2))
+example = pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'example'), _ImportedBinding__txt.TextType, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 58, 2))
 Namespace.addCategoryObject('elementBinding', example.name().localName(), example)
 
 
 
-CTD_ANON._AddElement(pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'moduleName'), pyxb.binding.datatypes.string, scope=CTD_ANON, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 48, 8)))
+CTD_ANON._AddElement(pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'moduleName'), pyxb.binding.datatypes.string, scope=CTD_ANON, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 48, 8)))
 
-CTD_ANON._AddElement(pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'moduleDescription'), _ImportedBinding__txt.TextType, scope=CTD_ANON, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 49, 8)))
+CTD_ANON._AddElement(pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'moduleDescription'), _ImportedBinding__txt.TextType, scope=CTD_ANON, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 49, 8)))
 
-CTD_ANON._AddElement(pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'recommendedUsage'), pyxb.binding.datatypes.string, scope=CTD_ANON, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 50, 8)))
+CTD_ANON._AddElement(pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'recommendedUsage'), pyxb.binding.datatypes.string, scope=CTD_ANON, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 50, 8)))
 
-CTD_ANON._AddElement(pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, u'standAlone'), pyxb.binding.datatypes.string, scope=CTD_ANON, location=pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 51, 8)))
+CTD_ANON._AddElement(pyxb.binding.basis.element(pyxb.namespace.ExpandedName(Namespace, 'standAlone'), pyxb.binding.datatypes.string, scope=CTD_ANON, location=pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 51, 8)))
 
 def _BuildAutomaton ():
     # Remove this helper function from the namespace after it is invoked
@@ -163,19 +168,19 @@ def _BuildAutomaton ():
     counters = set()
     states = []
     final_update = None
-    symbol = pyxb.binding.content.ElementUse(CTD_ANON._UseForTag(pyxb.namespace.ExpandedName(Namespace, u'moduleName')), pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 48, 8))
+    symbol = pyxb.binding.content.ElementUse(CTD_ANON._UseForTag(pyxb.namespace.ExpandedName(Namespace, 'moduleName')), pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 48, 8))
     st_0 = fac.State(symbol, is_initial=True, final_update=final_update, is_unordered_catenation=False)
     states.append(st_0)
     final_update = None
-    symbol = pyxb.binding.content.ElementUse(CTD_ANON._UseForTag(pyxb.namespace.ExpandedName(Namespace, u'moduleDescription')), pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 49, 8))
+    symbol = pyxb.binding.content.ElementUse(CTD_ANON._UseForTag(pyxb.namespace.ExpandedName(Namespace, 'moduleDescription')), pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 49, 8))
     st_1 = fac.State(symbol, is_initial=False, final_update=final_update, is_unordered_catenation=False)
     states.append(st_1)
     final_update = None
-    symbol = pyxb.binding.content.ElementUse(CTD_ANON._UseForTag(pyxb.namespace.ExpandedName(Namespace, u'recommendedUsage')), pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 50, 8))
+    symbol = pyxb.binding.content.ElementUse(CTD_ANON._UseForTag(pyxb.namespace.ExpandedName(Namespace, 'recommendedUsage')), pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 50, 8))
     st_2 = fac.State(symbol, is_initial=False, final_update=final_update, is_unordered_catenation=False)
     states.append(st_2)
     final_update = set()
-    symbol = pyxb.binding.content.ElementUse(CTD_ANON._UseForTag(pyxb.namespace.ExpandedName(Namespace, u'standAlone')), pyxb.utils.utility.Location(u'/home/dahl/d1/pasta_gmn_adapter/src/pasta_gmn_adapter/api_types/schemas/eml-documentation.xsd', 51, 8))
+    symbol = pyxb.binding.content.ElementUse(CTD_ANON._UseForTag(pyxb.namespace.ExpandedName(Namespace, 'standAlone')), pyxb.utils.utility.Location('/home/dahl/d1-git/SlenderNodes/lter_pasta/api_types/schemas/eml-documentation.xsd', 51, 8))
     st_3 = fac.State(symbol, is_initial=False, final_update=final_update, is_unordered_catenation=False)
     states.append(st_3)
     transitions = []
