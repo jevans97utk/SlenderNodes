@@ -18,6 +18,3 @@ class OAIPMH_Harvester:
         else:
             print 'Bad Status Code'
 
-
-
-
