@@ -13,13 +13,16 @@ ________________________________________________________________________________
 import datetime
 import StringIO
 import logging
+import requests
+import hashlib
+import sys
 
 # D1.
 import d1_common.types.dataoneTypes_v2_0 as v2
 import d1_common.const
 import d1_client.mnclient_2_0
 import d1_common.checksum
-
+import d1_common.types.dataoneTypes_v2_0 as dataoneTypes
 
 def _generate_version_pid(native_identifier):
     """This function is used by the D1ClientManager to generate a unique identifier for representing a record version
@@ -31,7 +34,7 @@ def _generate_version_pid(native_identifier):
     return native_identifier + datetime.datetime.now().strftime("_%Y%m%d_%H%M")
 
 
-def _generate_system_metadata(scimeta_bytes, native_identifier_sid, version_pid, symeta_settings_dict):
+def _generate_system_metadata(scimeta_bytes, native_identifier_sid, version_pid, record_date, symeta_settings_dict):
     """This function generates a system metadata document for describing the science metadata record being loaded. Some
     of the fields, such as checksum and size, are based off the bytes of the science metadata object itself. Other
     system metadata fields are passed to D1ClientManager in a dict which is configured in the main adapter program."""
@@ -40,10 +43,11 @@ def _generate_system_metadata(scimeta_bytes, native_identifier_sid, version_pid,
     sys_meta.identifier = version_pid
     sys_meta.formatId = symeta_settings_dict['formatId']
     sys_meta.size = len(scimeta_bytes)
-    sys_meta.checksum = \
-        d1_common.checksum.create_checksum_object_from_stream(StringIO.StringIO(scimeta_bytes), algorithm='MD5')
+    # sys_meta.checksum = \
+    #    d1_common.checksum.create_checksum_object_from_stream(StringIO.StringIO(scimeta_bytes), algorithm='MD5')
+    sys_meta.checksum = dataoneTypes.checksum(hashlib.md5(scimeta_bytes).hexdigest())
     sys_meta.checksum.algorithm = 'MD5'
-    sys_meta.dateUploaded = datetime.datetime.now()
+    sys_meta.dateUploaded = datetime.datetime.strptime(record_date, "%Y-%m-%dT%H:%M:%SZ")
     sys_meta.dateSysMetadataModified = datetime.datetime.now()
     sys_meta.rightsHolder = symeta_settings_dict['rightsholder']
     sys_meta.submitter = symeta_settings_dict['submitter']
@@ -51,7 +55,6 @@ def _generate_system_metadata(scimeta_bytes, native_identifier_sid, version_pid,
     sys_meta.originMemberNode = symeta_settings_dict['originMN']
     sys_meta.accessPolicy = _generate_public_access_policy()
     return sys_meta
-
 
 def _generate_public_access_policy():
     """This function generates an access policy which is needed as part of system metadata for describing a science
@@ -88,61 +91,113 @@ class D1ClientManager:
         self.client = d1_client.mnclient_2_0.MemberNodeClient_2_0(
             gmn_baseurl,
             cert_path=auth_cert,
-            key_path=auth_cert_key)
+            key_path=auth_cert_key,
+            timeout=120.0)
         self.sysmeta_settings_dict = sysmeta_settings_dict
+
+    def get_last_harvest_time(self):
+        try:
+            objcount = self.client.listObjects(start=0, count=0).total
+            if objcount > 0:
+                obj = self.client.listObjects(start=objcount - 1, count=1)
+                sys_meta = self.client.getSystemMetadata(obj.objectInfo[0].identifier.value())
+                #return obj.objectInfo[0].dateUploaded.strftime('%Y-%m-%dT%H:%M:%SZ')
+                return sys_meta.dateUploaded.strftime('%Y-%m-%dT%H:%M:%SZ')
+            else: # if 0 objects are returned, then this is the first ever harvester run so grab EVERYTHING.
+                return '1900-01-01T00:00:00Z'
+        except Exception as e:
+            logging.error('Fail to get last harvested time. Exiting program prematurely.')
+            logging.error(e)
+            sys.exit(1)
+
+
+
 
     def check_if_identifier_exists(self, native_identifier_sid):
         """ 
         The main adapter script uses this function to determine if a science metadata record retrieved in an OAI-PMH
         harvest already exists in GMN. 
-
+            
         :param native_identifier_sid: The native repository's system identifier for a record harvested in an OAI-PMH
          query, which is implemented as the DataONE seriesId.        
-
+        
         :return: True if found or False if not.
         """
+        checkExistsDict = {}
         try:
-            self.client.getSystemMetadata(native_identifier_sid)
+            sys_meta = self.client.getSystemMetadata(native_identifier_sid)
         except d1_common.types.exceptions.NotFound:
-            return False
+            checkExistsDict['outcome'] = 'no'
+            return checkExistsDict
+            # return 'no'
+        except Exception, e:
+            logging.error(
+                'Failed to check if {} exists - record was not processed correctly'.format(native_identifier_sid))
+            logging.error(e)
+            checkExistsDict['outcome'] = 'failed'
+            return checkExistsDict
+            # return 'failed'
         else:
-            return True
+            checkExistsDict['outcome'] = 'yes'
+            checkExistsDict['record_date'] = sys_meta.dateUploaded
+            return checkExistsDict
+            # return 'yes'
 
-    def load_science_metadata(self, sci_metadata_bytes, native_identifier_sid):
+    def load_science_metadata(self, sci_metadata_bytes, native_identifier_sid, record_date):
         """
         Loads a new science metadata record into GMN using the .create() method from the Member Node API. 
-
+        
         :param sci_metadata_bytes: The bytes of the science metadata record as a utf-encoded string.
         :param native_identifier_sid: The unique identifier of the metadata record in the native repository.
-
+        :param record_date: The datestamp parsed from the OAI-PMH record. This becomes the dateUploaded in GMN.
+        :return: True if the object successfully created or False if not. This allows the main program to track the
+         number of successfully created objects.
         """
-        version_pid = _generate_version_pid(native_identifier_sid)
-        system_metadata = _generate_system_metadata(sci_metadata_bytes, native_identifier_sid,
-                                                    version_pid, self.sysmeta_settings_dict)
+        try:
+            version_pid = _generate_version_pid(native_identifier_sid)
+            system_metadata= _generate_system_metadata(sci_metadata_bytes, native_identifier_sid,
+                                      version_pid, record_date, self.sysmeta_settings_dict)
+        except Exception, e:
+            logging.error('Failed to generate system metadata. Unable to create SID: ' + native_identifier_sid +
+                          ' / PID: ' + version_pid)
+            logging.error(e)
+            return False
         try:
             self.client.create(version_pid, StringIO.StringIO(sci_metadata_bytes), system_metadata)
         except Exception, e:
             logging.error('Failed to create object with SID: ' + native_identifier_sid + ' / PID: ' + version_pid)
             logging.error(e)
+            return False
+        else:
+            return True
 
-    def update_science_metadata(self, sci_metadata_bytes, native_identifier_sid):
+    def update_science_metadata(self, sci_metadata_bytes, native_identifier_sid, record_date):
         """
         When a record is harvested from an OAI-PMH query whose native repository identifier already exists as a seriesId
         in GMN, then it is understood that the record has been modified in the native repository. The .update() API
         method is called to obsolete the old version of the science metadata in GMN, and load the changed record as a
         new object. The .update() method automates setting the obsoletes / obsoleted by properties of both old and new 
         objects in order to encode the relationship between the two, so there is no need to explicitly assign them.
-
+        
         :param sci_metadata_bytes: The bytes of the new version of the science metadata record as a utf-encoded string.
         :param native_identifier_sid: The identifier of the record in its native repository which is implemented as the
          seriesId property in GMN.        
+        :param record_date: The datestamp parsed from the OAI-PMH record. This becomes the dateUploaded in GMN. If the
+         dateUploaded of the most current version of the record in GMN is the same as the datestamp of the record from
+         the OAI-PMH harvest, then the record hasn't really been modified. If the datestamp from the harvest IS
+         different, this means something about the record as changed and it should be processed as an update in GMN.
+         The evaluation of whether or not a record has changed is done in the main adapter program when it calls
+         .check_if_identifier_exists() from d1_client_manager.
+        :return: True if the object successfully updated or False if not. This allows the main program to track the
+         number of updated objects in a given run.         
         """
         new_version_pid = _generate_version_pid(native_identifier_sid)
-        old_version_system_metadata = self.client.getSystemMetadata(native_identifier_sid)
-        old_version_pid = old_version_system_metadata.identifier.value()
-        new_version_system_metadata = _generate_system_metadata(sci_metadata_bytes, native_identifier_sid,
-                                                                new_version_pid, self.sysmeta_settings_dict)
         try:
+            old_version_system_metadata = self.client.getSystemMetadata(native_identifier_sid)
+            old_version_pid = old_version_system_metadata.identifier.value()
+            new_version_system_metadata = _generate_system_metadata(sci_metadata_bytes, native_identifier_sid,
+                                                                    new_version_pid, record_date,
+                                                                    self.sysmeta_settings_dict)
             self.client.update(old_version_pid,
                                StringIO.StringIO(sci_metadata_bytes),
                                new_version_pid,
@@ -150,6 +205,10 @@ class D1ClientManager:
         except Exception, e:
             logging.error('Failed to UPDATE object with SID: ' + native_identifier_sid + ' / PID: ' + old_version_pid)
             logging.error(e)
+            return False
+        else:
+            return True
+
 
     def archive_science_metadata(self, current_version_pid):
         """
@@ -157,12 +216,19 @@ class D1ClientManager:
         populated, records which already have deleted status in the native repository will not be harvested from the 
         repository into GMN. By contrast, once a record has already been created into GMN, if it later becomes deleted,
         then the record will be archived in GMN.
-
+        
         :param current_version_pid: The GMN unique identifier (pid) of the science metadata record to be archived.
+        :return: True if the object successfully archived or False if not. This allows the main program to track the
+         number of archived objects in a given run.
+        
         """
+
         try:
             self.client.archive(current_version_pid)
         except Exception, e:
-            logging.error('Failed to ARCHIVE object PID: ' + current_version_pid)
+            logging.error('Failed to ARCHIVE object PID: '+ current_version_pid)
             logging.error(e)
+            return False
+        else:
+            return True
 
