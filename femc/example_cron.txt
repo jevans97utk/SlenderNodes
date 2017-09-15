@@ -1,0 +1,2 @@
+# An example of a crontab entry for running script using the correct python interpreter
+0 3 * * * cd /var/local/dataone/adapter && /var/local/dataone/gmn_venv/bin/python ./d1_adapter_femc.py
