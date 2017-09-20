@@ -3,6 +3,8 @@ ________________________________________________________________________________
 d1_client_manager.py puts all the code managing GMN through API calls and the DataONE python library into one place. It
 is called from d1_adapter_femc.py
 
+LAST UPDATED: 9/20/2017 by Monica Ihli
+
 ________________________________________________________________________________________________________________________
 
 """
@@ -102,7 +104,9 @@ class D1ClientManager:
         try:
             objcount = self.client.listObjects(start=0, count=0).total
             if objcount > 0:
-                obj = self.client.listObjects(start=objcount - 1, count=1)
+                # obj = self.client.listObjects(start=objcount - 1, count=1)
+                obj = self.client.listObjects(start=0, count=1)
+                identifier = obj.objectInfo[0].identifier.value()
                 sys_meta = self.client.getSystemMetadata(obj.objectInfo[0].identifier.value())
                 # return obj.objectInfo[0].dateUploaded.strftime('%Y-%m-%dT%H:%M:%S')
                 return sys_meta.dateUploaded.strftime('%Y-%m-%d %H:%M:%S.%f')

@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 
 Author: mihli1@utk.edu
-Last Modified Date: 9/15/2017
+Last Modified Date: 9/20/2017
 Last GMN Version tested with: 2.3.7
 
 Important configurations:
@@ -65,16 +65,16 @@ REST_BASE_URL = 'https://www.uvm.edu/femc/dataone'
 REST_API_KEY = 'api_key_goes_here'
 
 # Constants for D1_Client_Manager found in d1_client_manager.py, including client and system metadata constants
-MN_BASE_URL = 'https://ubuntugmn.kitty.ninja/mn'
+MN_BASE_URL = 'https://dataone.uvm.edu/mn'
 CERT = \
-  '/home/monica/PycharmProjects/dataone-libclient_2-3-7/certs/kitty/urn_node_mnTestKITTY.crt'
+  '/var/local/dataone/certs/client/client_cert.pem'
 KEY = \
-  '/home/monica/PycharmProjects/dataone-libclient_2-3-7/certs/kitty/urn_node_mnTestKITTY.key'
+  '/var/local/dataone/certs/client/client_key_nopassword.pem'
 
 # This is System information that is part of the information we use internally to describe your science metadata
 SYSMETA_DICT = \
-  {'submitter': 'CN=Monica Ihli A139616,O=Google,C=US,DC=cilogon,DC=org',  # Populate with your CILogon identity
-   'rightsholder': 'CN=Monica Ihli A139616,O=Google,C=US,DC=cilogon,DC=org',  # Populate with your CILogon identity
+  {'submitter': 'CN=Vermont Monitoring Cooperative A199451,O=Google,C=US,DC=cilogon,DC=org',  # Populate with your CILogon identity
+   'rightsholder': 'CN=Vermont Monitoring Cooperative A199451,O=Google,C=US,DC=cilogon,DC=org',  # Populate with your CILogon identity
    'authoritativeMN': 'urn:node:mnTestFEMC',  # Use your node's DataONE URI
    'originMN': 'urn:node:mnTestFEMC',  # Use your node's DataONE URI
    'formatId': 'eml://ecoinformatics.org/eml-2.1.1'  # the DataONE supported formatID.
@@ -102,8 +102,6 @@ def main():
       datasetID = item.find('fkDatasetID').text
       science_metadata = harvester.getScienceMetadata(projectID, datasetID) # and pass to function to get the EML record
       harvester.process_record(client_mgr,projectID, datasetID, science_metadata) #figure out if an update or new record
-    # print 'No records found.'
-    pass
 
   tracking_log = open(file_name, file_action) # make a note of how many records added to GMN or updated this round
   tracking_log.write(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S") +
@@ -202,7 +200,9 @@ class FEMC_Harvester:
     # if identifier exists already call update method.
     if (checkExistsDict['outcome'] == 'yes'):
       if client_mgr.update_science_metadata(
-          minidom.parseString(scimeta).toprettyxml(encoding='utf-8'), identifier):
+          minidom.parseString(scimeta).toprettyxml(encoding='utf-8'),
+                                                  identifier,
+                                                  datetime.datetime.now()):
         updated_count += 1  # function returns 1 if successful; track the number of updated objects
         print 'Identifier {} UPDATED'.format(identifier)
 
