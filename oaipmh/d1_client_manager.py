@@ -99,7 +99,7 @@ class D1ClientManager:
         try:
             objcount = self.client.listObjects(start=0, count=0).total
             if objcount > 0:
-                obj = self.client.listObjects(start=objcount - 1, count=1)
+                obj = self.client.listObjects(start=0, count=1)
                 sys_meta = self.client.getSystemMetadata(obj.objectInfo[0].identifier.value())
                 #return obj.objectInfo[0].dateUploaded.strftime('%Y-%m-%dT%H:%M:%SZ')
                 return sys_meta.dateUploaded.strftime('%Y-%m-%dT%H:%M:%SZ')
