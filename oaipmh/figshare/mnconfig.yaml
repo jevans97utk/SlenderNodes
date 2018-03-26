@@ -1,0 +1,55 @@
+###############################################################################################
+### OAI-PMH CONFIGURATIONS: ###################################################################
+#
+#   > oaipmh_base_url - Base URL of OAI-PMH service to be harvested from
+#   > oaipmh_set - value of set used as a parameter to filter OAI-PMH query results
+#   > oaipmh_md_prefix - value for required OAI-PMH metadata prefix parameter
+#               to specify format of returned results
+#   > sci_md_xml_element - tag and namespace of XML element from which the metadata record should
+#               be extracted from in a result
+#
+### DataONE SYSTEM METADATA CONFIGURATIONS: ###################################################
+#
+#   > nodeID - The DataONE assigned nodeID
+#   > node_base_url - base URL of Member Node web server for making DataONE API calls
+#   > cert_path / cert_key_path - This script needs to know where to find the certificate and
+#               private key issued for each individual Member Node.
+#   > sci_md_formatId - The appropriate DataONE METADATA formatID from https://cn.dataone.org/cn/v2/formats
+#   > submitter / rightsholder - Use the full identity string of the Member Node found
+#               in the ReadMe.txt file that came with the certificate/key bundle issued.
+#   > authoritativeMN - Which node currently has modification rights in D1 systems. Use the nodeID.
+#   > originMN - The MN who originally submitted this node to D1. Use the nodeID.
+#
+##############################################################################################
+
+- nodeID: urn:node:mnTestCARY
+  # OAI-PMH configurations
+  oaipmh_base_url: 'https://api.figsh.com/v2/oai'
+  oaipmh_set: 'portal_2750'
+  oaipmh_md_prefix: 'oai_dc'
+  sci_md_xml_element: '{http://www.openarchives.org/OAI/2.0/oai_dc/}dc'
+  # D1 System Metadata configurations
+  node_base_url: 'https://figshare-orc-1.test.dataone.org/mn'
+  cert_path: './certs/CARY/urn_node_mnTestCARY.crt'
+  cert_key_path: './certs/CARY/urn_node_mnTestCARY.key'
+  sci_md_formatId: 'http://ns.dataone.org/metadata/schema/dcx-figshare/v1.0'
+  submitter: 'DC=org,DC=dataone,CN=urn:node:mnTestCARY'
+  rightsholder: 'DC=org,DC=dataone,CN=urn:node:mnTestCARY'
+  authoritativeMN: 'urn:node:mnTestCARY'
+  originMN: 'urn:node:mnTestCARY'
+
+#- nodeID: urn:node:mnTestKITTY
+#  # OAI-PMH configurations
+#  oaipmh_base_url: 'https://api.figsh.com/v2/oai'
+#  oaipmh_set: 'portal_2750'
+#  oaipmh_md_prefix: 'oai_dc'
+#  sci_md_xml_element: '{http://www.openarchives.org/OAI/2.0/oai_dc/}dc'
+#  # D1 System Metadata configurations
+#  node_base_url: 'https://figshare-orc-1.test.dataone.org/mn'
+#  cert_path: '../certs/KITTY/urn_node_mnTestKITTY.crt'
+#  cert_key_path: '../certs/KITTY/urn_node_mnTestKITTY.key'
+#  sci_md_formatId: 'http://ns.dataone.org/metadata/schema/dcx-figshare/v1.0'
+#  submitter: 'DC=org,DC=dataone,CN=urn:node:mnTestKITTY'
+#  rightsholder: 'DC=org,DC=dataone,CN=urn:node:mnTestKITTY'
+#  authoritativeMN: 'urn:node:mnTestKITTY'
+#  originMN: 'urn:node:mnTestKITTY'
