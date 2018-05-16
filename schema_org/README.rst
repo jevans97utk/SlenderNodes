@@ -36,6 +36,8 @@ resource map or its equivalent providing relationships between components.
 Dataset Constructs
 ------------------
 
+This content is in DRAFT status, subject to change.
+
 Required properties:
 
 * identifier
