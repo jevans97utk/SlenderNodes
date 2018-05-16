@@ -117,6 +117,10 @@ def loadSchemaOrg(resource):
   except json.decoder.JSONDecodeError as e:
     logging.error( e )
     return {"error": str(e) }
+  if len(data) < 1:
+    return {"error":"No json-ld in resource."}
+  if len(data) > 1:
+    logging.warning("More than one json-ld block found. Using #0.")
   if data[0]["@type"] == "Dataset":
     entry = {
       "id": data[0]["@id"].strip(),
@@ -128,7 +132,7 @@ def loadSchemaOrg(resource):
         if ddownload["name"] == "ISO Metadata Document":
           entry["metadata_url"] = ddownload["url"].strip()
     return entry
-  return None
+  return {"error":"Not a Dataset resource."}
 
 
 def main():
