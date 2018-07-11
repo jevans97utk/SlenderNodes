@@ -1,60 +1,71 @@
-'''
-Examine a schema.org resource provider
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-Script for messing around with schema.org resources, evaluating content exposed by IEDA
-
-Notes:
-
-Resources listed at: http://get.iedadata.org/sitemaps/
-
-'''
+# This work was created by participants in the DataONE project, and is
+# jointly copyrighted by participating institutions in DataONE. For
+# more information on DataONE, see our web site at http://dataone.org.
+#
+#   Copyright 2009-2017 DataONE
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Interact with a schema.org resource provider
+"""
 
 import logging
-import sys
 import requests
-from lxml import etree
-from w3lib.html import get_base_url as getBaseUrl
-from extruct.jsonld import JsonLdExtractor
+import lxml.etree
+import w3lib.html
+import extruct.jsonld
 import json
 import re
 import pprint
 
-NAMESPACES = {"sm":"http://www.sitemaps.org/schemas/sitemap/0.9"}
-
+NAMESPACES = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
 
 HTML_OR_JS_COMMENTLINE = re.compile('^\s*(//.*|<!--.*-->)')
 
-class ModifiedJsonLdExtractor(JsonLdExtractor):
-  '''
-  Add more diagnostic to the extruct json-ld extractor
+
+class ModifiedJsonLdExtractor(extruct.jsonld.JsonLdExtractor):
+  """Add more diagnostic to the extruct json-ld extractor
 
   https://github.com/scrapinghub/extruct/blob/master/extruct/jsonld.py
-  '''
+  """
 
-  def dumpJsonError(self, script, error):
+  def dump_json_error(self, script, error):
     line_no = 1
     for line in script.split("\n"):
       print("{}: {}".format(line_no, line))
       line_no += 1
     pprint.pprint(error)
 
-
-  def cleanJsonDecodeError(self, script, error):
-    logging.debug("Bad char ordinal = %s at position %d", ord(script[error.pos]), error.pos)
-    cleaned = "{}{}".format(script[:error.pos],script[error.pos+1:])
+  def clean_json_decode_error(self, script, error):
+    logging.debug(
+      "Bad char ordinal = %s at position %d", ord(script[error.pos]), error.pos
+    )
+    cleaned = "{}{}".format(script[:error.pos], script[error.pos + 1:])
     return cleaned
 
+  def parse_json(self, script, max_tries=50):
+    """Keep trying to parse the provided JSON, replacing bad chars in the text
+    with each try.
 
-  def parseJson(self, script, max_tries = 50):
-    '''
-    Keep trying to parse the provided JSON, replacing bad chars in the text with each try.
-
-    This was needed to parse most of the IEDA content which seems to be malformed.
+    This was needed to parse most of the IEDA content which seems to be
+    malformed.
 
     :param script: json text
     :param max_tries: maximum times to try fixing before giving up
     :return: parsed json or nothing
-    '''
+    """
     n_tries = 0
     while n_tries < max_tries:
       try:
@@ -66,31 +77,29 @@ class ModifiedJsonLdExtractor(JsonLdExtractor):
         return data
       except json.decoder.JSONDecodeError as e:
         if n_tries >= max_tries:
-          self.dumpJsonError(script, e)
-          raise(e)
-        script = self.cleanJsonDecodeError(script, e)
+          self.dump_json_error(script, e)
+          raise (e)
+        script = self.clean_json_decode_error(script, e)
       except ValueError as e:
         script = HTML_OR_JS_COMMENTLINE.sub('', script)
     return None
 
-
   def _extract_items(self, node):
     script = node.xpath('string()')
-    data = self.parseJson(script)
+    data = self.parse_json(script)
     if isinstance(data, list):
       return data
     elif isinstance(data, dict):
       return [data]
 
 
-def loadResourcesFromSitemap(sitemap):
-  '''
-
+def load_resources_from_sitemap(sitemap):
+  """
   :param sitemap: URL to sitemap XML document to process
   :return: list of {url:"", date_modified:""}
-  '''
+  """
   resources = []
-  sitemap_xml = etree.parse(sitemap)
+  sitemap_xml = lxml.etree.parse(sitemap)
   urls = sitemap_xml.xpath("//sm:urlset/sm:url", namespaces=NAMESPACES)
   logging.debug("Found %d entries in sitemap %s", len(urls), sitemap)
   for url in urls:
@@ -102,23 +111,21 @@ def loadResourcesFromSitemap(sitemap):
   return resources
 
 
-def loadSchemaOrg(resource):
-  '''
-  Load schema.org information from a specified resource URL
-
+def load_schema_org(resource):
+  """Load schema.org information from a specified resource URL
   :param resource: URL
   :return: dictionary of values
-  '''
+  """
   response = requests.get(resource["url"])
   data = []
   extractor = ModifiedJsonLdExtractor()
   try:
-    data = extractor.extract( response.content )
+    data = extractor.extract(response.content)
   except json.decoder.JSONDecodeError as e:
-    logging.error( e )
-    return {"error": str(e) }
+    logging.error(e)
+    return {"error": str(e)}
   if len(data) < 1:
-    return {"error":"No json-ld in resource."}
+    return {"error": "No json-ld in resource."}
   if len(data) > 1:
     logging.warning("More than one json-ld block found. Using #0.")
   if data[0]["@type"] == "Dataset":
@@ -132,23 +139,4 @@ def loadSchemaOrg(resource):
         if ddownload["name"] == "ISO Metadata Document":
           entry["metadata_url"] = ddownload["url"].strip()
     return entry
-  return {"error":"Not a Dataset resource."}
-
-
-def main():
-  logging.basicConfig(level=logging.INFO)
-  sitemap = "http://get.iedadata.org/sitemaps/usap_sitemap.xml"
-  resources = loadResourcesFromSitemap(sitemap)
-  for resource in resources:
-    sorg_info = loadSchemaOrg(resource)
-    result = {**resource, **sorg_info}
-    try:
-      print("{date_modified}, {url}, {id}, {metadata_url}".format( **result ))
-    except KeyError as e:
-      print("{date_modified}, {url}, {error}".format(**result))
-  return 0
-
-
-if __name__ == "__main__":
-  sys.exit(main())
-
+  return {"error": "Not a Dataset resource."}
