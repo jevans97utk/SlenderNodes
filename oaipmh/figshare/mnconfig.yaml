@@ -24,19 +24,17 @@
 
 - node_id: urn:node:mnTestCARY
   # OAI-PMH configurations
-  oaipmh_base_url: 'https://api.figsh.com/v2/oai'
-  oaipmh_set: 'portal_2750'
+  oaipmh_base_url: 'https://api.figshare.com/v2/oai'
+  oaipmh_set: 'portal_376'
   oaipmh_md_prefix: 'oai_dc'
   sci_md_xml_element: '{http://www.openarchives.org/OAI/2.0/oai_dc/}dc'
   dataone_contact_email: 'mihli1@utk.edu'
   last_harvest_time: '1900-01-01T00:00:00Z'
   # D1 System Metadata configurations
-  node_base_url: 'https://192.168.1.119/mn'
-  cert_path: null
-  #'./certs/CARY/urn_node_mnTestCARY.crt'
-  cert_key_path: null
-  #'./certs/CARY/urn_node_mnTestCARY.key'
-  sci_md_formatId: 'http://ns.dataone.org/metadata/schema/dcx-figshare/v1.0'
+  node_base_url: 'https://figshare-orc-1.test.dataone.org/mn'
+  cert_path: 'MY_CERT.pem'
+  cert_key_path: 'MY_CERT.key'
+  sci_md_formatId: 'http://www.openarchives.org/OAI/2.0/oai_dc/'
   submitter: 'DC=org,DC=dataone,CN=urn:node:mnTestCARY'
   rightsholder: 'DC=org,DC=dataone,CN=urn:node:mnTestCARY'
   authoritativeMN: 'urn:node:mnTestCARY'

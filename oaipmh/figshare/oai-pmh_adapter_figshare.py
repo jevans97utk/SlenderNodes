@@ -10,6 +10,7 @@ import re
 import requests
 import xml.etree.ElementTree as ET
 import yaml
+import os
 
 import d1_common.types.exceptions
 
@@ -25,11 +26,14 @@ USER_AGENT = 'DataONE OAI-PMH Adapter/{}'.format(d1_common.const.USER_AGENT)
 # Set VERIFY_TLS to False to disable validation of GMN's server side
 # certificate. Use when connecting to a test instance of GMN that is using a
 # self-signed cert.
-VERIFY_TLS = False
+VERIFY_TLS = True
+
+SUMMARY_REPORT_FILE = "oaipmh-summary.csv" # track aggregate daily updates info in a csv-formatted log file
 
 
 def main():
   logging.basicConfig(
+    filename='oaipmh.log',
     format='%(asctime)s %(levelname)-8s %(message)s', level=logging.INFO
   )
 
@@ -51,6 +55,7 @@ def harvest_oai_pmh(mn_config_dict):
     'created': 0,
     'updated': 0,
     'already_harvested': 0,
+    'minor_revision_not_updated': 0,
     'errors': 0,
   }
 
@@ -61,6 +66,7 @@ def harvest_oai_pmh(mn_config_dict):
     logging.info('GMN BaseURL: {}'.format(node_dict['node_base_url']))
 
     harvester = OAIPMHHarvester(node_dict)
+    gmn_client = GMMClient(node_dict)
 
     while True:
       try:
@@ -78,7 +84,7 @@ def harvest_oai_pmh(mn_config_dict):
         logging.info('-' * 80)
         logging.info('OAI-PMH record #: ' + str(counter_dict['records']))
         try:
-          process_record(record_el, node_dict, counter_dict)
+          process_record(record_el, node_dict, counter_dict, gmn_client)
         except (d1_common.types.exceptions.DataONEException, AdapterError) as e:
           logging.error('Record not processed: {}'.format(str(e)))
           counter_dict['errors'] += 1
@@ -92,12 +98,15 @@ def harvest_oai_pmh(mn_config_dict):
   logging.info('Created SciObj: {}'.format(counter_dict['created']))
   logging.info('Updated SciObj: {}'.format(counter_dict['updated']))
   logging.info('Already harvested: {}'.format(counter_dict['already_harvested']))
+  logging.info('Minor revisions not updated: {}'.format(counter_dict['minor_revision_not_updated']))
   logging.info('Errors: {}'.format(counter_dict['errors']))
 
+  summary_report(counter_dict, SUMMARY_REPORT_FILE)
 
-def process_record(record_el, node_dict, counter_dict):
+
+def process_record(record_el, node_dict, counter_dict, gmn_client):
   try:
-    pid, record_datetime, scimeta_pyxb = parse_record(record_el, node_dict)
+    pid, sid, record_datetime, scimeta_pyxb = parse_record(record_el, node_dict)
   except Exception as e:
     raise AdapterError(
       'Unable to parse record. error="{}" record="{}"'.format(
@@ -106,10 +115,7 @@ def process_record(record_el, node_dict, counter_dict):
     )
 
   logging.info('PID: {}'.format(pid))
-  sid = strip_version_tag(pid)
   logging.info('SID: {}'.format(sid))
-
-  gmn_client = GMMClient(node_dict)
 
   try:
     gmn_client.create_or_update_if_new(pid, sid, record_datetime, scimeta_pyxb, counter_dict)
@@ -122,11 +128,16 @@ def process_record(record_el, node_dict, counter_dict):
 
 
 def parse_record(record_el, node_dict):
-  identifier = (
+  pid = (
     record_el.find('{http://www.openarchives.org/OAI/2.0/}metadata')
     .find('{http://www.openarchives.org/OAI/2.0/oai_dc/}dc')
     .find('{http://purl.org/dc/elements/1.1/}identifier').text
   )
+  sid = (
+    record_el.find('{http://www.openarchives.org/OAI/2.0/}header')
+    .find('{http://www.openarchives.org/OAI/2.0/}identifier').text
+  )
+
   record_date_iso = (
     record_el.find('{http://www.openarchives.org/OAI/2.0/}header')
     .find('{http://www.openarchives.org/OAI/2.0/}datestamp').text
@@ -136,15 +147,24 @@ def parse_record(record_el, node_dict):
     record_el.find('{http://www.openarchives.org/OAI/2.0/}metadata')
     .find(node_dict['sci_md_xml_element'])
   )
-  return identifier, record_datetime, scimeta_pyxb
+  return pid,sid, record_datetime, scimeta_pyxb
 
+def summary_report(counter_dict, file_name):
+  if os.path.exists(file_name):
+    with open(file_name, 'a') as summary_log:
+      write_to_summary(summary_log, counter_dict)
 
-def strip_version_tag(pid):
-  m = re.search(r'(.*)\.v\d+$', pid)
-  if not m:
-    raise AdapterError('No version tag found in PID. pid="{}"'.format(pid))
-  return m.group(1)
+  else:
+    with open(file_name, 'w') as summary_log:
+      summary_log.write("date,records,created,updated,already_harvested, minor_revision_not_updated, errors\n")
+      write_to_summary(summary_log, counter_dict)
 
+def write_to_summary(summary_log, counter_dict):
+  writestring = str(datetime.datetime.now()) + "," + \
+    str(counter_dict['records']) + "," + str(counter_dict['created']) + "," + \
+    str(counter_dict['updated']) + "," + str(counter_dict['already_harvested']) + "," + \
+    str(counter_dict['minor_revision_not_updated']) + "," +  str(counter_dict['errors']) + "\n"
+  summary_log.write(writestring)
 
 # ------------------------------------------------------------------------------
 
@@ -221,27 +241,36 @@ class GMMClient:
       verify_tls=VERIFY_TLS,
     )
 
-  def create_or_update_if_new(self, pid, sid, record_datetime, scimeta_pyxb, counter_dict):
-    if self.get_pid(pid):
-      logging.info('Record already harvested')
-      counter_dict['already_harvested'] += 1
-      return
-    d1_head_pid = self.get_pid(sid)
-    if d1_head_pid is None:
+  def create_or_update_if_new(self, pid, sid, record_datetime, scimeta, counter_dict):
+    d1_head_sysmeta_pyxb = self.get_pid(sid) # is this sid in use ?
+    if d1_head_sysmeta_pyxb is None:  # if not, we can assume the pid does not exist either since they are coupled
       logging.info('Record has unused SID. Adding start of new chain')
-      self.create_new_sciobj(scimeta_pyxb, pid, sid, record_datetime)
+      self.create_new_sciobj(scimeta, pid, sid, record_datetime)
       counter_dict['created'] += 1
+
     else:
-      logging.info('Record has existing SID. Adding new head on existing chain')
-      self.update_science_metadata(scimeta_pyxb, pid, sid, record_datetime,
-                                      d1_head_pid)
-      counter_dict['updated'] += 1
+      pid_sysmeta_pyxb = self.get_pid(pid) # confirm if pid already exists
+      if pid_sysmeta_pyxb is None: # if SID already exists but the PID is new,then the PID is an update to the SID chain
+        logging.info('Record has existing SID. Adding new head on existing chain')
+        self.update_science_metadata(scimeta, pid, sid, record_datetime,
+                                     d1_head_sysmeta_pyxb.identifier.value())
+        counter_dict['updated'] += 1
+        return
+      else: # if both SID and PID already exist
+        if pid_sysmeta_pyxb.dateUploaded == record_datetime: # and if the date hasn't changed, then was already harvested
+          logging.info('Record already harvested')
+          counter_dict['already_harvested'] += 1
+          return
+        else:  # otherwise if there's a new date, then the reason it showed up in oai-pmh harvest was a minor
+          logging.info('Minor revision ignored due to lack of new identifier.')
+          counter_dict['minor_revision_not_updated'] += 1  # revision that did not result in a doi/PID change.
+          return
 
 
   def get_pid(self, did):
     """
-    - If {did} is existing SID, return PID of head of chain
-    - If {did} is existing PID, return the PID
+    - If {did} is existing SID, return sysmeta of head of chain
+    - If {did} is existing PID, return its sysmeta
     - If {did} is unused, return None
     """
     try:
@@ -249,7 +278,7 @@ class GMMClient:
     except d1_common.types.exceptions.NotFound:
       return None
     else:
-      return sysmeta_pyxb.identifier.value() # return current version pid
+      return sysmeta_pyxb
 
   def create_new_sciobj(self, scimeta_str, pid, sid, record_datetime):
     sysmeta_pyxb = self._generate_sysmeta(
@@ -266,8 +295,8 @@ class GMMClient:
       scimeta_str, new_pid, sid, record_datetime
     )
     self.client.update(
-      old_pid, io.BytesIO(scimeta_str),
-      sysmeta_pyxb.identifier.value(), sysmeta_pyxb
+      pid=old_pid, obj=io.BytesIO(scimeta_str),
+      newPid=sysmeta_pyxb.identifier.value(), sysmeta_pyxb=sysmeta_pyxb
     )
 
   def _generate_sysmeta(self, scimeta_str, pid, sid, record_datetime):
