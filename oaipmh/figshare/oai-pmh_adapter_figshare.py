@@ -6,11 +6,11 @@
 import datetime
 import io
 import logging
-import re
 import requests
 import xml.etree.ElementTree as ET
 import yaml
 import os
+import sys
 
 import d1_common.types.exceptions
 
@@ -65,8 +65,10 @@ def harvest_oai_pmh(mn_config_dict):
     logging.info('OAI-PMH BaseURL: {}'.format(node_dict['oaipmh_base_url']))
     logging.info('GMN BaseURL: {}'.format(node_dict['node_base_url']))
 
-    harvester = OAIPMHHarvester(node_dict)
     gmn_client = GMMClient(node_dict)
+    node_dict['last_harvest_time'] = gmn_client.get_last_harvest_time()
+    harvester = OAIPMHHarvester(node_dict)
+
 
     while True:
       try:
@@ -191,6 +193,7 @@ class OAIPMHHarvester:
       #          'metadataPrefix': 'iso19139',
       #          'from': '2000-01-01T00:00:00Z',
       #          'until': '2018-01-31T23:59:59Z'}
+
       params = {
         'verb': 'ListRecords',
         'metadataPrefix': self.node_dict['oaipmh_md_prefix'],
@@ -240,6 +243,24 @@ class GMMClient:
       timeout=120.0,
       verify_tls=VERIFY_TLS,
     )
+
+  def get_last_harvest_time(self):
+    """A function which checks the member node to see the most recently modified/created date of any object in GMN.
+    Assumes GMN is returning listobjects response in order of oldest to newest. This datetime can then be used as the
+    opening timeslice for harvesting new data.
+    :return: Returns either the datesysmetadatamodified property date of the most recent object in GMN, or returns an arbitrary start time to capture everything if no data in GMN yet."""
+    try:
+      objcount = self.client.listObjects(start=0, count=0).total
+      if objcount > 0:
+        obj = self.client.listObjects(start=objcount - 1, count=1)
+        return obj.objectInfo[0].dateSysMetadataModified.strftime('%Y-%m-%dT%H:%M:%SZ')
+      else: # if 0 objects are returned, then this is the first ever harvester run so grab EVERYTHING.
+        return '1900-01-01T00:00:00Z'
+    except Exception as e:
+      logging.error('Fail to get last harvested time. Exiting program prematurely.')
+      logging.error(e)
+      # print e
+      sys.exit(1)
 
   def create_or_update_if_new(self, pid, sid, record_datetime, scimeta, counter_dict):
     d1_head_sysmeta_pyxb = self.get_pid(sid) # is this sid in use ?
