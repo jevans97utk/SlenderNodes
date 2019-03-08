@@ -171,16 +171,16 @@ ALTER TABLE ONLY adapter_process_status_status
     ADD CONSTRAINT adapter_process_status_status_status_key UNIQUE (status);
 
 ALTER TABLE ONLY adapter_population_queue
-    ADD CONSTRAINT adapter_population_queue_package_scope_id_fkey FOREIGN KEY (package_scope_id) REFERENCES adapter_population_queue_package_scope(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT adapter_population_queue_package_scope_id_fkey FOREIGN KEY (package_scope_id) REFERENCES adapter_population_queue_package_scope(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE ONLY adapter_process_status
-    ADD CONSTRAINT adapter_process_status_return_body_id_fkey FOREIGN KEY (return_body_id) REFERENCES adapter_process_status_return_body(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT adapter_process_status_return_body_id_fkey FOREIGN KEY (return_body_id) REFERENCES adapter_process_status_return_body(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE ONLY adapter_process_status
-    ADD CONSTRAINT adapter_process_status_population_queue_item_id_fkey FOREIGN KEY (population_queue_item_id) REFERENCES adapter_population_queue(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT adapter_process_status_population_queue_item_id_fkey FOREIGN KEY (population_queue_item_id) REFERENCES adapter_population_queue(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 ALTER TABLE ONLY adapter_process_status
-    ADD CONSTRAINT adapter_process_status_status_id_fkey FOREIGN KEY (status_id) REFERENCES adapter_process_status_status(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT adapter_process_status_status_id_fkey FOREIGN KEY (status_id) REFERENCES adapter_process_status_status(id) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED;
 
 -- Indexes
 
