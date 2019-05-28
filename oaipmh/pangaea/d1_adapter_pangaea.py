@@ -42,7 +42,7 @@ from xml.dom import minidom
 import datetime
 import pytz
 # D1 functionality found here:
-import d1_client_manager_pangaea
+import d1_client_manager as d1_client_manager_pangaea
 
 
 file_name = 'OAI-PMH_harvest.log'
@@ -162,7 +162,7 @@ class OAIPMH_Harvester:
         return record_list # If element not found, returns none (such as if <error code="noRecordsMatch"/>)
       else:
         logging.error('Request failed: {}'.format(r.url))
-    except Exception, e:
+    except Exception as e:
       logging.error('Request failed: {}'.format(e))
 
 

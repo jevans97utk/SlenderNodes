@@ -10,7 +10,10 @@ ________________________________________________________________________________
 """
 
 import datetime
-import StringIO
+try:
+    import StringIO
+except ImportError:
+    from io import StringIO 
 import logging
 import requests
 import hashlib
@@ -135,7 +138,7 @@ class D1ClientManager:
         except d1_common.types.exceptions.NotFound:
             checkExistsDict['outcome'] = 'no'
             return checkExistsDict
-        except Exception, e:
+        except Exception as e:
             logging.error(
                 'Failed to check if {} exists - record was not processed correctly'.format(native_identifier_sid))
             logging.error(e)
@@ -161,13 +164,13 @@ class D1ClientManager:
             system_metadata= _generate_system_metadata(sci_metadata_bytes, native_identifier_sid,
                                       record_date, self.sysmeta_settings_dict)
 
-        except Exception, e:
+        except Exception as e:
             logging.error('Failed to generate system metadata. Unable to create SID: ' + native_identifier_sid)
             logging.error(e)
             return False
         try:
             self.client.create(system_metadata.identifier.value(), StringIO.StringIO(sci_metadata_bytes), system_metadata)
-        except Exception, e:
+        except Exception as e:
             logging.error('Failed to create object with SID: ' + native_identifier_sid)
             logging.error(e)
             return False
@@ -203,7 +206,7 @@ class D1ClientManager:
                                StringIO.StringIO(sci_metadata_bytes),
                                new_version_system_metadata.identifier.value(),
                                new_version_system_metadata)
-        except Exception, e:
+        except Exception as e:
             logging.error('Failed to UPDATE object with SID: ' + native_identifier_sid + ' / PID: ' + old_version_pid)
             logging.error(e)
             return False
@@ -226,7 +229,7 @@ class D1ClientManager:
 
         try:
             self.client.archive(current_version_pid)
-        except Exception, e:
+        except Exception as e:
             logging.error('Failed to ARCHIVE object PID: ' + current_version_pid)
             logging.error(e)
             return False
