@@ -43,6 +43,7 @@ ___________________________________________________________
 """
 
 
+import argparse
 import logging
 import os
 import requests
@@ -107,11 +108,13 @@ last_harvest_time = ''
 
 
 # -----------------------------------------------------------------------------
-def main():
+def main(cert, key):
     global rtoken
     global last_harvest_time
     requests.packages.urllib3.disable_warnings()
-    client_mgr = d1_client_manager_pangaea.D1ClientManager(MN_BASE_URL, CERT, KEY, SYSMETA_DICT)  # noqa: E501
+    client_mgr = d1_client_manager_pangaea.D1ClientManager(MN_BASE_URL,
+                                                           cert, key,
+                                                           SYSMETA_DICT)
     harvester = OAIPMH_Harvester(OAIPMH_BASE_URL)
 
     # get date most recent sysmetamodified as start of timeslice
@@ -140,7 +143,7 @@ def main():
     msg = (
         '{date},  '
         'New Records Loaded: {created_count}, '
-        'Records Updated: {update_count}, '
+        'Records Updated: {updated_count}, '
         'Records archived: {archived_count}, '
         'Deleted skipped: {skipped_deleted_count}, '
         'existing skipped: {skipped_exists_count}.\n'
@@ -311,7 +314,7 @@ class OAIPMH_Harvester:
                     doc,
                     identifier,
                     record_date,
-                    checkExistsDict['current_version_pid']
+                    checkExistsDict['current_version_id']
                 ):
                     # track the number of succesfully updated objects
                     updated_count += 1
@@ -340,4 +343,17 @@ class OAIPMH_Harvester:
 
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+
+    help = 'Use existing PANGAEA key pair.'
+    parser.add_argument('--use-keys', action='store_true', help=help)
+
+    args = parser.parse_args()
+    if args.use_keys:
+        cert = CERT
+        key = KEY
+    else:
+        cert = None
+        key = None
+
+    main(cert, key)

@@ -289,8 +289,7 @@ class D1ClientManager:
                                new_version_system_metadata)
         except Exception as e:
             msg = 'Failed to UPDATE object with SID: {sid} / PID: {pid}'
-            msg = msg.format(identifier=native_identifier_sid,
-                             pid=old_version_pid)
+            msg = msg.format(sid=native_identifier_sid, pid=old_version_pid)
             logging.error(msg)
             logging.error(e)
             return False
