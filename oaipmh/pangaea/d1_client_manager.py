@@ -229,7 +229,7 @@ class D1ClientManager:
             return False
         try:
             self.client.create(system_metadata.identifier.value(),
-                               StringIO(sci_metadata_bytes),
+                               StringIO(sci_metadata_bytes.decode('utf-8')),
                                system_metadata)
         except Exception as e:
             msg = 'Failed to create object with SID: ' + native_identifier_sid
@@ -284,7 +284,7 @@ class D1ClientManager:
                 self.sysmeta_settings_dict
             )
             self.client.update(old_version_pid,
-                               StringIO(sci_metadata_bytes),
+                               StringIO(sci_metadata_bytes.decode('utf-8')),
                                new_version_system_metadata.identifier.value(),
                                new_version_system_metadata)
         except Exception as e:
