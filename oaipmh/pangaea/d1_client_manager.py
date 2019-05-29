@@ -13,7 +13,7 @@ _______________________________________________________________________________
 
 import datetime
 try:
-    import StringIO
+    from StringIO import StringIO
 except ImportError:
     from io import StringIO
 import logging
@@ -229,7 +229,7 @@ class D1ClientManager:
             return False
         try:
             self.client.create(system_metadata.identifier.value(),
-                               StringIO.StringIO(sci_metadata_bytes),
+                               StringIO(sci_metadata_bytes),
                                system_metadata)
         except Exception as e:
             msg = 'Failed to create object with SID: ' + native_identifier_sid
@@ -284,7 +284,7 @@ class D1ClientManager:
                 self.sysmeta_settings_dict
             )
             self.client.update(old_version_pid,
-                               StringIO.StringIO(sci_metadata_bytes),
+                               StringIO(sci_metadata_bytes),
                                new_version_system_metadata.identifier.value(),
                                new_version_system_metadata)
         except Exception as e:
