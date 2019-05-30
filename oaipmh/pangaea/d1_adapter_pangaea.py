@@ -108,11 +108,13 @@ last_harvest_time = ''
 
 
 # -----------------------------------------------------------------------------
-def main(cert, key):
+def main(host, port, cert, key):
     global rtoken
     global last_harvest_time
     requests.packages.urllib3.disable_warnings()
-    client_mgr = d1_client_manager_pangaea.D1ClientManager(MN_BASE_URL,
+
+    mn_base_url = f'https://{host}:{port}/mn'
+    client_mgr = d1_client_manager_pangaea.D1ClientManager(mn_base_url,
                                                            cert, key,
                                                            SYSMETA_DICT)
     harvester = OAIPMH_Harvester(OAIPMH_BASE_URL)
@@ -345,15 +347,22 @@ class OAIPMH_Harvester:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    help = 'Use existing PANGAEA key pair.'
-    parser.add_argument('--use-keys', action='store_true', help=help)
+    help = 'Do not verify the connection using existing key pair.'
+    parser.add_argument('--no-verify', action='store_true', help=help)
+
+    help = 'Write to this host'
+    parser.add_argument('--host', default='pangaea-orc-1.dataone.org',
+                        help=help)
+
+    help = 'Connect to the base URL on this port'
+    parser.add_argument('--port', type=int, default=443, help=help)
 
     args = parser.parse_args()
-    if args.use_keys:
-        cert = CERT
-        key = KEY
-    else:
+    if args.no_verify:
         cert = None
         key = None
+    else:
+        cert = CERT
+        key = KEY
 
-    main(cert, key)
+    main(args.host, args.port, cert, key)

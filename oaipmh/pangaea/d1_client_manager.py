@@ -116,17 +116,19 @@ class D1ClientManager:
         apply to every object loaded into GMN are configured in the
         main script, and then passed within a dict to be used while
         creating and updating objects.
-         """
+        """
+        if auth_cert is None and auth_cert_key is None:
+            verify_tls = False
+        else:
+            verify_tls = True
 
         self.client = d1_client.mnclient_2_0.MemberNodeClient_2_0(
             gmn_baseurl,
             cert_pem_path=auth_cert,
             cert_key_path=auth_cert_key,
             timeout=120.0,
-            # uncomment verify_tls=False if using a self-signed SSL certificate
-            # or comment if not.
-            # verify_tls=False
-            )
+            verify_tls=verify_tls
+        )
         self.sysmeta_settings_dict = sysmeta_settings_dict
 
     def get_last_harvest_time(self):
