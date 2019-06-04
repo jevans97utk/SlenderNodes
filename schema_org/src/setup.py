@@ -5,7 +5,7 @@
 # jointly copyrighted by participating institutions in DataONE. For
 # more information on DataONE, see our web site at http://dataone.org.
 #
-#   Copyright 2013 DataONE
+#   Copyright 2013-2019 DataONE
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,40 +20,35 @@
 # limitations under the License.
 """DataONE Schema.org package
 """
+from setuptools import setup
 
-import setuptools
 
-
-def main():
-  setuptools.setup(
-    name='dataone.schema_org',
-    version='3.0.4',
+setup(
+    name='schema_org',
+    version='4.0.1',
     description='Interact with a schema.org resource provider',
     author='DataONE Project',
     author_email='developers@dataone.org',
     url='https://github.com/DataONEorg/d1_python',
     license='Apache License, Version 2.0',
-    packages=setuptools.find_packages(),
-    include_package_data=True,
-    install_requires=[
-      'w3lib >= 1.19.0',
-    ],
-    setup_requires=[
-      'setuptools_git >= 1.1',
-    ],
+    packages=['schema_org'],
+    install_requires=['python-dateutil', 'requests', 'lxml'],
     classifiers=[
-      'Development Status :: 5 - Production/Stable',
-      'Intended Audience :: Developers',
-      'Topic :: Scientific/Engineering',
-      'License :: OSI Approved :: Apache Software License',
-      'Programming Language :: Python :: 3',
-      'Programming Language :: Python :: 3.6',
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Developers',
+        'Topic :: Scientific/Engineering',
+        'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
     keywords=(
-      'DataONE schema.org'
+        'DataONE schema.org'
     ),
-  )
-
-
-if __name__ == '__main__':
-  main()
+    entry_points={
+        'console_scripts': [
+            'harvest-arm=schema_org.commandline:arm',
+            'harvest-ieda=schema_org.commandline:ieda',
+        ],
+    }
+)
