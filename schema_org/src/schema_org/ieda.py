@@ -38,7 +38,7 @@ class IEDAHarvester(CommonHarvester):
         metadata_url = items[0]['url']
         return metadata_url
 
-    def extract_identifier(self, jsonld):
+    def extract_identifier(self, doc, jsonld):
         """
         Parse the DOI from the json['@id'] value.  IEDA identifiers
         look something like

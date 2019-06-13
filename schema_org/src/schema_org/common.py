@@ -81,7 +81,8 @@ class CommonHarvester(object):
 
         self.client_mgr = D1ClientManager(self.mn_base_url,
                                           certificate, private_key,
-                                          sys_meta_dict)
+                                          sys_meta_dict,
+                                          self.logger)
 
         # Count the different ways that we update/create/skip records.  This
         # will be logged when we are finished.
@@ -105,8 +106,7 @@ class CommonHarvester(object):
         except requests.HTTPError as e:
             self.logger.error(SITE_MAP_RETRIEVAL_FAILURE_MESSAGE)
             self.logger.error(repr(e))
-            return
-
+            raise
         return r
 
     def setup_session(self, certificate, private_key):
@@ -241,7 +241,7 @@ class CommonHarvester(object):
 
         return text
 
-    def extract_jsonld(self, content):
+    def extract_jsonld(self, doc):
         """
         Extract JSON-LD from HTML document.
 
@@ -252,11 +252,10 @@ class CommonHarvester(object):
 
         Parameters
         ----------
-        s : str
-            Text content of an HTML page.  The JSON-LD should be embedded
-            within a <SCRIPT> element embedded in the <HEAD> element.
+        doc : ElementTree
+            The parsed HTML.  The JSON-LD should be embedded within a
+            <SCRIPT> element embedded in the <HEAD> element.
         """
-        doc = etree.HTML(content)
         scripts = doc.xpath('head/script[@type="application/ld+json"]')
         text = scripts[0].text
 
@@ -305,6 +304,10 @@ class CommonHarvester(object):
         for url, lastmod_time in records:
             try:
                 self.process_record(url, lastmod_time)
+            except etree.XMLSyntaxError as e:
+                self.unprocessed_count += 1
+                msg = f"Unable to process {url} due to {repr(e)}."
+                self.logger.error(e)
             except RuntimeError:
                 self.unprocessed_count += 1
 
@@ -435,20 +438,20 @@ class CommonHarvester(object):
         record_date : datetime obj
             Last document modification time according to the site map.
         """
-
         self.logger.info(f"Requesting {landing_page_url}...")
         r = self.retrieve_url(landing_page_url)
 
-        jsonld_doc = self.extract_jsonld(r.content)
+        doc = etree.HTML(r.text)
+        jsonld = self.extract_jsonld(doc)
 
         # Sometimes there is a space in the @id field.  Can't be having any of
         # that...
-        identifier = self.extract_identifier(jsonld_doc)
+        identifier = self.extract_identifier(doc, jsonld)
         self.logger.info(f"Have identified {identifier}...")
 
         # The URL for the metadata documents should be the first 'url' field
         # of the field named 'ISO Metadata Document'
-        metadata_url = self.extract_metadata_url(jsonld_doc, landing_page_url)
+        metadata_url = self.extract_metadata_url(jsonld, landing_page_url)
 
         doc = self.retrieve_metadata_document(metadata_url)
 

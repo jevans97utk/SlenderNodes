@@ -22,18 +22,19 @@
 """
 from setuptools import setup
 
-
-setup(
-    name='schema_org',
-    version='4.0.1',
-    description='Interact with a schema.org resource provider',
-    author='DataONE Project',
-    author_email='developers@dataone.org',
-    url='https://github.com/DataONEorg/d1_python',
-    license='Apache License, Version 2.0',
-    packages=['schema_org'],
-    install_requires=['python-dateutil', 'requests', 'lxml'],
-    classifiers=[
+kwargs = {
+    'name': 'schema_org',
+    'version': '4.0.0',
+    'description': 'Interact with a schema.org resource provider',
+    'author': 'DataONE Project',
+    'author_email': 'developers@dataone.org',
+    'url': 'https://github.com/DataONEorg/d1_python',
+    'license': 'Apache License, Version 2.0',
+    'packages': ['schema_org'],
+    'install_requires': [
+        'python-dateutil', 'requests', 'lxml', 'importlib_resources'
+    ],
+    'classifiers': [
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Topic :: Scientific/Engineering',
@@ -42,13 +43,14 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
     ],
-    keywords=(
+    'keywords': (
         'DataONE schema.org'
     ),
-    entry_points={
+    'entry_points': {
         'console_scripts': [
             'harvest-arm=schema_org.commandline:arm',
             'harvest-ieda=schema_org.commandline:ieda',
         ],
     }
-)
+}
+setup(**kwargs)

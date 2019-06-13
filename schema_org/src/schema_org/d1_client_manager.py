@@ -95,7 +95,7 @@ def _generate_public_access_policy():
 class D1ClientManager:
     # Initialize the client manager with an instance of a member node client
     def __init__(self, gmn_baseurl, auth_cert, auth_cert_key,
-                 sysmeta_settings_dict):
+                 sysmeta_settings_dict, logger):
         """
         :param gmn_baseurl: The base URL configured for the Generic Member Node
         installation.
@@ -130,6 +130,7 @@ class D1ClientManager:
             verify_tls=verify_tls
         )
         self.sysmeta_settings_dict = sysmeta_settings_dict
+        self.logger = logger
 
     def get_last_harvest_time(self):
         """
@@ -155,9 +156,8 @@ class D1ClientManager:
                 return '1900-01-01T00:00:00Z'
         except Exception as e:
             m = 'Fail to get last harvested time. Exiting program prematurely.'
-            logging.error(m)
-            logging.error(e)
-            # print e
+            self.logger.error(m)
+            self.logger.error(e)
             sys.exit(1)
 
     def check_if_identifier_exists(self, native_identifier_sid):
@@ -178,23 +178,22 @@ class D1ClientManager:
             sys_meta = self.client.getSystemMetadata(native_identifier_sid)
         except d1_common.types.exceptions.NotFound:
             checkExistsDict['outcome'] = 'no'
-            return checkExistsDict
         except Exception as e:
             msg = (
                 'Failed to check if {} exists - '
                 'record was not processed correctly'
             )
             msg = msg.format(native_identifier_sid)
-            logging.error(msg)
-            logging.error(e)
+            self.logger.error(msg)
+            self.logger.error(e)
             checkExistsDict['outcome'] = 'failed'
-            return checkExistsDict
         else:
             checkExistsDict = dict(
                 outcome='yes',
                 record_date=sys_meta.dateUploaded,
                 current_version_id=sys_meta.identifier.value()
             )
+        finally:
             return checkExistsDict
 
     def load_science_metadata(self, sci_metadata_bytes, native_identifier_sid,
@@ -226,19 +225,25 @@ class D1ClientManager:
                 'Failed to generate system metadata. Unable to create SID: '
                 '{sid}'
             )
-            logging.error(msg.format(sid=native_identifier_sid))
-            logging.error(e)
+            self.logger.error(msg.format(sid=native_identifier_sid))
+            self.logger.error(e)
             return False
+
         try:
             self.client.create(system_metadata.identifier.value(),
                                StringIO(sci_metadata_bytes.decode('utf-8')),
                                system_metadata)
         except Exception as e:
             msg = 'Failed to create object with SID: ' + native_identifier_sid
-            logging.error(msg)
-            logging.error(e)
+            self.logger.error(msg)
+            self.logger.error(e)
             return False
         else:
+            msg = (
+                f'CREATED object with SID: {native_identifier_sid} / '
+                f'PID: {system_metadata.identifier.value()}.'
+            )
+            self.logger.info(msg)
             return True
 
     def update_science_metadata(self, sci_metadata_bytes,
@@ -292,8 +297,8 @@ class D1ClientManager:
         except Exception as e:
             msg = 'Failed to UPDATE object with SID: {sid} / PID: {pid}'
             msg = msg.format(sid=native_identifier_sid, pid=old_version_pid)
-            logging.error(msg)
-            logging.error(e)
+            self.logger.error(msg)
+            self.logger.error(e)
             return False
         else:
             return True
@@ -320,8 +325,8 @@ class D1ClientManager:
             self.client.archive(current_version_pid)
         except Exception as e:
             msg = 'Failed to ARCHIVE object PID: ' + current_version_pid
-            logging.error(msg)
-            logging.error(e)
+            self.logger.error(msg)
+            self.logger.error(e)
             return False
         else:
             return True

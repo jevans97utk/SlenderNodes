@@ -71,15 +71,6 @@ class MockRequestsResponse(object):
 
 class TestCommon(unittest.TestCase):
 
-    def setUp(self):
-        """
-        """
-        self.requests_patcher = None
-
-    def tearDown(self):
-        if self.requests_patcher is not None:
-            self.requests_patcher.stop()
-
     def setup_requests_session_patcher(self, contents=None, status_codes=None):
         """
         Mock out the outcome of calling 'requests.Session.get'
@@ -104,4 +95,5 @@ class TestCommon(unittest.TestCase):
         ]
         patchee = 'schema_org.common.requests.Session.get'
         self.requests_patcher = patch(patchee, side_effect=side_effect)
+        self.addCleanup(self.requests_patcher.stop)
         self.requests_patcher.start()

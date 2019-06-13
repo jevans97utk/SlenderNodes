@@ -1,6 +1,9 @@
 # Standard library imports
 import datetime as dt
-import importlib.resources as ir
+try:
+    import importlib.resources as ir
+except ImportError:
+    import importlib_resources as ir
 from unittest.mock import patch
 
 # local imports

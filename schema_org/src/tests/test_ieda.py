@@ -4,7 +4,10 @@ Test suite for IEDA
 
 # Standard library imports
 import datetime as dt
-import importlib.resources as ir
+try:
+    import importlib.resources as ir
+except ImportError:
+    import importlib_resources as ir
 import json
 from unittest.mock import patch
 
