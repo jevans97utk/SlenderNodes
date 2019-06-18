@@ -3,15 +3,8 @@ DATAONE adapter for ARM
 """
 
 # Standard library imports
-import datetime as dt
-import io
 import re
 import urllib.parse
-
-# 3rd party library imports
-import dateutil.parser
-import dateutil.tz
-import lxml.etree
 
 # Local imports
 from .common import CommonHarvester
@@ -29,7 +22,7 @@ class ARMHarvester(CommonHarvester):
 
         self.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
 
-    def extract_identifier(self, doc, jsonld):
+    def extract_identifier(self, jsonld):
         """
         Parse the DOI from the json['@id'] value.  ARM identifiers
         look something like
@@ -55,23 +48,12 @@ class ARMHarvester(CommonHarvester):
         if m is None:
             msg = (
                 f"DOI ID parsing error, could not parse an ID out of "
-                f"\"{jsonld['@id']}\""
+                f"JSON-LD '@id' element \"{jsonld['@id']}\""
             )
-            self.logger.warning(msg)
-        else:
-            return m.group('id')
-
-        # So it's not where we expected it, in the JSON-LD.  Try other
-        # locations.
-        try:
-            elt = doc.xpath('head/meta[@name="citation_doi"]')[0]
-        except IndexError:
-            msg = "Alternate head/meta[@name=\"citation_doi\"] path not found"
             self.logger.warning(msg)
             raise RuntimeError(msg)
         else:
-            return elt.attrib['content']
-
+            return m.group('id')
 
     def extract_metadata_url(self, jsonld_doc, landing_page_url):
         """
@@ -86,34 +68,3 @@ class ARMHarvester(CommonHarvester):
 
         metadata_url = f"{p.scheme}://{p.netloc}{path}"
         return metadata_url
-
-    def get_records(self, last_harvest_time):
-        """
-        TODO
-        """
-        r = self.get_site_map()
-
-        # Get a list of URL/modification time pairs.
-        doc = lxml.etree.parse(io.BytesIO(r.content))
-        urls = doc.xpath('.//sitemap:loc/text()', namespaces=SITE_NSMAP)
-
-        lastmods = doc.xpath('.//sitemap:lastmod/text()',
-                             namespaces=SITE_NSMAP)
-
-        # Parse the last modification times.  It is possible that the dates
-        # have no timezone information in them, so we will assume that it is
-        # UTC.
-        lastmods = [dateutil.parser.parse(item) for item in lastmods]
-        UTC = dateutil.tz.gettz("UTC")
-        lastmods = [
-            dateitem.replace(tzinfo=dateitem.tzinfo or UTC)
-            for dateitem in lastmods
-        ]
-
-        z = zip(urls, lastmods)
-
-        records = [
-            (url, lastmod)
-            for url, lastmod in z if lastmod >= last_harvest_time
-        ]
-        return records

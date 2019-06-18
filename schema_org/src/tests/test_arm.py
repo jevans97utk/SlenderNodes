@@ -6,6 +6,9 @@ except ImportError:
     import importlib_resources as ir
 from unittest.mock import patch
 
+# 3rd party library imports
+import requests
+
 # local imports
 from schema_org.arm import ARMHarvester
 from schema_org.common import SITE_MAP_RETRIEVAL_FAILURE_MESSAGE
@@ -45,25 +48,27 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  4859 tuples of URLs and lastmod times are retrieved
         """
-        content = ir.read_text('tests.data.arm', 'site_map.txt')
+        content = ir.read_binary('tests.data.arm', 'sitemap.xml')
         self.setup_requests_session_patcher(contents=[content])
 
         harvester = ARMHarvester()
-        last_harvest_time = dt.datetime(2019, 1, 1)
+        last_harvest_time = dt.datetime(2019, 1, 1, tzinfo=dt.timezone.utc)
         records = harvester.get_records(last_harvest_time)
-        self.assertEqual(len(records), 4859)
+        self.assertEqual(len(records), 2)
 
     @patch('schema_org.common.logging.getLogger')
     def test_site_map_retrieval_failure(self, mock_logger):
         """
         SCENARIO:  a non-200 status code is returned by the site map retrieval.
 
-        EXPECTED RESULT:  the exception is logged.
+        EXPECTED RESULT:  A requests HTTPError is raised and the exception is
+        logged.
         """
         self.setup_requests_session_patcher(status_codes=[400])
 
         harvester = ARMHarvester(verbosity='INFO')
-        harvester.get_site_map()
+        with self.assertRaises(requests.HTTPError):
+            harvester.get_site_map()
 
         harvester.logger.error.assert_any_call(SITE_MAP_RETRIEVAL_FAILURE_MESSAGE)  # noqa: E501
 

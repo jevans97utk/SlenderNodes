@@ -16,7 +16,6 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
-import logging
 import hashlib
 import sys
 
@@ -86,7 +85,7 @@ def _generate_public_access_policy():
     accessPolicy = v2.AccessPolicy()
     accessRule = v2.AccessRule()
     accessRule.subject.append(d1_common.const.SUBJECT_PUBLIC)
-    permission = v2.Permission('read')
+    permission = v2.Permission('write')
     accessRule.permission.append(permission)
     accessPolicy.append(accessRule)
     return accessPolicy

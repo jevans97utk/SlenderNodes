@@ -2,17 +2,10 @@
 DATAONE adapter for IEDA
 """
 # Standard library imports
-import io
 import re
-
-# 3rd party library imports
-import dateutil.parser
-import lxml.etree
 
 # Local imports
 from .common import CommonHarvester
-
-SITE_NSMAP = {'sitemap': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
 
 
 class IEDAHarvester(CommonHarvester):
@@ -38,7 +31,7 @@ class IEDAHarvester(CommonHarvester):
         metadata_url = items[0]['url']
         return metadata_url
 
-    def extract_identifier(self, doc, jsonld):
+    def extract_identifier(self, jsonld):
         """
         Parse the DOI from the json['@id'] value.  IEDA identifiers
         look something like
@@ -76,25 +69,3 @@ class IEDAHarvester(CommonHarvester):
             return m.group('doi_id')
         else:
             return m.group('other_id')
-
-    def get_records(self, last_harvest_time):
-        """
-        TODO
-        """
-        r = self.get_site_map()
-
-        # Get a list of URL/modification time pairs.
-        doc = lxml.etree.parse(io.BytesIO(r.content))
-        urls = doc.xpath('.//sitemap:loc/text()', namespaces=SITE_NSMAP)
-
-        lastmods = doc.xpath('.//sitemap:lastmod/text()',
-                             namespaces=SITE_NSMAP)
-        lastmods = [dateutil.parser.parse(item) for item in lastmods]
-
-        z = zip(urls, lastmods)
-
-        records = [
-            (url, lastmod)
-            for url, lastmod in z if lastmod >= last_harvest_time
-        ]
-        return records

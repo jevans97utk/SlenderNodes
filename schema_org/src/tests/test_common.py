@@ -28,7 +28,7 @@ class MockRequestsResponse(object):
 
         # Allow for the possibility of a text response.
         try:
-            self.text = content.encode('utf-8')
+            self.text = content.decode('utf-8')
         except (AttributeError, UnicodeDecodeError):
             # AttributeError if content was None, UnicodeDecodeError if the
             # content was binary.
@@ -93,6 +93,7 @@ class TestCommon(unittest.TestCase):
                                  status_code=status_code)
             for content, status_code in items
         ]
+
         patchee = 'schema_org.common.requests.Session.get'
         self.requests_patcher = patch(patchee, side_effect=side_effect)
         self.addCleanup(self.requests_patcher.stop)

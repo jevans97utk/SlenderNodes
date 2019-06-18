@@ -9,8 +9,8 @@ import logging
 import re
 
 # 3rd party library imports
-import dateutil
-from lxml import etree
+import dateutil.parser
+import lxml.etree
 import requests
 
 # Local imports
@@ -30,6 +30,8 @@ ISO_NSMAP = {
     'xlink': 'http://www.w3.org/1999/xlink',
     'xs': 'http://www.w3.org/2001/XMLSchema'
 }
+
+SITE_NSMAP = {'sitemap': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
 
 
 class CommonHarvester(object):
@@ -89,6 +91,7 @@ class CommonHarvester(object):
         self.updated_count = 0
         self.skipped_exists_count = 0
         self.created_count = 0
+        self.rejected_count = 0
         self.unprocessed_count = 0
 
         requests.packages.urllib3.disable_warnings()
@@ -304,7 +307,7 @@ class CommonHarvester(object):
         for url, lastmod_time in records:
             try:
                 self.process_record(url, lastmod_time)
-            except etree.XMLSyntaxError as e:
+            except lxml.etree.XMLSyntaxError as e:
                 self.unprocessed_count += 1
                 msg = f"Unable to process {url} due to {repr(e)}."
                 self.logger.error(e)
@@ -314,6 +317,7 @@ class CommonHarvester(object):
         self.logger.info(f'Updated {self.updated_count} records.')
         self.logger.info(f'Skipped {self.skipped_exists_count} records.')
         self.logger.info(f'Created {self.created_count} new records.')
+        self.logger.info(f'Rejected {self.rejected_count} records.')
 
         msg = f'Could not process {self.unprocessed_count} records.'
         self.logger.info(msg)
@@ -338,23 +342,24 @@ class CommonHarvester(object):
             exists_dict['outcome'] == 'yes'
             and exists_dict['record_date'] != record_date
         ):
+            if not self.can_be_updated(doc, exists_dict['current_version_id']):
+                self.rejected_count += 1
+                self.logger.warning(f'Refused to update {identifier}.')
 
             # the outcome of exists_dict determines how to
             # handle the record.  if identifier exists in GMN but
             # record date is different, this truly is an update so
             # call update method.
-            if self.client_mgr.update_science_metadata(
+            elif self.client_mgr.update_science_metadata(
                 doc,
                 identifier,
                 record_date,
                 exists_dict['current_version_id']
             ):
-                # track the number of succesfully updated objects
                 self.updated_count += 1
-
                 self.logger.info(f'Updated {identifier}.')
             else:
-                self.logger.warning(f'Unable to updated {identifier}.')
+                self.logger.warning(f'Unable to update {identifier}.')
 
         elif (
             exists_dict['outcome'] == 'yes'
@@ -399,6 +404,38 @@ class CommonHarvester(object):
                 )
                 self.logger.error(msg)
 
+    def can_be_updated(self, new_doc_bytes, old_identifier):
+        """
+        This code will break in production.
+        """
+        new_doc = lxml.etree.parse(io.BytesIO(new_doc_bytes))
+        nsmap = new_doc.getroot().nsmap
+
+        url = f"{self.mn_base_url}/v2/object/{old_identifier}"
+
+        # Get the existing document.
+        # TODO:  We can't do it this way, must use the client.  Just don't know
+        # how to do that yet.
+        r = self.session.get(url, headers={'Accept': 'text/xml'})
+        r.raise_for_status()
+
+        old_doc = lxml.etree.parse(io.BytesIO(r.content))
+
+        parts = [
+            'ns0:identificationInfo',
+            'ns0:MD_DataIdentification',
+            'ns0:status',
+            'ns0:MD_ProgressCode',
+            'text()'
+        ]
+        path = '/'.join(parts)
+        new_progress_code = new_doc.xpath(path, namespaces=nsmap)[0]
+        old_progress_code = old_doc.xpath(path, namespaces=nsmap)[0]  # noqa:  F841
+        if new_progress_code == 'completed':
+            return True
+        else:
+            return False
+
     def retrieve_metadata_document(self, metadata_url):
         """
         Retrieve the remote metadata document and make any necessary
@@ -418,11 +455,11 @@ class CommonHarvester(object):
         # Retrieve the metadata document.
         self.logger.info(f"Requesting {metadata_url}...")
         r = self.retrieve_url(metadata_url)
-        doc = etree.parse(io.BytesIO(r.content))
+        doc = lxml.etree.parse(io.BytesIO(r.content))
 
         # Re-seriealize to bytes.
-        docbytes = etree.tostring(doc, pretty_print=True,
-                                  encoding='utf-8', standalone=True)
+        docbytes = lxml.etree.tostring(doc, pretty_print=True,
+                                       encoding='utf-8', standalone=True)
 
         return docbytes
 
@@ -441,12 +478,16 @@ class CommonHarvester(object):
         self.logger.info(f"Requesting {landing_page_url}...")
         r = self.retrieve_url(landing_page_url)
 
-        doc = etree.HTML(r.text)
+        try:
+            doc = lxml.etree.HTML(r.text)
+        except ValueError:
+            doc = lxml.etree.HTML(r.content)
+
         jsonld = self.extract_jsonld(doc)
 
         # Sometimes there is a space in the @id field.  Can't be having any of
         # that...
-        identifier = self.extract_identifier(doc, jsonld)
+        identifier = self.extract_identifier(jsonld)
         self.logger.info(f"Have identified {identifier}...")
 
         # The URL for the metadata documents should be the first 'url' field
@@ -456,3 +497,34 @@ class CommonHarvester(object):
         doc = self.retrieve_metadata_document(metadata_url)
 
         self.harvest_document(identifier, doc, record_date)
+
+    def get_records(self, last_harvest_time):
+        """
+        TODO
+        """
+        r = self.get_site_map()
+
+        # Get a list of URL/modification time pairs.
+        doc = lxml.etree.parse(io.BytesIO(r.content))
+        urls = doc.xpath('.//sitemap:loc/text()', namespaces=SITE_NSMAP)
+
+        lastmods = doc.xpath('.//sitemap:lastmod/text()',
+                             namespaces=SITE_NSMAP)
+
+        # Parse the last modification times.  It is possible that the dates
+        # have no timezone information in them, so we will assume that it is
+        # UTC.
+        lastmods = [dateutil.parser.parse(item) for item in lastmods]
+        UTC = dateutil.tz.gettz("UTC")
+        lastmods = [
+            dateitem.replace(tzinfo=dateitem.tzinfo or UTC)
+            for dateitem in lastmods
+        ]
+
+        z = zip(urls, lastmods)
+
+        records = [
+            (url, lastmod)
+            for url, lastmod in z if lastmod >= last_harvest_time
+        ]
+        return records

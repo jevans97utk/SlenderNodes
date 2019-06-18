@@ -29,6 +29,8 @@ class TestD1ClientManager(unittest.TestCase):
             'originMN': 'urn:node:IEDA',
         }
 
+        self.mock_logger = Mock()
+
     def test_get_last_harvest_time_with_objects_in_the_system(self,
                                                               mock_client):
         """
@@ -54,7 +56,8 @@ class TestD1ClientManager(unittest.TestCase):
         client_mgr = D1ClientManager(self.gmn_base_url,
                                      self.auth_cert,
                                      self.auth_cert_key,
-                                     self.sysmeta_settings_dict)
+                                     self.sysmeta_settings_dict,
+                                     self.mock_logger)
 
         time = client_mgr.get_last_harvest_time()
 
@@ -74,15 +77,14 @@ class TestD1ClientManager(unittest.TestCase):
         client_mgr = D1ClientManager(self.gmn_base_url,
                                      self.auth_cert,
                                      self.auth_cert_key,
-                                     self.sysmeta_settings_dict)
+                                     self.sysmeta_settings_dict,
+                                     self.mock_logger)
         time = client_mgr.get_last_harvest_time()
 
         self.assertEqual(time, '1900-01-01T00:00:00Z')
 
     @patch('schema_org.d1_client_manager.sys.exit')
-    @patch('schema_org.d1_client_manager.logging')
-    def test_get_last_harvest_time_fails(self, mock_logging, mock_sys_exit,
-                                         mock_client):
+    def test_get_last_harvest_time_fails(self, mock_sys_exit, mock_client):
         """
         SCENARIO:  We fail to get the last harvest time.
 
@@ -94,11 +96,12 @@ class TestD1ClientManager(unittest.TestCase):
 
         client_mgr = D1ClientManager(self.gmn_base_url,
                                      self.auth_cert, self.auth_cert_key,
-                                     self.sysmeta_settings_dict)
+                                     self.sysmeta_settings_dict,
+                                     self.mock_logger)
         client_mgr.get_last_harvest_time()
 
         self.assertEqual(mock_sys_exit.call_count, 1)
-        self.assertEqual(mock_logging.error.call_count, 2)
+        self.assertEqual(self.mock_logger.error.call_count, 2)
 
     def test_positive_check_if_identifier_exists(self, mock_client):
         """
@@ -118,7 +121,8 @@ class TestD1ClientManager(unittest.TestCase):
 
         client_mgr = D1ClientManager(self.gmn_base_url,
                                      self.auth_cert, self.auth_cert_key,
-                                     self.sysmeta_settings_dict)
+                                     self.sysmeta_settings_dict,
+                                     None)
         actual = client_mgr.check_if_identifier_exists('thing')
 
         expected = {
@@ -138,7 +142,8 @@ class TestD1ClientManager(unittest.TestCase):
 
         client_mgr = D1ClientManager(self.gmn_base_url,
                                      self.auth_cert, self.auth_cert_key,
-                                     self.sysmeta_settings_dict)
+                                     self.sysmeta_settings_dict,
+                                     None)
         actual = client_mgr.check_if_identifier_exists('thing')
 
         expected = {
@@ -146,10 +151,7 @@ class TestD1ClientManager(unittest.TestCase):
         }
         self.assertEqual(actual, expected)
 
-    @patch('schema_org.d1_client_manager.logging')
-    def test_unknown_exception_check_if_identifier_exists(self,
-                                                          mock_logging,
-                                                          mock_client):
+    def test_unknown_exception_check_if_identifier_exists(self, mock_client):
         """
         SCENARIO:  An unexpected exception happened when we checked for the
         given identifier.
@@ -158,17 +160,19 @@ class TestD1ClientManager(unittest.TestCase):
         exception is logged.
         """
         mock_client.return_value.getSystemMetadata.side_effect = RuntimeError('bad')  # noqa: E501
+        mock_logger = Mock()
 
         client_mgr = D1ClientManager(self.gmn_base_url,
                                      self.auth_cert, self.auth_cert_key,
-                                     self.sysmeta_settings_dict)
+                                     self.sysmeta_settings_dict,
+                                     mock_logger)
         actual = client_mgr.check_if_identifier_exists('thing')
 
         expected = {
             'outcome': 'failed',
         }
         self.assertEqual(actual, expected)
-        self.assertEqual(mock_logging.error.call_count, 2)
+        self.assertEqual(mock_logger.error.call_count, 2)
 
     def test_load_science_metadata(self, mock_client):
         """
@@ -182,17 +186,16 @@ class TestD1ClientManager(unittest.TestCase):
 
         client_mgr = D1ClientManager(self.gmn_base_url,
                                      self.auth_cert, self.auth_cert_key,
-                                     self.sysmeta_settings_dict)
+                                     self.sysmeta_settings_dict,
+                                     self.mock_logger)
         actual = client_mgr.load_science_metadata(sci_metadata_bytes,
                                                   native_identifier_sid,
                                                   record_date)
         self.assertTrue(actual)
 
     @patch('schema_org.d1_client_manager.v2.systemMetadata')
-    @patch('schema_org.d1_client_manager.logging')
     def test_load_science_metadata__generate_scimeta_errors(
         self,
-        mock_logging,
         mock_sysmeta,
         mock_client
     ):
@@ -211,7 +214,8 @@ class TestD1ClientManager(unittest.TestCase):
         client_mgr = D1ClientManager(
             self.gmn_base_url,
             self.auth_cert, self.auth_cert_key,
-            self.sysmeta_settings_dict
+            self.sysmeta_settings_dict,
+            self.mock_logger
         )
         actual = client_mgr.load_science_metadata(
             sci_metadata_bytes,
@@ -219,12 +223,10 @@ class TestD1ClientManager(unittest.TestCase):
             record_date
         )
         self.assertFalse(actual)
-        self.assertEqual(mock_logging.error.call_count, 2)
+        self.assertEqual(self.mock_logger.error.call_count, 2)
 
-    @patch('schema_org.d1_client_manager.logging')
     def test_load_science_metadata__create_errors_out(
         self,
-        mock_logging,
         mock_client
     ):
         """
@@ -242,7 +244,8 @@ class TestD1ClientManager(unittest.TestCase):
         client_mgr = D1ClientManager(
             self.gmn_base_url,
             self.auth_cert, self.auth_cert_key,
-            self.sysmeta_settings_dict
+            self.sysmeta_settings_dict,
+            self.mock_logger
         )
         actual = client_mgr.load_science_metadata(
             sci_metadata_bytes,
@@ -250,7 +253,7 @@ class TestD1ClientManager(unittest.TestCase):
             record_date
         )
         self.assertFalse(actual)
-        self.assertEqual(mock_logging.error.call_count, 2)
+        self.assertEqual(self.mock_logger.error.call_count, 2)
 
     def test_update_science_metadata(self, mock_client):
         """
@@ -266,7 +269,8 @@ class TestD1ClientManager(unittest.TestCase):
         client_mgr = D1ClientManager(
             self.gmn_base_url,
             self.auth_cert, self.auth_cert_key,
-            self.sysmeta_settings_dict
+            self.sysmeta_settings_dict,
+            None
         )
         actual = client_mgr.update_science_metadata(
             sci_metadata_bytes,
@@ -276,12 +280,7 @@ class TestD1ClientManager(unittest.TestCase):
         )
         self.assertTrue(actual)
 
-    @patch('schema_org.d1_client_manager.logging')
-    def test_update_science_metadata_fails(
-        self,
-        mock_logging,
-        mock_client
-    ):
+    def test_update_science_metadata_fails(self, mock_client):
         """
         SCENARIO:  A new science metadata record is not successfully updated
         because the update routine errors out for some reason.
@@ -295,10 +294,13 @@ class TestD1ClientManager(unittest.TestCase):
         record_date = dt.datetime.now().isoformat()
         old_version_pid = 'b645a195302ca652ec39f1bf3b908dbf'
 
+        mock_logger = Mock()
+
         client_mgr = D1ClientManager(
             self.gmn_base_url,
             self.auth_cert, self.auth_cert_key,
-            self.sysmeta_settings_dict
+            self.sysmeta_settings_dict,
+            mock_logger
         )
         actual = client_mgr.update_science_metadata(
             sci_metadata_bytes,
@@ -307,7 +309,7 @@ class TestD1ClientManager(unittest.TestCase):
             old_version_pid
         )
         self.assertFalse(actual)
-        self.assertEqual(mock_logging.error.call_count, 2)
+        self.assertEqual(mock_logger.error.call_count, 2)
 
     def test_archive_science_metadata(self, mock_client):
         """
@@ -320,17 +322,13 @@ class TestD1ClientManager(unittest.TestCase):
         client_mgr = D1ClientManager(
             self.gmn_base_url,
             self.auth_cert, self.auth_cert_key,
-            self.sysmeta_settings_dict
+            self.sysmeta_settings_dict,
+            None
         )
         actual = client_mgr.archive_science_metadata(current_version_pid)
         self.assertTrue(actual)
 
-    @patch('schema_org.d1_client_manager.logging')
-    def test_archive_science_metadata_fails(
-        self,
-        mock_logging,
-        mock_client
-    ):
+    def test_archive_science_metadata_fails(self, mock_client):
         """
         SCENARIO:  A science metadata record is not successfully archived
         because the archive routine errors out for some reason.
@@ -344,12 +342,13 @@ class TestD1ClientManager(unittest.TestCase):
         client_mgr = D1ClientManager(
             self.gmn_base_url,
             self.auth_cert, self.auth_cert_key,
-            self.sysmeta_settings_dict
+            self.sysmeta_settings_dict,
+            self.mock_logger
         )
         actual = client_mgr.archive_science_metadata(current_version_pid)
 
         self.assertFalse(actual)
-        self.assertEqual(mock_logging.error.call_count, 2)
+        self.assertEqual(self.mock_logger.error.call_count, 2)
 
     def test_verify_tls(self, mock_client):
         """
@@ -360,6 +359,7 @@ class TestD1ClientManager(unittest.TestCase):
         D1ClientManager(
             self.gmn_base_url,
             '/path/to/cert', '/path/to/key',
-            self.sysmeta_settings_dict
+            self.sysmeta_settings_dict,
+            None,
         )
         self.assertTrue(True)
