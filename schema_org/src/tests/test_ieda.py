@@ -6,10 +6,10 @@ Test suite for IEDA
 import datetime as dt
 try:
     import importlib.resources as ir
-except ImportError:
+except ImportError:  # pragma:  nocover
     import importlib_resources as ir
+import io
 import json
-import unittest
 from unittest.mock import patch
 
 # 3rd party library imports
@@ -49,16 +49,19 @@ class TestSuite(TestCommon):
                 identifier = harvester.extract_identifier(jsonld)
                 self.assertEqual(identifier, expected)
 
-    def test_identifier_parsing_error(self):
+    @patch('schema_org.common.logging.getLogger')
+    def test_identifier_parsing_error(self, mock_logger):
         """
         SCENARIO:  The JSON-LD @id field has an invalid identifier.
 
-        EXPECTED RESULT:  RuntimeError
+        EXPECTED RESULT:  A RuntimeError is raised and the error is logged.
         """
         harvester = IEDAHarvester()
 
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier({'@id': 'djlfsdljfasl;'})
+
+        self.assertEqual(harvester.logger.error.call_count, 1)
 
     @patch('schema_org.common.logging.getLogger')
     def test_metadata_document_retrieval(self, mock_logger):
@@ -212,10 +215,10 @@ class TestSuite(TestCommon):
         #   11) final "created" count
         #   12) final "unprocessed" count
         #   12) final "rejected" count
-        #
-        # But there is one error call for the unretrieved XML document.
         self.assertEqual(harvester.logger.info.call_count, 13)
-        self.assertEqual(harvester.logger.error.call_count, 1)
+
+        # There is are error calls as well.
+        self.assertTrue(harvester.logger.error.call_count > 1)
 
     @patch('schema_org.common.logging.getLogger')
     def test_ieda_600165_unescaped_double_quotes(self, mock_logger):
@@ -294,7 +297,6 @@ class TestSuite(TestCommon):
             harvester.get_site_map()
         harvester.logger.error.assert_any_call(SITE_MAP_RETRIEVAL_FAILURE_MESSAGE)  # noqa: E501
 
-    @unittest.skip('must add more mocking for update check')
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     @patch('schema_org.common.logging.getLogger')
@@ -312,6 +314,10 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  The event is logged at the info level.  The update
         count increases by one.
         """
+        # This is the existing document in the MN.  It is marked as complete.
+        content = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        self.setup_requests_session_patcher(contents=[content])
+
         record_date = dt.datetime.now()
         mock_check_if_identifier_exists.return_value = {
             'outcome': 'yes',
@@ -323,7 +329,10 @@ class TestSuite(TestCommon):
         harvester = IEDAHarvester()
         update_count = harvester.updated_count
 
-        doc = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        # This is the "update" document, same as the existing document.  It is
+        # already marked as "complete".  Bump the timestamp to just a bit later
+        # to make ok to proceed.
+        doc = ir.read_binary('tests.data.ieda', '600121iso-later.xml')
 
         identifier = 'doi.10000/abcde'
         harvester.harvest_document(identifier, doc, record_date)
@@ -331,11 +340,10 @@ class TestSuite(TestCommon):
         harvester.logger.info.assert_called_once()
         self.assertEqual(harvester.updated_count, update_count + 1)
 
-    @unittest.skip('needs more mocking for update check connections')
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     @patch('schema_org.common.logging.getLogger')
-    def test_document_already_harvested_but_cannot_be_updated(
+    def test_document_already_harvested_but_fails_to_update(
         self,
         mock_logger,
         mock_check_if_identifier_exists,
@@ -346,8 +354,14 @@ class TestSuite(TestCommon):
         been harvested.  It has been updated since the last harvest time, but
         the update failed.
 
-        EXPECTED RESULT:  The event is logged at the warning level.
+        EXPECTED RESULT:  The failure count goes up by one and the event is
+        logged at the warning level.
         """
+        # This is the existing document in the MN.  It is requested by the
+        # update check, and it is marked as complete.
+        content = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        self.setup_requests_session_patcher(contents=[content])
+
         record_date = dt.datetime.now()
         mock_check_if_identifier_exists.return_value = {
             'outcome': 'yes',
@@ -357,12 +371,123 @@ class TestSuite(TestCommon):
         mock_update_science_metadata.return_value = False
 
         harvester = IEDAHarvester()
-        doc = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        initial_failure_count = harvester.failure_count
+
+        # Read a document that is the same except it has a later metadata
+        # timestamp.  This means that we should update it.
+        doc_bytes = ir.read_binary('tests.data.ieda', '600121iso-later.xml')
+        doc = lxml.etree.parse(io.BytesIO(doc_bytes))
+
+        # Reserialize back to bytes.
+        doc_bytes = lxml.etree.tostring(doc, pretty_print=True,
+                                        encoding='utf-8', standalone=True)
 
         identifier = 'doi.10000/abcde'
-        harvester.harvest_document(identifier, doc, record_date)
+        harvester.harvest_document(identifier, doc_bytes, record_date)
 
-        harvester.logger.warning.assert_called_once()
+        # Did we increase the failure count?
+        self.assertEqual(harvester.failure_count, initial_failure_count + 1)
+
+        # Did we see a warning?
+        self.assertTrue(harvester.logger.warning.call_count > 0)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.common.logging.getLogger')
+    def test_document_already_harvested__followup_record_is_complete(
+        self,
+        mock_logger,
+        mock_check_if_identifier_exists,
+        mock_update_science_metadata
+    ):
+        """
+        SCENARIO:  The GMN existance check shows that the document has already
+        been harvested but has been marked as "ongoing".  It has been updated
+        since the last harvest time, and the new record is marked as
+        "complete".  The update succeeds.
+
+        EXPECTED RESULT:  The updated count goes up by one and the event is
+        logged at the info level.
+        """
+        # This is the existing document in the MN.  It is requested by the
+        # update check, and it is marked as ongoing.
+        content = ir.read_binary('tests.data.ieda', '600121iso-ongoing.xml')
+        self.setup_requests_session_patcher(contents=[content])
+
+        # This is the proposed update document that is the same except it is
+        # marked as complete.
+        update_doc_bytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
+
+        record_date = dt.datetime.now()
+        mock_check_if_identifier_exists.return_value = {
+            'outcome': 'yes',
+            'record_date': record_date - dt.timedelta(days=1),
+            'current_version_id': 1,
+        }
+        mock_update_science_metadata.return_value = True
+
+        harvester = IEDAHarvester()
+        initial_updated_count = harvester.updated_count
+
+        identifier = 'doi.10000/abcde'
+        harvester.harvest_document(identifier, update_doc_bytes, record_date)
+
+        # Did we increase the failure count?
+        self.assertEqual(harvester.updated_count, initial_updated_count + 1)
+
+        # Did we see a warning?
+        self.assertTrue(harvester.logger.info.call_count > 0)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.common.logging.getLogger')
+    def test_document_already_harvested__followup_record_is_too_old(
+        self,
+        mock_logger,
+        mock_check_if_identifier_exists,
+        mock_update_science_metadata
+    ):
+        """
+        SCENARIO:  The GMN existance check shows that the document has already
+        been harvested.  It has been updated since the last harvest time, but
+        the proposed update record is even older than the original.
+
+        EXPECTED RESULT:  The rejected count goes up by one and the event is
+        logged at the warning level.
+        """
+        # This is the existing document in the MN.  It is requested by the
+        # update check, and it is marked as complete.
+        content = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        self.setup_requests_session_patcher(contents=[content])
+
+        record_date = dt.datetime.now()
+        mock_check_if_identifier_exists.return_value = {
+            'outcome': 'yes',
+            'record_date': record_date - dt.timedelta(days=1),
+            'current_version_id': 1,
+        }
+        mock_update_science_metadata.return_value = False
+
+        harvester = IEDAHarvester()
+        initial_rejected_count = harvester.rejected_count
+
+        # Read a document that is the same except it has an earlier metadata
+        # timestamp.  This means that we should NOT update it.
+        doc_bytes = ir.read_binary('tests.data.ieda', '600121iso-earlier.xml')
+        doc = lxml.etree.parse(io.BytesIO(doc_bytes))
+
+        # Reserialize back to bytes.
+        doc_bytes = lxml.etree.tostring(doc, pretty_print=True,
+                                        encoding='utf-8', standalone=True)
+
+        identifier = 'doi.10000/abcde'
+        harvester.harvest_document(identifier, doc_bytes, record_date)
+
+        # Did we increase the failure count?
+        self.assertEqual(harvester.rejected_count, initial_rejected_count + 1)
+
+        # Did we see a warning?
+        self.assertTrue(harvester.logger.warning.call_count > 0)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501

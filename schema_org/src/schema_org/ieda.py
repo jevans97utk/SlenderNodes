@@ -18,14 +18,53 @@ class IEDAHarvester(CommonHarvester):
 
         self.site_map = 'http://get.iedadata.org/sitemaps/usap_sitemap.xml'
 
-    def extract_metadata_url(self, jsonld_doc, landing_page_url):
+    def extract_metadata_url(self, jsonld):
         """
+        In IEDA, the JSON-LD is structured as follows:
+
+        {
+            .
+            .
+            .
+            "distribution": [
+                {
+                    "@type": "DataDownload",
+                    "additionalType": "http://www.w3.org/ns/dcat#DataCatalog",
+                    "encodingFormat": "text/xml",
+                    "name": "ISO Metadata Document",
+                    "url": "http://get.iedadata.org/path/to/doc.xml"
+                },
+                {
+                    "@id": "http://www.usap-dc.org/view/dataset/609246",
+                    "@type": "DataDownload",
+                    "additionalType": "dcat:distribution",
+                    "url": "http://www.usap-dc.org/view/dataset/609246",
+                    "name": "landing page",
+                    .
+                    .
+                    .
+                },
+                .
+                .
+                .
+            ],
+            .
+            .
+            .
+        }
+
+        Parameters
+        ----------
+        jsonld : dict
+            JSON-LD as retrieved from a <SCRIPT> element in the landing page
+            URL.
+
         Returns
         -------
         The URL for the metadata document.
         """
         items = [
-            item for item in jsonld_doc['distribution']
+            item for item in jsonld['distribution']
             if item['name'] == 'ISO Metadata Document'
         ]
         metadata_url = items[0]['url']
@@ -63,6 +102,7 @@ class IEDAHarvester(CommonHarvester):
         m = regex.search(jsonld['@id'])
         if m is None:
             msg = f"DOI ID parsing error:  \"{jsonld['@id']}\""
+            self.logger.error(msg)
             raise RuntimeError(msg)
 
         if m.group('doi_id') is not None:

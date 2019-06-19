@@ -4,7 +4,6 @@ DATAONE adapter for ARM
 
 # Standard library imports
 import re
-import urllib.parse
 
 # Local imports
 from .common import CommonHarvester
@@ -50,21 +49,36 @@ class ARMHarvester(CommonHarvester):
                 f"DOI ID parsing error, could not parse an ID out of "
                 f"JSON-LD '@id' element \"{jsonld['@id']}\""
             )
-            self.logger.warning(msg)
+            self.logger.error(msg)
             raise RuntimeError(msg)
         else:
             return m.group('id')
 
-    def extract_metadata_url(self, jsonld_doc, landing_page_url):
+    def extract_metadata_url(self, jsonld):
         """
+        In ARM, the JSON-LD is structured as follows
+
+        {
+           .
+           .
+           .
+           "encoding" : {
+               "@type": "MediaObject",
+               "contentUrl": "https://www.acme.org/path/to/doc.xml",
+               "encodingFormat": "http://www.isotc211.org/2005/gmd",
+               "description": "ISO TC211 XML rendering of metadata.",
+               "dateModified": "2019-06-17T10:34:57.260047"
+           }
+        }
+
+        Parameters
+        ----------
+        jsonld : dict
+            JSON-LD as retrieved from a <SCRIPT> element in the landing page
+            URL.
+
         Returns
         -------
         The URL for the metadata document.
         """
-        p = urllib.parse.urlparse(landing_page_url)
-
-        # Seems a bit dangerous.
-        path = p.path.replace('html', 'xml')
-
-        metadata_url = f"{p.scheme}://{p.netloc}{path}"
-        return metadata_url
+        return jsonld['encoding']['contentUrl']

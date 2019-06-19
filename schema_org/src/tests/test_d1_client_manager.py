@@ -2,7 +2,7 @@
 import datetime as dt
 try:
     import importlib.resources as ir
-except ImportError:
+except ImportError:  # pragma:  nocover
     import importlib_resources as ir
 import unittest
 from unittest.mock import patch, Mock

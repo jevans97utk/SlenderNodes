@@ -92,7 +92,7 @@ class CommonHarvester(object):
         self.skipped_exists_count = 0
         self.created_count = 0
         self.rejected_count = 0
-        self.unprocessed_count = 0
+        self.failure_count = 0
 
         requests.packages.urllib3.disable_warnings()
 
@@ -307,44 +307,41 @@ class CommonHarvester(object):
         for url, lastmod_time in records:
             try:
                 self.process_record(url, lastmod_time)
-            except lxml.etree.XMLSyntaxError as e:
-                self.unprocessed_count += 1
+            except Exception as e:
+                self.rejected_count += 1
                 msg = f"Unable to process {url} due to {repr(e)}."
-                self.logger.error(e)
-            except RuntimeError:
-                self.unprocessed_count += 1
+                self.logger.error(msg)
 
+        self.logger.info(f'Created {self.created_count} new records.')
         self.logger.info(f'Updated {self.updated_count} records.')
         self.logger.info(f'Skipped {self.skipped_exists_count} records.')
-        self.logger.info(f'Created {self.created_count} new records.')
         self.logger.info(f'Rejected {self.rejected_count} records.')
+        self.logger.info(f'Failed to update {self.failure_count} records.')
 
-        msg = f'Could not process {self.unprocessed_count} records.'
-        self.logger.info(msg)
-
-    def harvest_document(self, identifier, doc, record_date):
+    def harvest_document(self, doi, doc, record_date):
         """
         Check if the member node has seen the document before and decide how to
         harvest it (or not) accordingly.
 
         Parameters
         ----------
-        identifier : str
+        doi : str
             Handle used to identify objects uniquely.
         doc : bytes
             serialized version of XML metadata document
         record_date : datetime obj
             Last document modification time according to the site map.
         """
-        exists_dict = self.client_mgr.check_if_identifier_exists(identifier)
+        exists_dict = self.client_mgr.check_if_identifier_exists(doi)
 
         if (
             exists_dict['outcome'] == 'yes'
             and exists_dict['record_date'] != record_date
         ):
-            if not self.can_be_updated(doc, exists_dict['current_version_id']):
+            current_sid = exists_dict['current_version_id']
+            if not self.can_be_updated(doc, doi, current_sid):
                 self.rejected_count += 1
-                self.logger.warning(f'Refused to update {identifier}.')
+                self.logger.warning(f'Refused to update {doi}.')
 
             # the outcome of exists_dict determines how to
             # handle the record.  if identifier exists in GMN but
@@ -352,14 +349,15 @@ class CommonHarvester(object):
             # call update method.
             elif self.client_mgr.update_science_metadata(
                 doc,
-                identifier,
+                doi,
                 record_date,
                 exists_dict['current_version_id']
             ):
                 self.updated_count += 1
-                self.logger.info(f'Updated {identifier}.')
+                self.logger.info(f'Updated {doi}.')
             else:
-                self.logger.warning(f'Unable to update {identifier}.')
+                self.failure_count += 1
+                self.logger.warning(f'Unable to update {doi}.')
 
         elif (
             exists_dict['outcome'] == 'yes'
@@ -373,7 +371,7 @@ class CommonHarvester(object):
             self.skipped_exists_count += 1
 
             msg = (
-                f'Skipped {identifier}, '
+                f'Skipped {doi}, '
                 f'it already exists and has the same record date'
             )
             self.logger.info(msg)
@@ -382,7 +380,7 @@ class CommonHarvester(object):
             # if check failed for some reason, d1_client_manager would have
             # logged the error so just skip.
             msg = (
-                f'The existance check for {identifier} failed.  Is this '
+                f'The existance check for {doi} failed.  Is this '
                 f'logged anywhere?'
             )
             self.logger.warning(msg)
@@ -390,28 +388,35 @@ class CommonHarvester(object):
         elif exists_dict['outcome'] == 'no':
             # If this identifer is not already found in GMN in any way, then
             # create a new object in GMN
-            if self.client_mgr.load_science_metadata(doc, identifier,
-                                                     record_date):
+            if self.client_mgr.load_science_metadata(doc, doi, record_date):
                 # track number of successfully created new objects
                 self.created_count += 1
 
-                msg = f'Created a new object identified as {identifier}'
+                msg = f'Created a new object identified as {doi}'
                 self.logger.info(msg)
 
             else:
                 msg = (
-                    f'Unable to create new object identified as {identifier}.'
+                    f'Unable to create new object identified as {doi}.'
                 )
                 self.logger.error(msg)
+                self.failure_count += 1
 
-    def can_be_updated(self, new_doc_bytes, old_identifier):
+    def can_be_updated(self, new_doc_bytes, doi, existing_sid):
         """
-        This code will break in production.
+        We have an existing document in the system and have been give a
+        proposed update document.  We need to decide if an update is warranted.
+
+        The tie-breakers are:
+
+            i)  the value of the MD_ProgressCode.
+            ii) the value of the dateStamp.
+
+        This code MAY break in production.
         """
         new_doc = lxml.etree.parse(io.BytesIO(new_doc_bytes))
-        nsmap = new_doc.getroot().nsmap
 
-        url = f"{self.mn_base_url}/v2/object/{old_identifier}"
+        url = f"{self.mn_base_url}/v2/object/{existing_sid}"
 
         # Get the existing document.
         # TODO:  We can't do it this way, must use the client.  Just don't know
@@ -421,19 +426,54 @@ class CommonHarvester(object):
 
         old_doc = lxml.etree.parse(io.BytesIO(r.content))
 
+        # Get the progress code
         parts = [
-            'ns0:identificationInfo',
-            'ns0:MD_DataIdentification',
-            'ns0:status',
-            'ns0:MD_ProgressCode',
+            'gmd:identificationInfo',
+            'gmd:MD_DataIdentification',
+            'gmd:status',
+            'gmd:MD_ProgressCode',
             'text()'
         ]
         path = '/'.join(parts)
-        new_progress_code = new_doc.xpath(path, namespaces=nsmap)[0]
-        old_progress_code = old_doc.xpath(path, namespaces=nsmap)[0]  # noqa:  F841
-        if new_progress_code == 'completed':
+        new_progress_code = new_doc.xpath(path, namespaces=ISO_NSMAP)[0]
+        old_progress_code = old_doc.xpath(path, namespaces=ISO_NSMAP)[0]  # noqa:  F841
+
+        # Get the metadata timestamp.  There are two possible paths.
+        path = (
+            'gmd:dateStamp/gco:Date/text()'
+            '|'
+            'gmd:dateStamp/gco:DateTime/text()'
+        )
+        s = new_doc.xpath(path, namespaces=ISO_NSMAP)[0]
+        new_timestamp = dateutil.parser.parse(s)
+        s = old_doc.xpath(path, namespaces=ISO_NSMAP)[0]
+        old_timestamp = dateutil.parser.parse(s)
+
+        if (
+            new_progress_code.lower() in ['complete', 'completed']
+            and old_progress_code.lower() not in ['complete', 'completed']
+        ):
+            # Yes, we should update.  The new document is finished while the
+            # old document is not.
+            return True
+        elif (
+            new_progress_code.lower() in ['complete', 'completed']
+            and old_progress_code.lower() in ['complete', 'completed']
+            and new_timestamp > old_timestamp
+        ):
+            # We have a tie between the progress codes, but the proposed
+            # update document has a newer timestamp.
             return True
         else:
+            msg = (
+                f"The existing document identified by {doi} with SID "
+                f"{existing_sid} has an MD_ProgressCode of "
+                f"\"{old_progress_code}\" and a metadata timestamp of "
+                f"{old_timestamp} while the proposed updating "
+                f"document has MD_ProgressCode \"{new_progress_code}\" and a "
+                f"metadata timestamp of {new_timestamp}."
+            )
+            self.logger.warning(msg)
             return False
 
     def retrieve_metadata_document(self, metadata_url):
@@ -490,9 +530,7 @@ class CommonHarvester(object):
         identifier = self.extract_identifier(jsonld)
         self.logger.info(f"Have identified {identifier}...")
 
-        # The URL for the metadata documents should be the first 'url' field
-        # of the field named 'ISO Metadata Document'
-        metadata_url = self.extract_metadata_url(jsonld, landing_page_url)
+        metadata_url = self.extract_metadata_url(jsonld)
 
         doc = self.retrieve_metadata_document(metadata_url)
 
