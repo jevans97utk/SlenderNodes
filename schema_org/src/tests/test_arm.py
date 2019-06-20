@@ -110,7 +110,7 @@ class TestSuite(TestCommon):
         """
         SCENARIO:  The XML metadata document is invalid.
 
-        EXPECTED RESULT:  The rejected count goes up by one.
+        EXPECTED RESULT:  The failure count goes up by one.
         """
 
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
@@ -132,8 +132,8 @@ class TestSuite(TestCommon):
 
         harvester = ARMHarvester()
 
-        rejected_count = harvester.rejected_count
+        failed_count = harvester.failed_count
 
         harvester.run()
 
-        self.assertEqual(harvester.rejected_count, rejected_count + 1)
+        self.assertEqual(harvester.failed_count, failed_count + 1)

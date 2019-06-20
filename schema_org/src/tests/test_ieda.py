@@ -332,7 +332,8 @@ class TestSuite(TestCommon):
         # This is the "update" document, same as the existing document.  It is
         # already marked as "complete".  Bump the timestamp to just a bit later
         # to make ok to proceed.
-        doc = ir.read_binary('tests.data.ieda', '600121iso-later.xml')
+        docbytes = ir.read_binary('tests.data.ieda', '600121iso-later.xml')
+        doc = lxml.etree.parse(io.BytesIO(docbytes))
 
         identifier = 'doi.10000/abcde'
         harvester.harvest_document(identifier, doc, record_date)
@@ -371,22 +372,18 @@ class TestSuite(TestCommon):
         mock_update_science_metadata.return_value = False
 
         harvester = IEDAHarvester()
-        initial_failure_count = harvester.failure_count
+        initial_failed_count = harvester.failed_count
 
         # Read a document that is the same except it has a later metadata
         # timestamp.  This means that we should update it.
         doc_bytes = ir.read_binary('tests.data.ieda', '600121iso-later.xml')
         doc = lxml.etree.parse(io.BytesIO(doc_bytes))
 
-        # Reserialize back to bytes.
-        doc_bytes = lxml.etree.tostring(doc, pretty_print=True,
-                                        encoding='utf-8', standalone=True)
-
         identifier = 'doi.10000/abcde'
-        harvester.harvest_document(identifier, doc_bytes, record_date)
+        harvester.harvest_document(identifier, doc, record_date)
 
         # Did we increase the failure count?
-        self.assertEqual(harvester.failure_count, initial_failure_count + 1)
+        self.assertEqual(harvester.failed_count, initial_failed_count + 1)
 
         # Did we see a warning?
         self.assertTrue(harvester.logger.warning.call_count > 0)
@@ -417,6 +414,7 @@ class TestSuite(TestCommon):
         # This is the proposed update document that is the same except it is
         # marked as complete.
         update_doc_bytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        update_doc = lxml.etree.parse(io.BytesIO(update_doc_bytes))
 
         record_date = dt.datetime.now()
         mock_check_if_identifier_exists.return_value = {
@@ -430,7 +428,7 @@ class TestSuite(TestCommon):
         initial_updated_count = harvester.updated_count
 
         identifier = 'doi.10000/abcde'
-        harvester.harvest_document(identifier, update_doc_bytes, record_date)
+        harvester.harvest_document(identifier, update_doc, record_date)
 
         # Did we increase the failure count?
         self.assertEqual(harvester.updated_count, initial_updated_count + 1)
@@ -476,12 +474,8 @@ class TestSuite(TestCommon):
         doc_bytes = ir.read_binary('tests.data.ieda', '600121iso-earlier.xml')
         doc = lxml.etree.parse(io.BytesIO(doc_bytes))
 
-        # Reserialize back to bytes.
-        doc_bytes = lxml.etree.tostring(doc, pretty_print=True,
-                                        encoding='utf-8', standalone=True)
-
         identifier = 'doi.10000/abcde'
-        harvester.harvest_document(identifier, doc_bytes, record_date)
+        harvester.harvest_document(identifier, doc, record_date)
 
         # Did we increase the failure count?
         self.assertEqual(harvester.rejected_count, initial_rejected_count + 1)
@@ -514,7 +508,8 @@ class TestSuite(TestCommon):
 
         harvester = IEDAHarvester()
         skipped_count = harvester.skipped_exists_count
-        doc = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        doc = lxml.etree.parse(io.BytesIO(docbytes))
 
         identifier = 'doi.10000/abcde'
         harvester.harvest_document(identifier, doc, record_date)
@@ -539,7 +534,9 @@ class TestSuite(TestCommon):
         }
 
         harvester = IEDAHarvester()
-        doc = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        doc = lxml.etree.parse(io.BytesIO(docbytes))
+
         record_date = dt.datetime.now()
 
         identifier = 'doi.10000/abcde'
@@ -567,7 +564,8 @@ class TestSuite(TestCommon):
         mock_load_science_metadata.return_value = True
 
         harvester = IEDAHarvester()
-        doc = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        doc = lxml.etree.parse(io.BytesIO(docbytes))
 
         harvester.harvest_document('doi.10000/abcde', doc, dt.datetime.now())
 
@@ -593,7 +591,8 @@ class TestSuite(TestCommon):
         mock_load_science_metadata.return_value = False
 
         harvester = IEDAHarvester()
-        doc = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        doc = lxml.etree.parse(io.BytesIO(docbytes))
 
         harvester.harvest_document('doi.10000/abcde', doc, dt.datetime.now())
 

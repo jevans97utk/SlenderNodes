@@ -31,6 +31,23 @@ kwargs = {
     'url': 'https://github.com/DataONEorg/d1_python',
     'license': 'Apache License, Version 2.0',
     'packages': ['schema_org'],
+    'package_data': {
+        'schema_org': {
+            'data/schema/gco/*.xsd',
+            'data/schema/gfc/*.xsd',
+            'data/schema/gmd/*.xsd',
+            'data/schema/gmi/*.xsd',
+            'data/schema/gml/*.xsd',
+            'data/schema/gmx/*.xsd',
+            'data/schema/gsr/*.xsd',
+            'data/schema/gss/*.xsd',
+            'data/schema/gts/*.xsd',
+            'data/schema/mf/*.xsd',
+            'data/schema/resources/*.xsd',
+            'data/schema/srv/*.xsd',
+            'data/schema/xlink/*.xsd',
+        }
+    },
     'install_requires': [
         'python-dateutil', 'requests', 'lxml', 'importlib_resources'
     ],
@@ -48,6 +65,7 @@ kwargs = {
     ),
     'entry_points': {
         'console_scripts': [
+            'dataone-validate=schema_org.commandline:validate',
             'harvest-arm=schema_org.commandline:arm',
             'harvest-ieda=schema_org.commandline:ieda',
         ],

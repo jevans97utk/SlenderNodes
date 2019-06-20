@@ -4,6 +4,7 @@ import argparse
 # Local imports
 from .arm import ARMHarvester
 from .ieda import IEDAHarvester
+from .xml_validator import XMLValidator
 
 
 def setup_parser(id):
@@ -62,3 +63,22 @@ def ieda():
                                    certificate=args.certificate,
                                    private_key=args.key)
     ieda_harvester.run()
+
+
+def validate():
+    """
+    Validate an XML document.
+    """
+    description = f"Validate XML metadata."
+    parser = argparse.ArgumentParser(
+        description=description,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    help = "XML file or URL"
+    parser.add_argument('infile', help=help)
+
+    args = parser.parse_args()
+
+    validator = XMLValidator()
+    validator.validate(args.infile)

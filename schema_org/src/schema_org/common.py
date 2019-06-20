@@ -15,6 +15,7 @@ import requests
 
 # Local imports
 from .d1_client_manager import D1ClientManager
+from .xml_validator import XMLValidator
 
 UNESCAPED_DOUBLE_QUOTES_MSG = 'Unescaped double-quotes have been corrected.'
 OVER_ESCAPED_DOUBLE_QUOTES_MSG = (
@@ -40,8 +41,10 @@ class CommonHarvester(object):
     ----------
     client_mgs : object
         Handles direct communication with dataone host.
-    created_count, skipped_exist_count, updated_count: int
-        Counters for the different ways that records are handled.
+    {created,failed,rejected_skipped_exists,updated}_count t: int
+        Counters for the different ways that records are handled.  "failed" is
+        different from "rejected" in the sense that this code knows why a
+        rejection occurs.
     logger : logging.Logger
         All events are recorded by this object.
     mn_base_url : str
@@ -78,21 +81,22 @@ class CommonHarvester(object):
             'originMN': f'urn:node:{id.upper()}',
 
             # should be consistent w/ scimeta_element format
-            'formatId_custom': f'http://www.isotc211.org/2005/gmd-{id}'
+            'formatId_custom': 'http://www.isotc211.org/2005/gmd'
         }
 
         self.client_mgr = D1ClientManager(self.mn_base_url,
                                           certificate, private_key,
                                           sys_meta_dict,
                                           self.logger)
+        self.xml_validator = XMLValidator()
 
         # Count the different ways that we update/create/skip records.  This
         # will be logged when we are finished.
-        self.updated_count = 0
-        self.skipped_exists_count = 0
         self.created_count = 0
+        self.failed_count = 0
         self.rejected_count = 0
-        self.failure_count = 0
+        self.skipped_exists_count = 0
+        self.updated_count = 0
 
         requests.packages.urllib3.disable_warnings()
 
@@ -308,7 +312,7 @@ class CommonHarvester(object):
             try:
                 self.process_record(url, lastmod_time)
             except Exception as e:
-                self.rejected_count += 1
+                self.failed_count += 1
                 msg = f"Unable to process {url} due to {repr(e)}."
                 self.logger.error(msg)
 
@@ -316,7 +320,7 @@ class CommonHarvester(object):
         self.logger.info(f'Updated {self.updated_count} records.')
         self.logger.info(f'Skipped {self.skipped_exists_count} records.')
         self.logger.info(f'Rejected {self.rejected_count} records.')
-        self.logger.info(f'Failed to update {self.failure_count} records.')
+        self.logger.info(f'Failed to update/create {self.failed_count} records.')  # noqa: E501
 
     def harvest_document(self, doi, doc, record_date):
         """
@@ -332,6 +336,10 @@ class CommonHarvester(object):
         record_date : datetime obj
             Last document modification time according to the site map.
         """
+        # Re-seriealize to bytes.
+        docbytes = lxml.etree.tostring(doc, pretty_print=True,
+                                       encoding='utf-8', standalone=True)
+
         exists_dict = self.client_mgr.check_if_identifier_exists(doi)
 
         if (
@@ -339,7 +347,7 @@ class CommonHarvester(object):
             and exists_dict['record_date'] != record_date
         ):
             current_sid = exists_dict['current_version_id']
-            if not self.can_be_updated(doc, doi, current_sid):
+            if not self.can_be_updated(docbytes, doi, current_sid):
                 self.rejected_count += 1
                 self.logger.warning(f'Refused to update {doi}.')
 
@@ -348,7 +356,7 @@ class CommonHarvester(object):
             # record date is different, this truly is an update so
             # call update method.
             elif self.client_mgr.update_science_metadata(
-                doc,
+                docbytes,
                 doi,
                 record_date,
                 exists_dict['current_version_id']
@@ -356,7 +364,7 @@ class CommonHarvester(object):
                 self.updated_count += 1
                 self.logger.info(f'Updated {doi}.')
             else:
-                self.failure_count += 1
+                self.failed_count += 1
                 self.logger.warning(f'Unable to update {doi}.')
 
         elif (
@@ -388,7 +396,7 @@ class CommonHarvester(object):
         elif exists_dict['outcome'] == 'no':
             # If this identifer is not already found in GMN in any way, then
             # create a new object in GMN
-            if self.client_mgr.load_science_metadata(doc, doi, record_date):
+            if self.client_mgr.load_science_metadata(docbytes, doi, record_date):  # noqa: E501
                 # track number of successfully created new objects
                 self.created_count += 1
 
@@ -400,7 +408,7 @@ class CommonHarvester(object):
                     f'Unable to create new object identified as {doi}.'
                 )
                 self.logger.error(msg)
-                self.failure_count += 1
+                self.failed_count += 1
 
     def can_be_updated(self, new_doc_bytes, doi, existing_sid):
         """
@@ -490,18 +498,14 @@ class CommonHarvester(object):
 
         Returns
         -------
-        Byte stream corresponding to possibly transformed metadata document.
+        The ElementTree document.
         """
         # Retrieve the metadata document.
         self.logger.info(f"Requesting {metadata_url}...")
         r = self.retrieve_url(metadata_url)
         doc = lxml.etree.parse(io.BytesIO(r.content))
 
-        # Re-seriealize to bytes.
-        docbytes = lxml.etree.tostring(doc, pretty_print=True,
-                                       encoding='utf-8', standalone=True)
-
-        return docbytes
+        return doc
 
     def process_record(self, landing_page_url, record_date):
         """
@@ -533,6 +537,7 @@ class CommonHarvester(object):
         metadata_url = self.extract_metadata_url(jsonld)
 
         doc = self.retrieve_metadata_document(metadata_url)
+        self.xml_validator.validate(doc)
 
         self.harvest_document(identifier, doc, record_date)
 
