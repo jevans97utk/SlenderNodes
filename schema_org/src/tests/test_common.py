@@ -95,6 +95,6 @@ class TestCommon(unittest.TestCase):
         ]
 
         patchee = 'schema_org.common.requests.Session.get'
-        self.requests_patcher = patch(patchee, side_effect=side_effect)
-        self.addCleanup(self.requests_patcher.stop)
-        self.requests_patcher.start()
+        self.session_patcher = patch(patchee, side_effect=side_effect)
+        self.addCleanup(self.session_patcher.stop)
+        self.session_patcher.start()

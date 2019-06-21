@@ -3,7 +3,7 @@ import io
 import pathlib
 
 # Third party library imports ...
-from lxml import etree
+import lxml.etree
 import requests
 
 # 19115-2 XSD.  Use this for validation.
@@ -46,7 +46,7 @@ class XMLValidator(object):
         path = pathlib.Path(__file__).parent / 'data'
         schema_doc = _SCHEMA_DOC.format(install_root=path.as_uri())
         f = io.StringIO(schema_doc)
-        self.schema = etree.XMLSchema(file=f)
+        self.schema = lxml.etree.XMLSchema(file=f)
 
     def validate(self, src):
         """
@@ -54,21 +54,44 @@ class XMLValidator(object):
 
         Parameters
         ----------
-        src : str
+        src : str or file-like
            file or URL to validate
         """
+        # Is it file or file-like, but not a path.
         try:
-            path = pathlib.Path(src)
-        except TypeError:
-            # It is not str (url or file) so it must be ElementTree already
-            doc = src
+            doc = lxml.etree.parse(src)
+        except Exception:
+            # OSError:  if a string that doesn't exist on filesystem
+            # TypeError:  if the item is already an ElementTree
+            pass
         else:
-            if path.exists():
-                # It exists on the local filesystem, so treat it as a file.
-                doc = etree.parse(src)
-            else:
-                # Assume it is a URL.
-                r = requests.get(src)
-                doc = etree.parse(io.BytesIO(r.content))
+            # The src was file or file-like object.
+            self.schema.assertValid(doc)
+            return
 
-        self.schema.assertValid(doc)
+        # Is it a URL?
+        try:
+            r = requests.get(src)
+            r.raise_for_status()
+        except Exception:
+            # Not a valid URL
+            pass
+        else:
+            doc = lxml.etree.parse(io.BytesIO(r.content))
+            self.schema.assertValid(doc)
+            return
+
+        # Is it a pathlib object?
+        try:
+            doc = lxml.etree.parse(str(src))
+        except Exception:
+            # OSError:  if a string that doesn't exist on filesystem
+            # TypeError:  if the item is already an ElementTree
+            pass
+        else:
+            # The src was file or file-like object.
+            self.schema.assertValid(doc)
+            return
+
+        # Assume it is already an ElementTree
+        self.schema.assertValid(src)

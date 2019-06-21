@@ -138,20 +138,11 @@ class TestSuite(TestCommon):
         harvester = IEDAHarvester()
         harvester.run()
 
-        # The INFO logger is invoked with:
-        #
-        #   1) the last harvest time
-        #   2-9) 4 calls per record (there are two records)
-        #     i)  request for an HTML document
-        #     ii) exposing the identifier
-        #     iii) request for the XML document
-        #     iv) harvesting the object
-        #   10) final "updated" count
-        #   11) final "skipped" count
-        #   12) final "created" count
-        #   13) final "unprocessed" count
-        #   14) final "rejected" count
-        self.assertEqual(harvester.logger.info.call_count, 14)
+        # There should be lots of log messages at the info level, but none
+        # at the warning or error level.
+        self.assertTrue(harvester.logger.info.call_count > 0)
+        self.assertEqual(harvester.logger.warning.call_count, 0)
+        self.assertEqual(harvester.logger.error.call_count, 0)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
