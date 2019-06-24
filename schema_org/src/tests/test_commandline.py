@@ -4,7 +4,6 @@ Test suite for command line tools.
 
 # Standard library imports
 import sys
-import unittest
 from unittest.mock import patch
 
 # Local imports

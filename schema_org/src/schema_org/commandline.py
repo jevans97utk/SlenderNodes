@@ -40,6 +40,12 @@ def setup_parser(id):
     help = 'Path to dataone host private key.'
     parser.add_argument('--key', default=None, help=help)
 
+    help = (
+        'Supply a pattern to restrict records to just those that match.  This '
+        'option disables the check against the last harvest time.'
+    )
+    parser.add_argument('--regex', default=None, help=help)
+
     return parser
 
 
@@ -47,10 +53,11 @@ def arm():
     parser = setup_parser("arm")
     args = parser.parse_args()
 
-    arm_harvester = ARMHarvester(args.host, port=args.port,
+    arm_harvester = ARMHarvester(host=args.host, port=args.port,
                                  verbosity=args.verbose,
                                  certificate=args.certificate,
-                                 private_key=args.key)
+                                 private_key=args.key,
+                                 regex=args.regex)
     arm_harvester.run()
 
 
@@ -58,10 +65,11 @@ def ieda():
     parser = setup_parser("ieda")
     args = parser.parse_args()
 
-    ieda_harvester = IEDAHarvester(args.host, port=args.port,
+    ieda_harvester = IEDAHarvester(host=args.host, port=args.port,
                                    verbosity=args.verbose,
                                    certificate=args.certificate,
-                                   private_key=args.key)
+                                   private_key=args.key,
+                                   regex=args.regex)
     ieda_harvester.run()
 
 

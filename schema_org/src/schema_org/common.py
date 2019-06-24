@@ -53,8 +53,8 @@ class CommonHarvester(object):
         Makes all URL requests.
     """
 
-    def __init__(self, host, port, certificate, private_key, id=None,
-                 verbosity='INFO'):
+    def __init__(self, host=None, port=None, certificate=None,
+                 private_key=None, verbosity='INFO', regex=None, id=None):
         """
         Parameters
         ----------
@@ -68,6 +68,8 @@ class CommonHarvester(object):
         self.setup_session(certificate, private_key)
 
         self.setup_logging(id, verbosity)
+
+        self.regex = None if regex is None else re.compile(regex)
 
         self.mn_base_url = f'https://{host}:{port}/mn'
         sys_meta_dict = {
@@ -541,13 +543,30 @@ class CommonHarvester(object):
 
         self.harvest_document(identifier, doc, record_date)
 
+    def url_is_cleared(self, url, lastmod, last_harvest_time):
+        """
+        If the user supplied a regex, then we want to only attempt those
+        landing page URLs that match the regex.  Otherwise, look at the last
+        harvest time to determine if the URL is cleared.
+        """
+        if self.regex is not None:
+            if self.regex.search(url):
+                return True
+            else:
+                return False
+        else:
+            if lastmod >= last_harvest_time:
+                return True
+            else:
+                return False
+
     def get_records(self, last_harvest_time):
         """
         TODO
         """
         r = self.get_site_map()
 
-        # Get a list of URL/modification time pairs.
+        # Get lists of the landing page URLs and their last modification times.
         doc = lxml.etree.parse(io.BytesIO(r.content))
         urls = doc.xpath('.//sitemap:loc/text()', namespaces=SITE_NSMAP)
 
@@ -568,6 +587,7 @@ class CommonHarvester(object):
 
         records = [
             (url, lastmod)
-            for url, lastmod in z if lastmod >= last_harvest_time
+            for url, lastmod in z
+            if self.url_is_cleared(url, lastmod, last_harvest_time)
         ]
         return records

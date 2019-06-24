@@ -6,7 +6,7 @@ import pathlib
 import lxml.etree
 import requests
 
-# 19115-2 XSD.  Use this for validation.
+# Before this schema can be used, the install root must be interpolated.
 _SCHEMA_DOC = """
 <!--
     Nov 20, 2009, AMilan

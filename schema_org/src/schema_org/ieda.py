@@ -10,11 +10,8 @@ from .common import CommonHarvester
 
 class IEDAHarvester(CommonHarvester):
 
-    def __init__(self, host='localhost', port=443,
-                 certificate=None, private_key=None,
-                 verbosity='INFO'):
-        super().__init__(host, port, certificate, private_key, id='ieda',
-                         verbosity=verbosity)
+    def __init__(self, **kwargs):
+        super().__init__(id='ieda', **kwargs)
 
         self.site_map = 'http://get.iedadata.org/sitemaps/usap_sitemap.xml'
 

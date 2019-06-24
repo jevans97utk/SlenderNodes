@@ -13,11 +13,8 @@ SITE_NSMAP = {'sitemap': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
 
 class ARMHarvester(CommonHarvester):
 
-    def __init__(self, host='localhost', port=443,
-                 certificate=None, private_key=None,
-                 verbosity='INFO'):
-        super().__init__(host, port, certificate, private_key,
-                         id='arm', verbosity=verbosity)
+    def __init__(self, **kwargs):
+        super().__init__(id='arm', **kwargs)
 
         self.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
 
