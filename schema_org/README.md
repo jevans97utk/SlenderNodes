@@ -4,6 +4,38 @@ Slender Node Adapter Supporting schema.org described Resources
 Notes for implementation of a "slender node" adapter to support synchronization
 of content described with schema.org constructs.
 
+TLDR;
+-----
+```
+$ python setup.py install
+```
+
+This will install two command-line utilities, harvest-ieda and harvest-arm, that may be used to harvest IEDA and ARM metadata.
+
+```
+$ harvest-ieda -h
+usage: harvest-ieda [-h] [-v {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
+                [--host HOST] [--port PORT] [--certificate CERTIFICATE]
+                [--key KEY]
+
+Harvest metadata from IEDA.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --verbose {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+                        Verbosity level of log file ieda.log (default: INFO)
+  --host HOST           Harvest records to this dataone node host. This is NOT
+                        the host where the site map is found. (default:
+                        localhost)
+  --port PORT           DataONE host SSL port. (default: 443)
+  --certificate CERTIFICATE
+                        Path to dataone host certificate. (default: None)
+  --key KEY             Path to dataone host private key. (default: None)
+
+Not supplying an argument to both the certificate and key arguments will
+disable client side authentication.
+```
+
 Discovery Pattern
 -----------------
 
