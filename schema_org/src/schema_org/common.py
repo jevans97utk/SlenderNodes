@@ -429,8 +429,6 @@ class CommonHarvester(object):
         url = f"{self.mn_base_url}/v2/object/{existing_sid}"
 
         # Get the existing document.
-        # TODO:  We can't do it this way, must use the client.  Just don't know
-        # how to do that yet.
         r = self.session.get(url, headers={'Accept': 'text/xml'})
         r.raise_for_status()
 
@@ -562,7 +560,14 @@ class CommonHarvester(object):
 
     def get_records(self, last_harvest_time):
         """
-        TODO
+        Gather all the landing page URLs and modification times from the
+        sitemap document.
+
+        Parameters
+        ----------
+        last_harvest_time : datetime
+            According to the MN, this is the last time we, uh, harvested any
+            document.
         """
         r = self.get_site_map()
 
