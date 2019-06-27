@@ -4,6 +4,7 @@ import argparse
 # Local imports
 from .arm import ARMHarvester
 from .ieda import IEDAHarvester
+from .web_demo import WebDemo
 from .xml_validator import XMLValidator
 
 
@@ -90,3 +91,36 @@ def validate():
 
     validator = XMLValidator()
     validator.validate(args.infile)
+
+
+def d1_web_demo():
+    """
+    Command-line entry point for web demo.
+    """
+
+    description = f"Demo for processing JSON-LD metadata"
+    parser = argparse.ArgumentParser(
+        description=description,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
+    help = "Harvest records from this sitemap URL."
+    parser.add_argument('sitemap', help=help)
+
+    help = f"Verbosity level of log file demo.log"
+    choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    parser.add_argument('-v', '--verbose', choices=choices, default='INFO',
+                        help=help)
+
+    help = (
+        'Supply a pattern to restrict records to just those that match.  This '
+        'option disables the check against the last modification time in the '
+        'site map.'
+    )
+    parser.add_argument('--regex', default=None, help=help)
+    args = parser.parse_args()
+
+    web_demo = WebDemo(args.sitemap, verbosity=args.verbose, regex=args.regex)
+    web_demo.run()
+
+

@@ -68,6 +68,7 @@ kwargs = {
             'dataone-validate=schema_org.commandline:validate',
             'harvest-arm=schema_org.commandline:arm',
             'harvest-ieda=schema_org.commandline:ieda',
+            'd1webdemo=schema_org.commandline:d1_web_demo',
         ],
     }
 }
