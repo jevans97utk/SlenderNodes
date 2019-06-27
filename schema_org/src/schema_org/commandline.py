@@ -42,7 +42,8 @@ def setup_parser(id):
 
     help = (
         'Supply a pattern to restrict records to just those that match.  This '
-        'option disables the check against the last harvest time.'
+        'option disables the check against the last modification time in the '
+        'site map.'
     )
     parser.add_argument('--regex', default=None, help=help)
 
