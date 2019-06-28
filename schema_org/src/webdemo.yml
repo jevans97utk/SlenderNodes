@@ -57,6 +57,7 @@ dependencies:
   - setuptools
   - six
   - sqlite
+  - sqlparse
   - tk
   - urllib3
   - wcwidth
