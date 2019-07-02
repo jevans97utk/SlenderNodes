@@ -27,4 +27,5 @@ class Document(models.Model):
         return self.landing_page_url
 
     def was_modified_recently(self):
-        return last_modification_date >= timezone.now() - datetime.timedelta(days=1)
+        recent_time = timezone.now() - datetime.timedelta(days=1)
+        return self.last_modification_date >= recent_time

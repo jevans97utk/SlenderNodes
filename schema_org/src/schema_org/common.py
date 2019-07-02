@@ -92,6 +92,8 @@ class CommonHarvester(object):
                                           self.logger)
         self.xml_validator = XMLValidator()
 
+        self.documents = []
+
         # Count the different ways that we update/create/skip records.  This
         # will be logged when we are finished.
         self.created_count = 0
@@ -540,6 +542,14 @@ class CommonHarvester(object):
         self.xml_validator.validate(doc)
 
         self.harvest_document(identifier, doc, record_date)
+
+        item = {
+            'landing_page_url': landing_page_url,
+            'last_modification_date': record_date,
+            'json_ld': json.dumps(jsonld),
+            'metadata_url': metadata_url,
+        }
+        self.documents.append(item)
 
     def url_is_cleared(self, url, lastmod, last_harvest_time):
         """

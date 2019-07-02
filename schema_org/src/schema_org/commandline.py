@@ -122,5 +122,3 @@ def d1_web_demo():
 
     web_demo = WebDemo(args.sitemap, verbosity=args.verbose, regex=args.regex)
     web_demo.run()
-
-

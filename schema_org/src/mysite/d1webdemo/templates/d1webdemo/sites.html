@@ -1,0 +1,18 @@
+<h1>Sites</h1>
+
+{% if error_message %}<p><strong>{{ error_message }}</strong></p>{% endif %}
+
+<form action="{% url 'd1webdemo:site_docs' site.id %}" method="post">
+{% csrf_token %}
+{% for site in sites %}
+    <input type="radio" name="site" id="site{{ forloop.counter }}" value="{{ site.id }}">
+    <label for="site{{ forloop.counter }}">{{ site.url }}</label><br>
+{% endfor %}
+<input type="submit" value="Choose">
+</form>
+
+<h1>Enter URL of other sitemap</h1>
+
+<form action="{% url 'd1webdemo:newsite' %}" method="post">
+<input type="text" size=50 id="new" name="sitemap_url">
+</form>

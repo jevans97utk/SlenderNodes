@@ -14,9 +14,9 @@ class WebDemo(CommonHarvester):
         super().__init__(id='demo', **kwargs)
 
         self.site_map = server_url
-        
+
         # monkey patch the last harvest time.
-        self.client_mgr.get_last_harvest_time = lambda : '1900-01-01T00:00:00Z'
+        self.client_mgr.get_last_harvest_time = lambda: '1900-01-01T00:00:00Z'
 
     def extract_metadata_url(self, jsonld):
         """
