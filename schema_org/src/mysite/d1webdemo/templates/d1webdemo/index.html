@@ -1,7 +1,7 @@
 {% if latest_site_list %}
     <ul>
     {% for site in latest_site_list %}
-        <li><a href="{% url 'd1webdemo:detail' site.id %}">{{ site.site_name }}</a></li>
+        <li><a href="{% url 'd1webdemo:sitedocs' site.id %}">{{ site.url }}</a></li>
     {% endfor %}
     </ul>
 {% else %}
