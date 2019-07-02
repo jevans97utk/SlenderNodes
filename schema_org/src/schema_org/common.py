@@ -7,6 +7,7 @@ import io
 import json
 import logging
 import re
+import sys
 
 # 3rd party library imports
 import dateutil.parser
@@ -54,7 +55,8 @@ class CommonHarvester(object):
     """
 
     def __init__(self, host=None, port=None, certificate=None,
-                 private_key=None, verbosity='INFO', regex=None, id=None):
+                 private_key=None, verbosity='INFO', regex=None, id=None,
+                 log_to_stdout=False):
         """
         Parameters
         ----------
@@ -64,10 +66,12 @@ class CommonHarvester(object):
         certificate, key : str or path or None
             Paths to client side certificates.  None if no verification is
             desired.
+        log_to_stdout : bool
+            If true, log to stdout in addition to a file.
         """
         self.setup_session(certificate, private_key)
 
-        self.setup_logging(id, verbosity)
+        self.setup_logging(id, verbosity, log_to_stdout=log_to_stdout)
 
         self.regex = None if regex is None else re.compile(regex)
 
@@ -143,7 +147,7 @@ class CommonHarvester(object):
             'From': 'jevans97@utk.edu'
         }
 
-    def setup_logging(self, logid, verbosity):
+    def setup_logging(self, logid, verbosity, log_to_stdout=False):
         """
         Parameters
         ----------
@@ -155,6 +159,13 @@ class CommonHarvester(object):
                             format='%(asctime)s %(levelname)-8s %(message)s',
                             level=level)
         self.logger = logging.getLogger(__name__)
+
+        if log_to_stdout:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setLevel(level)
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
     def fix_jsonld_text(self, text):
         """

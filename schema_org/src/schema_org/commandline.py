@@ -99,9 +99,29 @@ def d1_web_demo():
     """
 
     description = f"Demo for processing JSON-LD metadata"
+    epilog = (
+        "Some canned examples of URLS to try include "
+        "\n\n"
+        "IEDA with 3 docs:\n"
+        "    d1webdemo https://104.236.112.76/demo/ieda/sitemap.xml\n"
+        "\n\n"
+        "IEDA with 1 out of 3 docs:\n"
+        "    d1webdemo --regex=609246 https://104.236.112.76/demo/ieda/sitemap.xml\n"
+        "\n\n"
+        "IEDA with 1 out of 3 docs, print the JSON-LD keys:\n"
+        "    d1webdemo --dumpkeys --regex=609246 https://104.236.112.76/demo/ieda/sitemap.xml\n"
+        "\n\n"
+        "IEDA with 1 out of 3 docs, print the license:\n"
+        "    d1webdemo --dump=license --regex=609246 https://104.236.112.76/demo/ieda/sitemap.xml\n"
+        "\n\n"
+        "ARM with 3 docs:\n"
+        "    d1webdemo https://104.236.112.76/demo/arm/sitemap.xml\n\n"
+        "104.236.112.76 is a DigitalOcean server."
+    )
     parser = argparse.ArgumentParser(
         description=description,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        epilog=epilog,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     help = "Harvest records from this sitemap URL."
@@ -113,6 +133,14 @@ def d1_web_demo():
                         help=help)
 
     help = (
+        "Dump all top-level keys."
+    ) 
+    parser.add_argument('--dumpkeys', action='store_true')
+
+    help = "Dump this top-level item in the JSON-LD."
+    parser.add_argument('--dump', help=help)
+
+    help = (
         'Supply a pattern to restrict records to just those that match.  This '
         'option disables the check against the last modification time in the '
         'site map.'
@@ -120,5 +148,5 @@ def d1_web_demo():
     parser.add_argument('--regex', default=None, help=help)
     args = parser.parse_args()
 
-    web_demo = WebDemo(args.sitemap, verbosity=args.verbose, regex=args.regex)
+    web_demo = WebDemo(args.sitemap, dump=args.dump, dumpkeys=args.dumpkeys, verbosity=args.verbose, regex=args.regex)
     web_demo.run()

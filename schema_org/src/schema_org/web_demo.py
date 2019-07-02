@@ -2,7 +2,12 @@
 DATAONE adapter for the web demo
 """
 # Standard library imports
+import json
+import pprint
 import re
+
+# 3rd party library imports
+import lxml
 
 # Local imports
 from .common import CommonHarvester
@@ -10,15 +15,73 @@ from .common import CommonHarvester
 
 class WebDemo(CommonHarvester):
 
-    def __init__(self, server_url, **kwargs):
-        super().__init__(id='demo', **kwargs)
+    def __init__(self, server_url, dump=None, dumpkeys=None, **kwargs):
+        super().__init__(id='demo', log_to_stdout=True, **kwargs)
 
         self.site_map = server_url
+        self.dumparg = dump
+        self.dumpkeys = dumpkeys
 
         # monkey patch the last harvest time.
         self.client_mgr.get_last_harvest_time = lambda: '1900-01-01T00:00:00Z'
 
+    def process_record(self, landing_page_url, record_date):
+        """
+        Read the remote document, extract the JSON-LD, and load it into the
+        system.
+
+        Parameters
+        ----------
+        jsonld_url : str
+            URL for remote IEDA HTML document
+        record_date : datetime obj
+            Last document modification time according to the site map.
+        """
+        self.logger.info(f"Requesting {landing_page_url}...")
+        r = self.retrieve_url(landing_page_url)
+
+        try:
+            doc = lxml.etree.HTML(r.text)
+        except ValueError:
+            doc = lxml.etree.HTML(r.content)
+
+        jsonld = self.extract_jsonld(doc)
+
+        if self.dumpkeys:
+            pprint.pprint(jsonld.keys())
+
+        if self.dumparg is not None:
+            if self.dumparg == 'dumpkeys':
+                pprint.pprint(jsonld.keys())
+            else:
+                pprint.pprint(jsonld[self.dumparg])
+
+        # Sometimes there is a space in the @id field.  Can't be having any of
+        # that...
+        identifier = self.extract_identifier(jsonld)
+        self.logger.info(f"Have identified {identifier}...")
+
+        metadata_url = self.extract_metadata_url(jsonld)
+
+        doc = self.retrieve_metadata_document(metadata_url)
+
+        self.harvest_document(identifier, doc, record_date)
+
+        item = {
+            'landing_page_url': landing_page_url,
+            'last_modification_date': record_date,
+            'json_ld': json.dumps(jsonld),
+            'metadata_url': metadata_url,
+        }
+        self.documents.append(item)
+
     def extract_metadata_url(self, jsonld):
+        try:
+            return self.extract_metadata_url_ieda(jsonld)
+        except:
+            return jsonld['encoding']['contentUrl']
+
+    def extract_metadata_url_ieda(self, jsonld):
         """
         In IEDA, the JSON-LD is structured as follows:
 
@@ -100,15 +163,27 @@ class WebDemo(CommonHarvester):
         '''
         regex = re.compile(pattern, re.VERBOSE)
         m = regex.search(jsonld['@id'])
+        if m is not None:
+            if m.group('doi_id') is not None:
+                return m.group('doi_id')
+            else:
+                return m.group('other_id')
+
+        # Try ARM
+        pattern = r'''
+            https?://dx.doi.org/(?P<id>10\.\w+/\w+)
+        '''
+        regex = re.compile(pattern, re.VERBOSE)
+        m = regex.search(jsonld['@id'])
         if m is None:
-            msg = f"DOI ID parsing error:  \"{jsonld['@id']}\""
+            msg = (
+                f"DOI ID parsing error, could not parse an ID out of "
+                f"JSON-LD '@id' element \"{jsonld['@id']}\""
+            )
             self.logger.error(msg)
             raise RuntimeError(msg)
-
-        if m.group('doi_id') is not None:
-            return m.group('doi_id')
         else:
-            return m.group('other_id')
+            return m.group('id')
 
     def harvest_document(self, doi, doc, record_date):
         """
