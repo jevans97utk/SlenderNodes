@@ -14,11 +14,21 @@ def create_site(url, days):
     """
     Create a site with the given URL and harvested the given number of days
     ago.
+
+    Parameters
+    ----------
+    url : str
+        URL of the sitemap
+    days : int
+        Number of days ago (forward?) when the site was harvested.
     """
     time = timezone.now() + datetime.timedelta(days=days)
     site = Site.objects.create(url=url, harvest_date=time)
     return site
 
+
+def create_ieda_site():
+    site = create_site(
 
 class IndexViewTests(TestCase):
 
@@ -42,3 +52,18 @@ class IndexViewTests(TestCase):
             response.context['latest_site_list'],
             ['<Site: http://acme.org/sitemap.xml>']
         )
+
+
+class SiteViewTests(TestCase):
+
+    def test_missing_site_id_redirects(self):
+        """
+        The site URL without a site ID should redirect.
+        """
+        response = self.client.get(reverse('d1webdemo:site_no_id'))
+        self.assertRedirects(response, reverse('d1webdemo:index'))
+
+    def test_basic_site(self):
+        """
+        We have one site harvested with 3 documents.
+        """

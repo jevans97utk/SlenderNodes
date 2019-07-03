@@ -45,10 +45,12 @@ def newsite(request):
         return HttpResponseRedirect(path)
 
 
-def sites(request):
-    sites = Site.objects.all()
-    context = {'sites': sites}
-    return render(request, 'd1webdemo/sites.html', context=context)
+def site_no_id(request):
+    """
+    If someone monkeys with the /site/<int>/ URL, just redirect.
+    """
+    path = reverse('d1webdemo:index')
+    return HttpResponseRedirect(path)
 
 
 def site_docs(request, site_id):

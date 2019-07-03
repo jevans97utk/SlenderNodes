@@ -7,7 +7,7 @@ urlpatterns = [
     # ex: /d1webdemo/
     path('', views.IndexView.as_view(), name='index'),
     # ex: /d1webdemo/site/
-    path('site/', views.sites, name='site'),
+    path('site/', views.site_no_id, name='site_no_id'),
     # ex: /d1webdemo/site/5/
     path('site/<int:site_id>/', views.site_docs, name='sitedocs'),
     # ex: /d1webdemo/doc/5/
