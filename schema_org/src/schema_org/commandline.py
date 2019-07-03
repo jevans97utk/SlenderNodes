@@ -5,6 +5,7 @@ import argparse
 from .arm import ARMHarvester
 from .ieda import IEDAHarvester
 from .xml_validator import XMLValidator
+from .testtool import D1TestTool
 
 
 def setup_parser(id):
@@ -48,6 +49,19 @@ def setup_parser(id):
     parser.add_argument('--regex', default=None, help=help)
 
     return parser
+
+
+def d1_check_site():
+
+    parser = argparse.ArgumentParser()
+
+    help = "URL of site map"
+    parser.add_argument('sitemap', type=str, help=help)
+
+    args = parser.parse_args()
+
+    o = D1TestTool(sitemap_url=args.sitemap)
+    o.run()
 
 
 def arm():

@@ -21,7 +21,7 @@ class MockRequestsResponse(object):
     content, text, status_code, elapsed
         Corresponds to the same items in a requests.Response object
     """
-    def __init__(self, content=None, status_code=200):
+    def __init__(self, content=None, status_code=200, headers=None):
         """
         """
         self.content = content
@@ -46,6 +46,7 @@ class MockRequestsResponse(object):
         except json.decoder.JSONDecodeError:
             self._json = None
 
+        self.headers = headers
         self.status_code = status_code
         self.elapsed = dt.timedelta(seconds=1)
 
@@ -71,7 +72,10 @@ class MockRequestsResponse(object):
 
 class TestCommon(unittest.TestCase):
 
-    def setup_requests_session_patcher(self, contents=None, status_codes=None):
+    def setup_requests_session_patcher(self,
+                                       contents=None,
+                                       status_codes=None,
+                                       headers=None):
         """
         Mock out the outcome of calling 'requests.Session.get'
         """
@@ -87,11 +91,15 @@ class TestCommon(unittest.TestCase):
         if contents is None:
             contents = [None for item in status_codes]
 
-        items = zip(contents, status_codes)
+        if headers is None:
+            headers = [{'Content-Type': 'text/html'} for _ in contents]
+
+        items = zip(contents, status_codes, headers)
         side_effect = [
             MockRequestsResponse(content=content,
-                                 status_code=status_code)
-            for content, status_code in items
+                                 status_code=status_code,
+                                 headers=headers)
+            for content, status_code, headers in items
         ]
 
         patchee = 'schema_org.common.requests.Session.get'

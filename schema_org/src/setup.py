@@ -66,6 +66,7 @@ kwargs = {
     'entry_points': {
         'console_scripts': [
             'dataone-validate=schema_org.commandline:validate',
+            'd1-check-site=schema_org.commandline:d1_check_site',
             'harvest-arm=schema_org.commandline:arm',
             'harvest-ieda=schema_org.commandline:ieda',
         ],

@@ -7,6 +7,7 @@ import io
 import json
 import logging
 import re
+import sys
 
 # 3rd party library imports
 import dateutil.parser
@@ -39,6 +40,8 @@ class CommonHarvester(object):
     """
     Attributes
     ----------
+    mn_host : str
+        name of the gmn member node host
     client_mgs : object
         Handles direct communication with dataone host.
     {created,failed,rejected_skipped_exists,updated}_count t: int
@@ -65,6 +68,8 @@ class CommonHarvester(object):
             Paths to client side certificates.  None if no verification is
             desired.
         """
+        self.mn_host = host
+
         self.setup_session(certificate, private_key)
 
         self.setup_logging(id, verbosity)
@@ -116,6 +121,10 @@ class CommonHarvester(object):
             self.logger.error(SITE_MAP_RETRIEVAL_FAILURE_MESSAGE)
             self.logger.error(repr(e))
             raise
+
+        if r.headers['Content-Type'] != 'text/xml':
+            self.logger.warning("The sitemap may not be XML.")
+
         return r
 
     def setup_session(self, certificate, private_key):
@@ -153,6 +162,14 @@ class CommonHarvester(object):
                             format='%(asctime)s %(levelname)-8s %(message)s',
                             level=level)
         self.logger = logging.getLogger(__name__)
+
+        # Also log to stdout.
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(level)
+        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        formatter = logging.Formatter(format)
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
 
     def fix_jsonld_text(self, text):
         """
@@ -305,9 +322,13 @@ class CommonHarvester(object):
             return r
 
     def run(self):
-        last_harvest_time_str = self.client_mgr.get_last_harvest_time()
-        last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
-        self.logger.info(f'Last harvest time:  {last_harvest_time}')
+        if self.mn_host is not None:
+            last_harvest_time_str = self.client_mgr.get_last_harvest_time()
+            last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
+            self.logger.info(f'Last harvest time:  {last_harvest_time}')
+        else:
+            last_harvest_time_str = '1900-01-01T00:00:00Z'
+            last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
 
         records = self.get_records(last_harvest_time)
         for url, lastmod_time in records:
