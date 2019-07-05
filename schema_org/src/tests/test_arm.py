@@ -1,5 +1,4 @@
 # Standard library imports
-import datetime as dt
 try:
     import importlib.resources as ir
 except ImportError:  # pragma:  nocover
@@ -11,7 +10,7 @@ import requests
 
 # local imports
 from schema_org.arm import ARMHarvester
-from schema_org.common import SITE_MAP_RETRIEVAL_FAILURE_MESSAGE
+from schema_org.common import SITEMAP_RETRIEVAL_FAILURE_MESSAGE
 from .test_common import TestCommon
 
 
@@ -46,20 +45,6 @@ class TestSuite(TestCommon):
 
         self.assertEqual(harvester.logger.error.call_count, 1)
 
-    def test_records_retrieval(self, mock_logger):
-        """
-        SCENARIO:  We retrieve and process the sitemap
-
-        EXPECTED RESULT:  4859 tuples of URLs and lastmod times are retrieved
-        """
-        content = ir.read_binary('tests.data.arm', 'sitemap.xml')
-        self.setup_requests_session_patcher(contents=[content])
-
-        harvester = ARMHarvester()
-        last_harvest_time = dt.datetime(2019, 1, 1, tzinfo=dt.timezone.utc)
-        records = harvester.get_records(last_harvest_time)
-        self.assertEqual(len(records), 2)
-
     def test_site_map_retrieval_failure(self, mock_logger):
         """
         SCENARIO:  a non-200 status code is returned by the site map retrieval.
@@ -71,9 +56,9 @@ class TestSuite(TestCommon):
 
         harvester = ARMHarvester(verbosity='INFO')
         with self.assertRaises(requests.HTTPError):
-            harvester.get_site_map()
+            harvester.get_sitemap_document(harvester.site_map)
 
-        harvester.logger.error.assert_any_call(SITE_MAP_RETRIEVAL_FAILURE_MESSAGE)  # noqa: E501
+        harvester.logger.error.assert_any_call(SITEMAP_RETRIEVAL_FAILURE_MESSAGE)  # noqa: E501
 
     def test_bad_verbosity(self, mock_logger):
         """

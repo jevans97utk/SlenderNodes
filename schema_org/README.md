@@ -4,6 +4,59 @@ Slender Node Adapter Supporting schema.org described Resources
 Notes for implementation of a "slender node" adapter to support synchronization
 of content described with schema.org constructs.
 
+Examples: d1-check-site
+-----------------------
+Before anything else, you need to do an install a new command line utility
+called d1-check-site.
+
+```
+$ python setup.py develop
+```
+
+1. No sitemap.
+
+    $ d1-check-site http://104.236.112.76/demo/no_site_map/sitemap.xml
+
+2. Two documents listed in sitemap, but one landing page is missing.
+
+    $ d1-check-site http://104.236.112.76/demo/no_landing_page/sitemap.xml
+
+3. A landing page has invalid JSON-LD.
+
+    $ d1-check-site http://104.236.112.76/demo/invalid-json-ld/sitemap.xml
+
+4. A landing page is missing its JSON-LD SCRIPT element.
+
+    $ d1-check-site http://104.236.112.76/demo/missing-json-ld-script-element/sitemap.xml
+
+5. A landing page is missing its JSON-LD ID.
+
+    $ d1-check-site http://104.236.112.76/demo/missing-json-ld-id/sitemap.xml
+
+6. Two documents listed, but one metadata XML document is missing.
+
+    $ d1-check-site http://104.236.112.76/demo/missing-metadata-document/sitemap.xml
+
+7. Two documents listed, but one metadata XML document has invalid XML.
+
+    $ d1-check-site http://104.236.112.76/demo/metadata-document-has-invalid-xml/sitemap.xml
+
+8. Two documents listed, but the first document does not validate, which is different than having invalid XML.
+
+    $ d1-check-site http://104.236.112.76/demo/metadata-document-does-not-validate/sitemap.xml
+
+9. The sitemap is gzipped.
+
+    $ d1-check-site http://104.236.112.76/demo/sitemap-is-gzipped/sitemap.xml.gz
+
+10. The sitemap file is actually a sitemap index file, meaning there are multiple levels of sitemaps.
+
+    $ d1-check-site http://104.236.112.76/demo/sitemap-url-is-sitemap-index-file/sitemap_index_file.xml
+
+11. The sitemap file is text instead of XML.
+
+    $ d1-check-site http://104.236.112.76/demo/sitemap-is-not-xml/sitemap.txt
+
 TLDR;
 -----
 ```
@@ -35,6 +88,7 @@ optional arguments:
 Not supplying an argument to both the certificate and key arguments will
 disable client side authentication.
 ```
+
 
 Discovery Pattern
 -----------------

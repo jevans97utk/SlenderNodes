@@ -50,32 +50,3 @@ class ARMHarvester(CommonHarvester):
             raise RuntimeError(msg)
         else:
             return m.group('id')
-
-    def extract_metadata_url(self, jsonld):
-        """
-        In ARM, the JSON-LD is structured as follows
-
-        {
-           .
-           .
-           .
-           "encoding" : {
-               "@type": "MediaObject",
-               "contentUrl": "https://www.acme.org/path/to/doc.xml",
-               "encodingFormat": "http://www.isotc211.org/2005/gmd",
-               "description": "ISO TC211 XML rendering of metadata.",
-               "dateModified": "2019-06-17T10:34:57.260047"
-           }
-        }
-
-        Parameters
-        ----------
-        jsonld : dict
-            JSON-LD as retrieved from a <SCRIPT> element in the landing page
-            URL.
-
-        Returns
-        -------
-        The URL for the metadata document.
-        """
-        return jsonld['encoding']['contentUrl']

@@ -3,11 +3,13 @@ DATAONE adapter for ARM
 """
 
 # Standard library imports
+import gzip
 import io
 import json
 import logging
 import re
 import sys
+import urllib.parse
 
 # 3rd party library imports
 import dateutil.parser
@@ -22,7 +24,12 @@ UNESCAPED_DOUBLE_QUOTES_MSG = 'Unescaped double-quotes have been corrected.'
 OVER_ESCAPED_DOUBLE_QUOTES_MSG = (
     'Over-escaped double quotes have been corrected.'
 )
-SITE_MAP_RETRIEVAL_FAILURE_MESSAGE = 'Failed to retrieve the site map.'
+SITEMAP_RETRIEVAL_FAILURE_MESSAGE = 'Failed to retrieve the site map.'
+NO_JSON_LD_SCRIPT_ELEMENTS = "No JSON-LD <SCRIPT> elements were located."
+DOI_IDENTIFIER_MSG = "Have extracted the identifier:  "
+INVALID_JSONLD_MESSAGE = "Unable to fix embedded JSON-LD due to"
+SITEMAP_NOT_XML_MESSAGE = "The sitemap may not be XML."
+SUCCESSFUL_INGEST_MESSAGE = "Successfully processed record"
 
 ISO_NSMAP = {
     'gmd': 'http://www.isotc211.org/2005/gmd',
@@ -33,7 +40,7 @@ ISO_NSMAP = {
     'xs': 'http://www.w3.org/2001/XMLSchema'
 }
 
-SITE_NSMAP = {'sitemap': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+SITEMAP_NS = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
 
 
 class CommonHarvester(object):
@@ -106,26 +113,6 @@ class CommonHarvester(object):
         self.updated_count = 0
 
         requests.packages.urllib3.disable_warnings()
-
-    def get_site_map(self):
-        """
-        Retrieve the site map.
-
-        See https://www.sitemaps.org for more information.
-        """
-        # Retrieve all the URLs in the site map.
-        r = self.session.get(self.site_map)
-        try:
-            r.raise_for_status()
-        except requests.HTTPError as e:
-            self.logger.error(SITE_MAP_RETRIEVAL_FAILURE_MESSAGE)
-            self.logger.error(repr(e))
-            raise
-
-        if r.headers['Content-Type'] != 'text/xml':
-            self.logger.warning("The sitemap may not be XML.")
-
-        return r
 
     def setup_session(self, certificate, private_key):
         """
@@ -283,26 +270,38 @@ class CommonHarvester(object):
             <SCRIPT> element embedded in the <HEAD> element.
         """
         scripts = doc.xpath('head/script[@type="application/ld+json"]')
+        if len(scripts) == 0:
+            raise RuntimeError(NO_JSON_LD_SCRIPT_ELEMENTS)
+
         text = scripts[0].text
+
+        # Is it valid JSON?
+        try:
+            jsonld = json.loads(text)
+        except json.decoder.JSONDecodeError as e:
+            # Log the error as a warning because we are going to try to fix it.
+            self.logger.warning(repr(e))
+        else:
+            return jsonld
 
         # May have to make two passes at this.
         count = 0
         while True:
+            text = self.fix_jsonld_text(text)
+
+            # Try again.
             try:
                 jsonld = json.loads(text)
             except json.decoder.JSONDecodeError as e:
-                # Log the error, try to fix the JSON string, and try again.
-                self.logger.error(repr(e))
-                text = self.fix_jsonld_text(text)
+                msg = repr(e)
                 count += 1
             else:
                 return jsonld
 
-            if count == 10:
+            if count == 2:
                 # We cannot fix this.  We tried with the original string,
                 # and we tried to find some common fixable issues.  No luck.
-                msg = 'Unable to fix embeded JSON-LD.'
-                self.logger.error(msg)
+                msg = f"{INVALID_JSONLD_MESSAGE}: \"{msg}\"."
                 raise RuntimeError(msg)
 
     def retrieve_url(self, url):
@@ -316,12 +315,13 @@ class CommonHarvester(object):
         try:
             r.raise_for_status()
         except requests.HTTPError as e:
-            self.logger.error(repr(e))
+            # self.logger.error(repr(e))
             raise RuntimeError(repr(e))
         else:
             return r
 
     def run(self):
+
         if self.mn_host is not None:
             last_harvest_time_str = self.client_mgr.get_last_harvest_time()
             last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
@@ -330,14 +330,14 @@ class CommonHarvester(object):
             last_harvest_time_str = '1900-01-01T00:00:00Z'
             last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
 
-        records = self.get_records(last_harvest_time)
-        for url, lastmod_time in records:
-            try:
-                self.process_record(url, lastmod_time)
-            except Exception as e:
-                self.failed_count += 1
-                msg = f"Unable to process {url} due to {repr(e)}."
-                self.logger.error(msg)
+        try:
+            self.process_sitemap(self.site_map, last_harvest_time)
+        except Exception as e:
+            self.logger.error(repr(e))
+
+        self.summarize()
+
+    def summarize(self):
 
         self.logger.info(f'Created {self.created_count} new records.')
         self.logger.info(f'Updated {self.updated_count} records.')
@@ -524,7 +524,14 @@ class CommonHarvester(object):
         # Retrieve the metadata document.
         self.logger.info(f"Requesting {metadata_url}...")
         r = self.retrieve_url(metadata_url)
-        doc = lxml.etree.parse(io.BytesIO(r.content))
+        try:
+            doc = lxml.etree.parse(io.BytesIO(r.content))
+        except Exception as e:
+            msg = (
+                f"Unable to parse the metadata document at {metadata_url} "
+                f"due to {repr(e)}."
+            )
+            raise RuntimeError(msg)
 
         return doc
 
@@ -553,7 +560,7 @@ class CommonHarvester(object):
         # Sometimes there is a space in the @id field.  Can't be having any of
         # that...
         identifier = self.extract_identifier(jsonld)
-        self.logger.info(f"Have identified {identifier}...")
+        self.logger.info(f"{DOI_IDENTIFIER_MSG}  {identifier}...")
 
         metadata_url = self.extract_metadata_url(jsonld)
 
@@ -579,25 +586,118 @@ class CommonHarvester(object):
             else:
                 return False
 
-    def get_records(self, last_harvest_time):
+    def is_sitemap_index_file(self, doc):
         """
-        Gather all the landing page URLs and modification times from the
-        sitemap document.
+        Answer the question as to whether the document found at the other end
+        of the sitemap URL is a sitemap index file - i.e. it references other
+        sitemaps - or if it is a sitemap leaf.
+        """
+
+        elts = doc.xpath('sm:sitemap', namespaces=SITEMAP_NS)
+        if len(elts) > 0:
+            return True
+        else:
+            return False
+
+    def process_sitemap(self, sitemap_url, last_harvest_time):
+        """
+        Process the sitemap.  This may involve recursive calls.
 
         Parameters
         ----------
+        sitemap_url : str
+            URL for a sitemap or sitemap index file
         last_harvest_time : datetime
             According to the MN, this is the last time we, uh, harvested any
             document.
         """
-        r = self.get_site_map()
+        msg = f"Processing sitemap at {sitemap_url}."
+        self.logger.info(msg)
 
-        # Get lists of the landing page URLs and their last modification times.
-        doc = lxml.etree.parse(io.BytesIO(r.content))
-        urls = doc.xpath('.//sitemap:loc/text()', namespaces=SITE_NSMAP)
+        doc = self.get_sitemap_document(sitemap_url)
+        if self.is_sitemap_index_file(doc):
 
-        lastmods = doc.xpath('.//sitemap:lastmod/text()',
-                             namespaces=SITE_NSMAP)
+            sitemap_urls = doc.xpath('sm:sitemap/sm:loc/text()',
+                                     namespaces=SITEMAP_NS)
+
+            for sitemap_url in sitemap_urls:
+                self.process_sitemap(sitemap_url, last_harvest_time)
+
+        else:
+            self.process_sitemap_leaf(doc, last_harvest_time)
+
+    def process_sitemap_leaf(self, doc, last_harvest_time):
+        """
+        We are at a sitemap leaf, i.e. the sitemap does not reference other
+        sitemaps.  This is where we can retrieve landing pages instead of
+        other sitemaps.
+
+        Parameters
+        ----------
+        doc : ElementTree object
+            Describes the sitemap leaf.
+        last_harvest_time : datetime
+            According to the MN, this is the last time we, uh, harvested any
+            document.
+        """
+
+        records = self.extract_records_from_sitemap(doc, last_harvest_time)
+        for url, lastmod_time in records:
+            try:
+                self.process_record(url, lastmod_time)
+            except Exception as e:
+                self.failed_count += 1
+                msg = f"Unable to process {url} due to {repr(e)}."
+                self.logger.error(msg)
+            else:
+                p = urllib.parse.urlparse(url)
+                basename = p.path.split('/')[-1]
+                msg = f"{SUCCESSFUL_INGEST_MESSAGE}: {basename}"
+                self.logger.info(msg)
+
+    def get_sitemap_document(self, sitemap_url):
+        """
+        Parameters
+        ---------
+        sitemap_url : str
+            URL for a sitemap or sitemap index file.
+        """
+        r = self.session.get(sitemap_url)
+        try:
+            r.raise_for_status()
+        except requests.HTTPError:
+            self.logger.error(SITEMAP_RETRIEVAL_FAILURE_MESSAGE)
+            raise
+
+        if r.headers['Content-Type'] not in ['text/xml', 'application/x-gzip']:
+            self.logger.warning(SITEMAP_NOT_XML_MESSAGE)
+
+        try:
+            doc = lxml.etree.parse(io.BytesIO(r.content))
+        except lxml.etree.XMLSyntaxError as e:
+            msg1 = repr(e)
+
+            # was it compressed?
+            try:
+                doc = lxml.etree.parse(io.BytesIO(gzip.decompress(r.content)))
+            except OSError as e:
+                # Must not have been gzipped.
+                self.logger.error(msg1)
+                self.logger.error(repr(e))
+                msg = f'Unable to process the sitemap {sitemap_url}.'
+                raise RuntimeError(msg)
+
+        return doc
+
+    def extract_records_from_sitemap(self, doc, last_harvest_time):
+        """
+        Extract all the URLs and lastmod times from an XML sitemap.
+        """
+
+        urls = doc.xpath('.//sm:loc/text()', namespaces=SITEMAP_NS)
+
+        lastmods = doc.xpath('.//sm:lastmod/text()',
+                             namespaces=SITEMAP_NS)
 
         # Parse the last modification times.  It is possible that the dates
         # have no timezone information in them, so we will assume that it is
@@ -617,3 +717,65 @@ class CommonHarvester(object):
             if self.url_is_cleared(url, lastmod, last_harvest_time)
         ]
         return records
+
+    def extract_identifier(self, jsonld):
+        """
+        Parse the DOI from the json['@id'] value.  ARM identifiers
+        look something like
+
+            'http://dx.doi.org/10.5439/1027257'
+
+        The DOI in this case would be '10.5439/102757'.  This will be used as
+        the series identifier.
+
+        Parameters
+        ----------
+        JSON-LD obj
+
+        Returns
+        -------
+        The identifier substring.
+        """
+        pattern = r'''
+            https?://dx.doi.org/(?P<id>10\.\w+/\w+)
+        '''
+        regex = re.compile(pattern, re.VERBOSE)
+        m = regex.search(jsonld['@id'])
+        if m is None:
+            msg = (
+                f"DOI ID parsing error, could not parse an ID out of "
+                f"JSON-LD '@id' element \"{jsonld['@id']}\""
+            )
+            self.logger.error(msg)
+            raise RuntimeError(msg)
+        else:
+            return m.group('id')
+
+    def extract_metadata_url(self, jsonld):
+        """
+        In ARM, the JSON-LD is structured as follows
+
+        {
+           .
+           .
+           .
+           "encoding" : {
+               "@type": "MediaObject",
+               "contentUrl": "https://www.acme.org/path/to/doc.xml",
+               "encodingFormat": "http://www.isotc211.org/2005/gmd",
+               "description": "ISO TC211 XML rendering of metadata.",
+               "dateModified": "2019-06-17T10:34:57.260047"
+           }
+        }
+
+        Parameters
+        ----------
+        jsonld : dict
+            JSON-LD as retrieved from a <SCRIPT> element in the landing page
+            URL.
+
+        Returns
+        -------
+        The URL for the metadata document.
+        """
+        return jsonld['encoding']['contentUrl']
