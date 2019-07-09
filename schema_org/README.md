@@ -57,6 +57,10 @@ $ python setup.py develop
 
     $ d1-check-site http://104.236.112.76/demo/sitemap-is-not-xml/sitemap.txt
 
+12. Check only 5 documents.
+
+    $ d1-check-site --num-documents=5 http://get.iedadata.org/sitemaps/usap_sitemap.xml
+
 TLDR;
 -----
 ```

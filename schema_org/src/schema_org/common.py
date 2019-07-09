@@ -741,12 +741,24 @@ class CommonHarvester(object):
 
     def extract_identifier(self, jsonld):
         """
-        Parse the DOI from the json['@id'] value.  ARM identifiers
+        Parse the DOI from the JSON-LD.
+        """
+        try:
+            identifier = self.extract_identifier_toplevel(jsonld)
+        except RuntimeError as e:
+            self.logger.warning(repr(e) + ", trying another way...")
+            identifier = self.extract_identifier_ieda(jsonld)
+
+        return identifier
+
+    def extract_identifier(self, jsonld):
+        """
+        Parse the DOI from the json['@id'] value.  IEDA identifiers
         look something like
 
-            'http://dx.doi.org/10.5439/1027257'
+            'doi:10.15784/601015'
 
-        The DOI in this case would be '10.5439/102757'.  This will be used as
+        The DOI in this case would be '10.15784/601015'.  This will be used as
         the series identifier.
 
         Parameters
@@ -758,7 +770,18 @@ class CommonHarvester(object):
         The identifier substring.
         """
         pattern = r'''
-            https?://dx.doi.org/(?P<id>10\.\w+/\w+)
+            # possible leading white space (not supposed to be there)
+            \s*
+            # DOI:prefix/suffix - IEDA style
+            (https?://dx.doi.org/(?P<doi_id_ieda>10\.\w+/\w+))
+                |
+            # ARM-style
+            (doi:(?P<doi_id_arm>10.\w+/\w+))
+                |
+            # other ARM-style
+            (?P<other_id>urn:usap-dc:metadata:\w+)
+            # possible trailing white space (not supposed to be there)
+            \s*
         '''
         regex = re.compile(pattern, re.VERBOSE)
         m = regex.search(jsonld['@id'])
@@ -767,10 +790,14 @@ class CommonHarvester(object):
                 f"DOI ID parsing error, could not parse an ID out of "
                 f"JSON-LD '@id' element \"{jsonld['@id']}\""
             )
-            self.logger.error(msg)
             raise RuntimeError(msg)
+
+        if m.group('doi_id_ieda') is not None:
+            return m.group('doi_id_ieda')
+        elif m.group('doi_id_arm') is not None:
+            return m.group('doi_id_arm')
         else:
-            return m.group('id')
+            return m.group('other_id')
 
     def extract_metadata_url(self, jsonld):
         """
@@ -799,4 +826,27 @@ class CommonHarvester(object):
         -------
         The URL for the metadata document.
         """
-        return jsonld['encoding']['contentUrl']
+        try:
+            return jsonld['encoding']['contentUrl']
+        except KeyError as e:
+            # If this happens, maybe we have IEDA?
+            #msg = (
+            #    f"Could not find the metadata URL in "
+            #    f"{... 'encoding': {... 'contentUrl': 'THIS GUY' } "
+            #    f"due to {repr(e)}, so trying to find in "
+            #    f"{... 'distribution': "
+            #    f"[ {'name': 'ISO Metadata Document', 'url': 'THIS GUY'} ... ]"
+            #)
+            msg = (
+                f"Could not find the metadata URL in "
+                f"JSON-LD['encoding']['contentUrl'] "
+                f"due to {repr(e)}, so trying to find in "
+                f"JSON-LD['distribution'] hierarchy."
+            )
+            self.logger.warning(msg)
+            items = [
+                item for item in jsonld['distribution']
+                if item['name'] == 'ISO Metadata Document'
+            ]
+            metadata_url = items[0]['url']
+            return metadata_url

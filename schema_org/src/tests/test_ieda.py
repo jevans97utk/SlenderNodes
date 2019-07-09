@@ -54,14 +54,12 @@ class TestSuite(TestCommon):
         """
         SCENARIO:  The JSON-LD @id field has an invalid identifier.
 
-        EXPECTED RESULT:  A RuntimeError is raised and the error is logged.
+        EXPECTED RESULT:  A RuntimeError is raised.
         """
         harvester = IEDAHarvester()
 
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier({'@id': 'djlfsdljfasl;'})
-
-        self.assertEqual(harvester.logger.error.call_count, 1)
 
     @patch('schema_org.common.logging.getLogger')
     def test_metadata_document_retrieval(self, mock_logger):
