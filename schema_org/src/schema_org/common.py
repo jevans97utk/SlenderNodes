@@ -15,10 +15,10 @@ import urllib.parse
 import dateutil.parser
 import lxml.etree
 import requests
+import d1_scimeta.validate
 
 # Local imports
 from .d1_client_manager import D1ClientManager
-from .xml_validator import XMLValidator
 
 UNESCAPED_DOUBLE_QUOTES_MSG = 'Unescaped double-quotes have been corrected.'
 OVER_ESCAPED_DOUBLE_QUOTES_MSG = (
@@ -102,7 +102,7 @@ class CommonHarvester(object):
                                           certificate, private_key,
                                           sys_meta_dict,
                                           self.logger)
-        self.xml_validator = XMLValidator()
+        self.format_id = 'http://www.isotc211.org/2005/gmd'
 
         # Count the different ways that we update/create/skip records.  This
         # will be logged when we are finished.
@@ -565,7 +565,7 @@ class CommonHarvester(object):
         metadata_url = self.extract_metadata_url(jsonld)
 
         doc = self.retrieve_metadata_document(metadata_url)
-        self.xml_validator.validate(doc)
+        d1_scimeta.validate.assert_valid(self.format_id, doc)
 
         self.harvest_document(identifier, doc, record_date)
 

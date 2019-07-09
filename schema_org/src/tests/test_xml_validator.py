@@ -8,7 +8,11 @@ except ImportError:  # pragma:  nocover
     import importlib_resources as ir
 import io
 import pathlib
+import sys
 from unittest.mock import patch
+
+# 3rd party library imports
+import d1_scimeta
 
 # Local imports
 from schema_org.xml_validator import XMLValidator
@@ -97,5 +101,5 @@ class TestSuite(TestCommon):
         content = ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.xml')
         file = io.BytesIO(content)
 
-        with self.assertRaises(TypeError):
+        with self.assertRaises(d1_scimeta.util.SciMetaError):
             validator.validate(file)

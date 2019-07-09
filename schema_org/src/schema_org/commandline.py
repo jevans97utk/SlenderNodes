@@ -1,11 +1,13 @@
 # Standard library imports
 import argparse
 
+# 3rd party library imports
+
 # Local imports
 from .arm import ARMHarvester
 from .ieda import IEDAHarvester
-from .xml_validator import XMLValidator
 from .testtool import D1TestTool
+from .xml_validator import XMLValidator
 
 
 def setup_parser(id):
@@ -101,7 +103,10 @@ def validate():
     help = "XML file or URL"
     parser.add_argument('infile', help=help)
 
+    help = "Format ID"
+    parser.add_argument('--format-id', default='http://www.isotc211.org/2005/gmd', help=help)
+
     args = parser.parse_args()
 
     validator = XMLValidator()
-    validator.validate(args.infile)
+    validator.validate(args.infile, format_id=args.format_id)

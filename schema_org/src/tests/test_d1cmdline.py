@@ -344,7 +344,7 @@ class TestSuite2(TestCommon):
             # Verify the error message, which is referenced twice.
             error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
             self.assertEqual(len(error_msgs), 1)
-            self.assertIn('DocumentInvalid', error_msgs[0])
+            self.assertIn('XML document does not validate', error_msgs[0])
             self.assertIn('CI_ResponsibleParty', error_msgs[0])
 
             self.assertSuccessfulIngest(cm.output)
