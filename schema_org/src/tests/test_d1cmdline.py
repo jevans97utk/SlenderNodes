@@ -1,10 +1,12 @@
 # standard library imports
 import importlib.resources as ir
+import io
 import sys
 import unittest
 from unittest.mock import patch
 
 # 3rd party library imports
+import lxml.etree
 import requests
 
 # local imports
@@ -31,28 +33,6 @@ class TestSuite(TestCommon):
 
 
 class TestSuite2(TestCommon):
-
-    def assertSuccessfulIngest(self, cm_output, n=1):
-        """
-        Verify the successful ingest.  There will be messages logged at the
-        INFO level, and one of them must be the successful ingest message.
-
-        Parameters
-        ----------
-        n : int
-            Number of successful ingests.
-        """
-        # print('\n'.join(cm_output))
-
-        info_msgs = [msg for msg in cm_output if msg.startswith('INFO')]
-        self.assertTrue(len(info_msgs) > 1)
-
-        successful_ingest = [
-            msg.find(schema_org.common.SUCCESSFUL_INGEST_MESSAGE) > -1
-            for msg in info_msgs
-        ]
-        self.assertEqual(sum(successful_ingest), n,
-                         f"Did not verify {n} records successfully ingested.")
 
     def test_no_site_map(self):
         """
@@ -103,8 +83,7 @@ class TestSuite2(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
 
-            error_count = sum(msg.startswith('ERROR') for msg in cm.output)
-            self.assertEqual(error_count, 1)
+            self.assertErrorCount(cm.output, 1)
 
             self.assertSuccessfulIngest(cm.output)
 
@@ -219,6 +198,8 @@ class TestSuite2(TestCommon):
             obj.run()
 
             # Verify the single error message.
+            self.assertErrorCount(cm.output, 1)
+
             error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
             self.assertEqual(len(error_msgs), 1)
             self.assertIn('KeyError', error_msgs[0])
@@ -463,3 +444,42 @@ class TestSuite2(TestCommon):
             self.assertEqual(len(error_msgs), 3)
             self.assertIn('XMLSyntaxError', error_msgs[0])
             self.assertIn('OSError', error_msgs[1])
+
+    def test_limit_number_of_documents(self):
+        """
+        SCENARIO:  We do not wish to go through the entire list of documents,
+        so a limit is specified.
+
+        EXPECTED RESULT:  There is a warning stating that the URL may not be
+        XML, plus an XMLSyntaxError is raised.
+        """
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) HTML document for record 1
+        #   3) XML document for record 1
+        #   3) HTML document for record 2
+        #   4) XML document for record 2
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'sitemap3.xml'),
+            ir.read_binary('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
+            ir.read_binary('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.xml'),
+            ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.fixed.xml'),
+        ]
+        self.setup_requests_session_patcher(contents=contents)
+
+        url = 'http://www.somewhere.com/this_does_not_matter.xml'
+        obj = D1TestTool(sitemap_url=url, num_documents=2)
+
+        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+            obj.run()
+
+            self.assertSuccessfulIngest(cm.output, n=2)
+
+        # And just to show, there are 3 URLs in the sitemap.
+        doc = lxml.etree.parse(io.BytesIO(contents[0]))
+        urls = doc.xpath('.//sm:loc/text()',
+                         namespaces=schema_org.common.SITEMAP_NS)
+        self.assertEqual(len(urls), 3)

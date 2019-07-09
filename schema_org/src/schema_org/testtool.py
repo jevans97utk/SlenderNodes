@@ -6,8 +6,8 @@ from .common import CommonHarvester
 
 class D1TestTool(CommonHarvester):
 
-    def __init__(self, sitemap_url=None):
-        super().__init__(id='d1checksite')
+    def __init__(self, sitemap_url=None, **kwargs):
+        super().__init__(id='d1checksite', **kwargs)
 
         self.site_map = sitemap_url
 

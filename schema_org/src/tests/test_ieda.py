@@ -154,10 +154,9 @@ class TestSuite(TestCommon):
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
-    @patch('schema_org.common.logging.getLogger')
     def test_default_run_with_one_retrieval_error(
         self,
-        mock_logger, mock_harvest_time,
+        mock_harvest_time,
         mock_check_if_identifier_exists,
         mock_load_science_metadata
     ):
@@ -194,13 +193,11 @@ class TestSuite(TestCommon):
                                             status_codes=status_codes)
 
         harvester = IEDAHarvester()
-        harvester.run()
+        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
+            harvester.run()
 
-        # The INFO logger is invoked.
-        self.assertTrue(harvester.logger.info.call_count > 0)
-
-        # There is are error calls as well.
-        self.assertEqual(harvester.logger.error.call_count, 1)
+            self.assertSuccessfulIngest(cm.output, n=1)
+            self.assertErrorCount(cm.output, n=1)
 
     def test_ieda_600165_unescaped_double_quotes(self):
         """

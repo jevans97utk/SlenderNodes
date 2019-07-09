@@ -59,12 +59,18 @@ class CommonHarvester(object):
         All events are recorded by this object.
     mn_base_url : str
         URL for contacting the dataONE host.
+    num_documents : int
+        Limit the number of documents to this number.  Less than zero
+        means retrieve them all.
+    num_records_processed : int
+        Running total of number of records processed so far.
     session : requests.sessions.Session
         Makes all URL requests.
     """
 
     def __init__(self, host=None, port=None, certificate=None,
-                 private_key=None, verbosity='INFO', regex=None, id=None):
+                 private_key=None, verbosity='INFO', regex=None, id=None,
+                 num_documents=-1):
         """
         Parameters
         ----------
@@ -74,6 +80,9 @@ class CommonHarvester(object):
         certificate, key : str or path or None
             Paths to client side certificates.  None if no verification is
             desired.
+        num_documents : int
+            Limit the number of documents to this number.  Less than zero
+            means retrieve them all.
         """
         self.mn_host = host
 
@@ -111,6 +120,9 @@ class CommonHarvester(object):
         self.rejected_count = 0
         self.skipped_exists_count = 0
         self.updated_count = 0
+
+        self.num_documents = num_documents
+        self.num_records_processed = 0
 
         requests.packages.urllib3.disable_warnings()
 
@@ -716,6 +728,15 @@ class CommonHarvester(object):
             for url, lastmod in z
             if self.url_is_cleared(url, lastmod, last_harvest_time)
         ]
+
+        self.num_records_processed += len(records)
+        if (
+            self.num_records_processed > self.num_documents
+            and self.num_documents > -1
+        ):
+            diff = self.num_records_processed - self.num_documents
+            records = records[:-diff]
+
         return records
 
     def extract_identifier(self, jsonld):

@@ -7,6 +7,9 @@ from unittest.mock import patch
 # 3rd party libraries
 import requests
 
+# Local imports
+import schema_org
+
 
 class MockRequestsResponse(object):
     """
@@ -106,3 +109,32 @@ class TestCommon(unittest.TestCase):
         self.session_patcher = patch(patchee, side_effect=side_effect)
         self.addCleanup(self.session_patcher.stop)
         self.session_patcher.start()
+
+    def assertSuccessfulIngest(self, cm_output, n=1):
+        """
+        Verify the successful ingest.  There will be messages logged at the
+        INFO level, and one of them must be the successful ingest message.
+
+        Parameters
+        ----------
+        n : int
+            Number of successful ingests.
+        """
+        # print('\n'.join(cm_output))
+
+        info_msgs = [msg for msg in cm_output if msg.startswith('INFO')]
+        self.assertTrue(len(info_msgs) > 1)
+
+        successful_ingest = [
+            msg.find(schema_org.common.SUCCESSFUL_INGEST_MESSAGE) > -1
+            for msg in info_msgs
+        ]
+        self.assertEqual(sum(successful_ingest), n,
+                         f"Did not verify {n} records successfully ingested.")
+
+    def assertErrorCount(self, cm_output, n=1):
+        """
+        Verify we see this many log messages with ERROR.
+        """
+        error_count = sum(msg.startswith('ERROR') for msg in cm_output)
+        self.assertEqual(error_count, 1)

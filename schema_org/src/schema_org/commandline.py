@@ -60,9 +60,12 @@ def d1_check_site():
     help = "URL of site map"
     parser.add_argument('sitemap', type=str, help=help)
 
+    help = "Limit number of documents retrieved to this number."
+    parser.add_argument('--num-documents', type=int, default=-1, help=help)
+
     args = parser.parse_args()
 
-    o = D1TestTool(sitemap_url=args.sitemap)
+    o = D1TestTool(sitemap_url=args.sitemap, num_documents=args.num_documents)
     o.run()
 
 
@@ -104,7 +107,9 @@ def validate():
     parser.add_argument('infile', help=help)
 
     help = "Format ID"
-    parser.add_argument('--format-id', default='http://www.isotc211.org/2005/gmd', help=help)
+    parser.add_argument('--format-id',
+                        default='http://www.isotc211.org/2005/gmd',
+                        help=help)
 
     args = parser.parse_args()
 

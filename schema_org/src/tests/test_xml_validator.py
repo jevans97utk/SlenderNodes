@@ -8,7 +8,6 @@ except ImportError:  # pragma:  nocover
     import importlib_resources as ir
 import io
 import pathlib
-import sys
 from unittest.mock import patch
 
 # 3rd party library imports

@@ -1,6 +1,5 @@
 # Standard library imports ...
 import io
-import pathlib
 
 # Third party library imports ...
 import lxml.etree
