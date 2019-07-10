@@ -2,7 +2,6 @@
 DATAONE adapter for IEDA
 """
 # Standard library imports
-import re
 
 # Local imports
 from .common import CommonHarvester
@@ -10,10 +9,10 @@ from .common import CommonHarvester
 
 class IEDAHarvester(CommonHarvester):
 
+    site_map = 'http://get.iedadata.org/sitemaps/usap_sitemap.xml'
+
     def __init__(self, **kwargs):
         super().__init__(id='ieda', **kwargs)
-
-        self.site_map = 'http://get.iedadata.org/sitemaps/usap_sitemap.xml'
 
     def extract_metadata_url(self, jsonld):
         """

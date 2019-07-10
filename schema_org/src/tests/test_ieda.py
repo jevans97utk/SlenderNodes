@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 # 3rd party library imports
 import lxml.etree
-import requests
+import requests_mock
 
 # local imports
 from schema_org.ieda import IEDAHarvester
@@ -26,6 +26,17 @@ from .test_common import TestCommon
 
 
 class TestSuite(TestCommon):
+    """
+    Attributes
+    ----------
+    adapter : obj
+        This intercepts all the outgoing HTTP requests
+    """
+
+    def setUp(self):
+
+        self.adapter = requests_mock.Adapter()
+        self.protocol = 'http'
 
     def test_identifier_parsing(self):
         """
@@ -70,12 +81,17 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  A byte-stream of a valid metadata document.  The
         logger should have registered the retrieval at the INFO level.
         """
-        content = ir.read_binary('tests.data.ieda', '600121iso.xml')
-        self.setup_requests_session_patcher(contents=[content])
-
         harvester = IEDAHarvester()
 
-        harvester.retrieve_metadata_document('http://somewhere/iso.xml')
+        contents = [ir.read_binary('tests.data.ieda', '600121iso.xml')]
+        status_codes = [200]
+        self.setUpRequestsMocking(harvester, contents=contents,
+                                  status_codes=status_codes)
+
+        doc1 = harvester.retrieve_metadata_document('http://somewhere/a.xml')
+        doc2 = lxml.etree.parse(io.BytesIO(contents[0]))
+        self.assertEqual(lxml.etree.tostring(doc1), lxml.etree.tostring(doc2))
+
         harvester.logger.info.assert_called_once()
 
     @patch('schema_org.common.logging.getLogger')
@@ -86,12 +102,13 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  A RuntimeError is raised.
         """
-        self.setup_requests_session_patcher(status_codes=[400])
-
         harvester = IEDAHarvester()
 
+        self.setUpRequestsMocking(harvester, status_codes=[400])
+
+        url = 'http://abc/600121iso.xml'
         with self.assertRaises(RuntimeError):
-            harvester.retrieve_metadata_document('https://abc/600121iso.xml')
+            harvester.retrieve_metadata_document(url)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -112,6 +129,8 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = True
 
+        harvester = IEDAHarvester()
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -127,7 +146,6 @@ class TestSuite(TestCommon):
             ir.read_binary('tests.data.ieda', 'ieda609246.html'),
             ir.read_binary('tests.data.ieda', '609246iso.xml'),
         ]
-        status_codes = [200 for item in contents]
         headers = [
             {'Content-Type': 'text/xml'},
             {'Content-Type': 'text/html'},
@@ -135,12 +153,9 @@ class TestSuite(TestCommon):
             {'Content-Type': 'text/html'},
             {'Content-Type': 'text/xml'},
         ]
+        self.setUpRequestsMocking(harvester,
+                                  contents=contents, headers=headers)
 
-        self.setup_requests_session_patcher(contents=contents,
-                                            status_codes=status_codes,
-                                            headers=headers)
-
-        harvester = IEDAHarvester()
         harvester.run()
 
         # There should be lots of log messages at the info level, but none
@@ -171,6 +186,8 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = True
 
+        harvester = IEDAHarvester()
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -181,16 +198,24 @@ class TestSuite(TestCommon):
         #
         contents = [
             ir.read_binary('tests.data.ieda', 'usap_sitemap.xml'),
-            ir.read_binary('tests.data.ieda', 'ieda600048.html'),
-            ir.read_binary('tests.data.ieda', '600048iso.xml'),
             ir.read_binary('tests.data.ieda', 'ieda609246.html'),
+            ir.read_binary('tests.data.ieda', '609246iso.xml'),
+            ir.read_binary('tests.data.ieda', 'ieda600048.html'),
             None,
         ]
         status_codes = [200, 200, 200, 200, 400]
-        self.setup_requests_session_patcher(contents=contents,
-                                            status_codes=status_codes)
+        headers = [
+            {'Content-Type': 'text/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'text/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'text/xml'},
+        ]
 
-        harvester = IEDAHarvester()
+        self.setUpRequestsMocking(harvester,
+                                  contents=contents, status_codes=status_codes,
+                                  headers=headers)
+
         with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
             harvester.run()
 
@@ -207,6 +232,7 @@ class TestSuite(TestCommon):
         JSONLD fix is also logged at the warning level.
         """
         harvester = IEDAHarvester()
+
         text = ir.read_text('tests.data.ieda', '600165.html')
         doc = lxml.etree.HTML(text)
 
@@ -276,19 +302,22 @@ class TestSuite(TestCommon):
         self.assertIsNotNone(j)
         json.dumps(j)
 
-    @patch('schema_org.common.logging.getLogger')
-    def test_site_map_retrieval_failure(self, mock_logger):
+    def test_site_map_retrieval_failure(self):
         """
         SCENARIO:  a non-200 status code is returned by the site map retrieval.
 
         EXPECTED RESULT:  A requests HTTPError is raised and the exception is
         logged.
         """
-        self.setup_requests_session_patcher(status_codes=[500])
         harvester = IEDAHarvester()
-        with self.assertRaises(requests.HTTPError):
-            harvester.get_sitemap_document(harvester.site_map)
-        harvester.logger.error.assert_any_call(SITEMAP_RETRIEVAL_FAILURE_MESSAGE)  # noqa: E501
+
+        self.setUpRequestsMocking(harvester, status_codes=[500])
+
+        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
+            harvester.run()
+
+            self.assertErrorMessage(cm.output,
+                                    SITEMAP_RETRIEVAL_FAILURE_MESSAGE)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -307,9 +336,12 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  The event is logged at the info level.  The update
         count increases by one.
         """
+        host, port = 'ieda.mn.org', 443
+        harvester = IEDAHarvester(host=host, port=port)
+        update_count = harvester.updated_count
+
         # This is the existing document in the MN.  It is marked as complete.
-        content = ir.read_binary('tests.data.ieda', '600121iso.xml')
-        self.setup_requests_session_patcher(contents=[content])
+        existing_content = ir.read_binary('tests.data.ieda', '600121iso.xml')
 
         record_date = dt.datetime.now()
         mock_check_if_identifier_exists.return_value = {
@@ -319,8 +351,11 @@ class TestSuite(TestCommon):
         }
         mock_update_science_metadata.return_value = True
 
-        harvester = IEDAHarvester()
+        harvester = IEDAHarvester(host=host, port=port)
         update_count = harvester.updated_count
+
+        self.protocol = 'https'
+        self.setUpRequestsMocking(harvester, contents=[existing_content])
 
         # This is the "update" document, same as the existing document.  It is
         # already marked as "complete".  Bump the timestamp to just a bit later
@@ -351,10 +386,12 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  The failure count goes up by one and the event is
         logged at the warning level.
         """
+        host, port = 'ieda.mn.org', 443
+        harvester = IEDAHarvester(host=host, port=port)
+
         # This is the existing document in the MN.  It is requested by the
         # update check, and it is marked as complete.
-        content = ir.read_binary('tests.data.ieda', '600121iso.xml')
-        self.setup_requests_session_patcher(contents=[content])
+        existing_content = ir.read_binary('tests.data.ieda', '600121iso.xml')
 
         record_date = dt.datetime.now()
         mock_check_if_identifier_exists.return_value = {
@@ -364,8 +401,11 @@ class TestSuite(TestCommon):
         }
         mock_update_science_metadata.return_value = False
 
-        harvester = IEDAHarvester()
+        harvester = IEDAHarvester(host=host, port=port)
         initial_failed_count = harvester.failed_count
+
+        self.protocol = 'https'
+        self.setUpRequestsMocking(harvester, contents=[existing_content])
 
         # Read a document that is the same except it has a later metadata
         # timestamp.  This means that we should update it.
@@ -401,8 +441,8 @@ class TestSuite(TestCommon):
         """
         # This is the existing document in the MN.  It is requested by the
         # update check, and it is marked as ongoing.
-        content = ir.read_binary('tests.data.ieda', '600121iso-ongoing.xml')
-        self.setup_requests_session_patcher(contents=[content])
+        existing_content = ir.read_binary('tests.data.ieda',
+                                          '600121iso-ongoing.xml')
 
         # This is the proposed update document that is the same except it is
         # marked as complete.
@@ -417,8 +457,12 @@ class TestSuite(TestCommon):
         }
         mock_update_science_metadata.return_value = True
 
-        harvester = IEDAHarvester()
+        host, port = 'ieda.mn.org', 443
+        harvester = IEDAHarvester(host=host, port=port)
         initial_updated_count = harvester.updated_count
+
+        self.protocol = 'https'
+        self.setUpRequestsMocking(harvester, contents=[existing_content])
 
         identifier = 'doi.10000/abcde'
         harvester.harvest_document(identifier, update_doc, record_date)
@@ -448,8 +492,7 @@ class TestSuite(TestCommon):
         """
         # This is the existing document in the MN.  It is requested by the
         # update check, and it is marked as complete.
-        content = ir.read_binary('tests.data.ieda', '600121iso.xml')
-        self.setup_requests_session_patcher(contents=[content])
+        existing_content = ir.read_binary('tests.data.ieda', '600121iso.xml')
 
         record_date = dt.datetime.now()
         mock_check_if_identifier_exists.return_value = {
@@ -459,7 +502,12 @@ class TestSuite(TestCommon):
         }
         mock_update_science_metadata.return_value = False
 
-        harvester = IEDAHarvester()
+        host, port = 'ieda.mn.org', 443
+        harvester = IEDAHarvester(host=host, port=port)
+
+        self.protocol = 'https'
+        self.setUpRequestsMocking(harvester, contents=[existing_content])
+
         initial_rejected_count = harvester.rejected_count
 
         # Read a document that is the same except it has an earlier metadata

@@ -17,6 +17,10 @@ from .test_common import TestCommon
 @patch('schema_org.common.logging.getLogger')
 class TestSuite(TestCommon):
 
+    def setUp(self):
+        self.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
+        self.protocol = 'https'
+
     def test_identifier_parsing(self, mock_logger):
         """
         SCENARIO:  The @id field from the JSON-LD must be parsed, we are
@@ -44,21 +48,6 @@ class TestSuite(TestCommon):
             harvester.extract_identifier(jsonld)
 
         self.assertEqual(harvester.logger.error.call_count, 1)
-
-    def test_site_map_retrieval_failure(self, mock_logger):
-        """
-        SCENARIO:  a non-200 status code is returned by the site map retrieval.
-
-        EXPECTED RESULT:  A requests HTTPError is raised and the exception is
-        logged.
-        """
-        self.setup_requests_session_patcher(status_codes=[400])
-
-        harvester = ARMHarvester(verbosity='INFO')
-        with self.assertRaises(requests.HTTPError):
-            harvester.get_sitemap_document(harvester.site_map)
-
-        harvester.logger.error.assert_any_call(SITEMAP_RETRIEVAL_FAILURE_MESSAGE)  # noqa: E501
 
     def test_bad_verbosity(self, mock_logger):
         """
@@ -100,6 +89,8 @@ class TestSuite(TestCommon):
 
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
 
+        harvester = ARMHarvester()
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -111,14 +102,35 @@ class TestSuite(TestCommon):
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.html'),
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.xml'),
         ]
-        status_codes = [200 for item in contents]
-        self.setup_requests_session_patcher(contents=contents,
-                                            status_codes=status_codes)
-
-        harvester = ARMHarvester()
+        status_codes = [200, 200, 400]
+        self.setUpRequestsMocking(harvester,
+                                  contents=contents, status_codes=status_codes)
 
         failed_count = harvester.failed_count
 
         harvester.run()
 
         self.assertEqual(harvester.failed_count, failed_count + 1)
+
+
+class TestSuite2(TestCommon):
+
+    def setUp(self):
+        self.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
+        self.protocol = 'https'
+
+    def test_site_map_retrieval_failure(self):
+        """
+        SCENARIO:  a non-200 status code is returned by the site map retrieval.
+
+        EXPECTED RESULT:  A requests HTTPError is raised and the exception is
+        logged.
+        """
+        harvester = ARMHarvester(verbosity='INFO')
+        self.setUpRequestsMocking(harvester, status_codes=[400])
+
+        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
+            with self.assertRaises(requests.HTTPError):
+                harvester.get_sitemap_document(harvester.site_map)
+            self.assertErrorMessage(cm.output,
+                                    SITEMAP_RETRIEVAL_FAILURE_MESSAGE)

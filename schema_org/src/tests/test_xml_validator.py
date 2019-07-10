@@ -8,45 +8,17 @@ except ImportError:  # pragma:  nocover
     import importlib_resources as ir
 import io
 import pathlib
-from unittest.mock import patch
 
 # 3rd party library imports
 import d1_scimeta
+import requests_mock
 
 # Local imports
 from schema_org.xml_validator import XMLValidator
-from .test_common import TestCommon, MockRequestsResponse
+from .test_common import TestCommon
 
 
 class TestSuite(TestCommon):
-
-    def setup_requests_patcher(self, contents=None, status_codes=None):
-        """
-        Mock out the outcome of calling 'requests.Session.get'
-        """
-        if contents is None and status_codes is None:
-            msg = 'not both contents and status_codes can be none.'
-            raise RuntimeError(msg)
-
-        # But if only "contents" was provided, assume all the status codes
-        # are good.
-        if status_codes is None:
-            status_codes = [200 for item in contents]
-
-        if contents is None:
-            contents = [None for item in status_codes]
-
-        items = zip(contents, status_codes)
-        side_effect = [
-            MockRequestsResponse(content=content,
-                                 status_code=status_code)
-            for content, status_code in items
-        ]
-
-        patchee = 'schema_org.xml_validator.requests.get'
-        self.requests_patcher = patch(patchee, side_effect=side_effect)
-        self.addCleanup(self.requests_patcher.stop)
-        self.requests_patcher.start()
 
     def test_file_like_object(self):
         """
@@ -82,11 +54,13 @@ class TestSuite(TestCommon):
         SCENARIO:  no errors
         """
         content = ir.read_binary('tests.data.ieda', '600121iso.xml')
-        self.setup_requests_patcher(contents=[content])
+        url = 'http://www.acme.org/600121iso.xml'
 
-        validator = XMLValidator()
+        with requests_mock.Mocker() as m:
+            m.get(url, content=content)
 
-        validator.validate('http://www.acme.org/600121iso.xml')
+            validator = XMLValidator()
+            validator.validate(url)
 
     def test_file_like_object_but_invalid_xml(self):
         """

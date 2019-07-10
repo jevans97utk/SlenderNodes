@@ -34,15 +34,18 @@ class TestSuite(TestCommon):
 
 class TestSuite2(TestCommon):
 
+    def setUp(self):
+        self.protocol = 'https'
+
     def test_no_site_map(self):
         """
         SCENARIO:  The given URL for the sitemap does not seem to exist.
 
         EXPECTED RESULT:  A requests.HTTPError is raised.
         """
-        self.setup_requests_session_patcher(status_codes=[400])
+        obj = D1TestTool(sitemap_url='https://www.somewhere.com/sitemap.txt')
 
-        obj = D1TestTool(sitemap_url='http://www.somewhere.com/sitemap.txt')
+        self.setUpRequestsMocking(obj, status_codes=[400])
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -70,15 +73,15 @@ class TestSuite2(TestCommon):
         #
         contents = [
             ir.read_binary('tests.data.arm', 'sitemap2.xml'),
-            None,
+            b'',
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
         status_codes = [200, 400, 200, 200]
-        self.setup_requests_session_patcher(contents=contents,
-                                            status_codes=status_codes)
+        obj = D1TestTool(sitemap_url='https://www.somewhere.com/sitemap.txt')
 
-        obj = D1TestTool(sitemap_url='http://www.somewhere.com/sitemap.txt')
+        self.setUpRequestsMocking(obj,
+                                  contents=contents, status_codes=status_codes)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -96,6 +99,9 @@ class TestSuite2(TestCommon):
         successful ingest of the 2nd document.
         """
 
+        url = 'https://www.somewhere.com/this_does_not_matter.xml'
+        obj = D1TestTool(sitemap_url=url)
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -110,11 +116,8 @@ class TestSuite2(TestCommon):
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
         status_codes = [200, 200, 200, 200]
-        self.setup_requests_session_patcher(contents=contents,
-                                            status_codes=status_codes)
-
-        url = 'http://www.somewhere.com/this_does_not_matter.xml'
-        obj = D1TestTool(sitemap_url=url)
+        self.setUpRequestsMocking(obj, contents=contents,
+                                  status_codes=status_codes)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -137,6 +140,9 @@ class TestSuite2(TestCommon):
         successful ingest of the 2nd document.
         """
 
+        url = 'https://www.somewhere.com/this_does_not_matter.xml'
+        obj = D1TestTool(sitemap_url=url)
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -150,10 +156,7 @@ class TestSuite2(TestCommon):
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
-        self.setup_requests_session_patcher(contents=contents)
-
-        url = 'http://www.somewhere.com/this_does_not_matter.xml'
-        obj = D1TestTool(sitemap_url=url)
+        self.setUpRequestsMocking(obj, contents=contents)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -176,6 +179,9 @@ class TestSuite2(TestCommon):
         successful ingest of the 2nd document.
         """
 
+        url = 'https://www.somewhere.com/this_does_not_matter.xml'
+        obj = D1TestTool(sitemap_url=url)
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -189,10 +195,7 @@ class TestSuite2(TestCommon):
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
-        self.setup_requests_session_patcher(contents=contents)
-
-        url = 'http://www.somewhere.com/this_does_not_matter.xml'
-        obj = D1TestTool(sitemap_url=url)
+        self.setUpRequestsMocking(obj, contents=contents)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -216,6 +219,9 @@ class TestSuite2(TestCommon):
         but also the successful ingest of the 2nd document.
         """
 
+        url = 'https://www.somewhere.com/this_does_not_matter.xml'
+        obj = D1TestTool(sitemap_url=url)
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -227,16 +233,13 @@ class TestSuite2(TestCommon):
         contents = [
             ir.read_binary('tests.data.arm', 'sitemap2.xml'),
             ir.read_binary('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
-            None,
+            b'',
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
         status_codes = [200, 200, 400, 200, 200]
-        self.setup_requests_session_patcher(contents=contents,
-                                            status_codes=status_codes)
-
-        url = 'http://www.somewhere.com/this_does_not_matter.xml'
-        obj = D1TestTool(sitemap_url=url)
+        self.setUpRequestsMocking(obj, contents=contents,
+                                  status_codes=status_codes)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -258,6 +261,9 @@ class TestSuite2(TestCommon):
         document, but also the successful ingest of the 2nd document.
         """
 
+        url = 'https://www.somewhere.com/this_does_not_matter.xml'
+        obj = D1TestTool(sitemap_url=url)
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -273,10 +279,7 @@ class TestSuite2(TestCommon):
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
-        self.setup_requests_session_patcher(contents=contents)
-
-        url = 'http://www.somewhere.com/this_does_not_matter.xml'
-        obj = D1TestTool(sitemap_url=url)
+        self.setUpRequestsMocking(obj, contents=contents)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -299,6 +302,9 @@ class TestSuite2(TestCommon):
         specifically the identity of the CI_Responsibility element.
         """
 
+        url = 'https://www.somewhere.com/this_does_not_matter.xml'
+        obj = D1TestTool(sitemap_url=url)
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -314,10 +320,7 @@ class TestSuite2(TestCommon):
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
-        self.setup_requests_session_patcher(contents=contents)
-
-        url = 'http://www.somewhere.com/this_does_not_matter.xml'
-        obj = D1TestTool(sitemap_url=url)
+        self.setUpRequestsMocking(obj, contents=contents)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -338,6 +341,9 @@ class TestSuite2(TestCommon):
         EXPECTED RESULT:  The successful ingest of both documents is logged.
         """
 
+        url = 'https://www.somewhere.com/this_does_not_matter.xml.gz'
+        obj = D1TestTool(sitemap_url=url)
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -353,10 +359,7 @@ class TestSuite2(TestCommon):
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
-        self.setup_requests_session_patcher(contents=contents)
-
-        url = 'http://www.somewhere.com/this_does_not_matter.xml.gz'
-        obj = D1TestTool(sitemap_url=url)
+        self.setUpRequestsMocking(obj, contents=contents)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -371,6 +374,9 @@ class TestSuite2(TestCommon):
         EXPECTED RESULT:  The successful ingest of all four documents is
         logged.
         """
+
+        url = 'https://www.somewhere.com/this_does_not_matter.xml.gz'
+        obj = D1TestTool(sitemap_url=url)
 
         # External calls to read the:
         #
@@ -401,10 +407,7 @@ class TestSuite2(TestCommon):
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
-        self.setup_requests_session_patcher(contents=contents)
-
-        url = 'http://www.somewhere.com/this_does_not_matter.xml.gz'
-        obj = D1TestTool(sitemap_url=url)
+        self.setUpRequestsMocking(obj, contents=contents)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -418,14 +421,12 @@ class TestSuite2(TestCommon):
         EXPECTED RESULT:  There is a warning stating that the URL may not be
         XML, plus an XMLSyntaxError is raised.
         """
-        content = ir.read_binary('tests.data.arm', 'sitemap.txt')
-
-        contents = [content]
+        contents = [ir.read_binary('tests.data.arm', 'sitemap.txt')]
         headers = [{'Content-Type': 'text/plain'}]
 
-        self.setup_requests_session_patcher(contents=contents, headers=headers)
+        obj = D1TestTool(sitemap_url='https://www.somewhere.com/sitemap.txt')
 
-        obj = D1TestTool(sitemap_url='http://www.somewhere.com/sitemap.txt')
+        self.setUpRequestsMocking(obj, contents=contents, headers=headers)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()
@@ -453,6 +454,9 @@ class TestSuite2(TestCommon):
         EXPECTED RESULT:  There is a warning stating that the URL may not be
         XML, plus an XMLSyntaxError is raised.
         """
+        url = 'https://www.somewhere.com/this_does_not_matter.xml'
+        obj = D1TestTool(sitemap_url=url, num_documents=2)
+
         # External calls to read the:
         #
         #   1) sitemap
@@ -468,10 +472,7 @@ class TestSuite2(TestCommon):
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.fixed.xml'),
         ]
-        self.setup_requests_session_patcher(contents=contents)
-
-        url = 'http://www.somewhere.com/this_does_not_matter.xml'
-        obj = D1TestTool(sitemap_url=url, num_documents=2)
+        self.setUpRequestsMocking(obj, contents=contents)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             obj.run()

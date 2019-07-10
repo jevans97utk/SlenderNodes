@@ -677,8 +677,9 @@ class CommonHarvester(object):
         r = self.session.get(sitemap_url)
         try:
             r.raise_for_status()
-        except requests.HTTPError:
-            self.logger.error(SITEMAP_RETRIEVAL_FAILURE_MESSAGE)
+        except requests.HTTPError as e:
+            msg = f"{SITEMAP_RETRIEVAL_FAILURE_MESSAGE} due to {repr(e)}"
+            self.logger.error(msg)
             raise
 
         if r.headers['Content-Type'] not in ['text/xml', 'application/x-gzip']:
@@ -738,18 +739,6 @@ class CommonHarvester(object):
             records = records[:-diff]
 
         return records
-
-    def extract_identifier(self, jsonld):
-        """
-        Parse the DOI from the JSON-LD.
-        """
-        try:
-            identifier = self.extract_identifier_toplevel(jsonld)
-        except RuntimeError as e:
-            self.logger.warning(repr(e) + ", trying another way...")
-            identifier = self.extract_identifier_ieda(jsonld)
-
-        return identifier
 
     def extract_identifier(self, jsonld):
         """
@@ -830,13 +819,6 @@ class CommonHarvester(object):
             return jsonld['encoding']['contentUrl']
         except KeyError as e:
             # If this happens, maybe we have IEDA?
-            #msg = (
-            #    f"Could not find the metadata URL in "
-            #    f"{... 'encoding': {... 'contentUrl': 'THIS GUY' } "
-            #    f"due to {repr(e)}, so trying to find in "
-            #    f"{... 'distribution': "
-            #    f"[ {'name': 'ISO Metadata Document', 'url': 'THIS GUY'} ... ]"
-            #)
             msg = (
                 f"Could not find the metadata URL in "
                 f"JSON-LD['encoding']['contentUrl'] "

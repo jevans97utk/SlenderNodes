@@ -53,6 +53,7 @@ dependencies:
   - rdflib
   - readline
   - requests
+  - requests_mock
   - setuptools
   - six
   - sqlite
