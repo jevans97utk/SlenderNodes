@@ -316,21 +316,18 @@ class CommonHarvester(object):
                 msg = f"{INVALID_JSONLD_MESSAGE}: \"{msg}\"."
                 raise RuntimeError(msg)
 
-    def retrieve_url(self, url):
+    def retrieve_url(self, url, headers=None):
         """
         Parameters
         ----------
         url : str
             URL of either an HTML document or an XML metadata document
+        headers : dict
+            Optional headers to supply with the retrieval.
         """
-        r = self.session.get(url)
-        try:
-            r.raise_for_status()
-        except requests.HTTPError as e:
-            # self.logger.error(repr(e))
-            raise RuntimeError(repr(e))
-        else:
-            return r
+        r = self.session.get(url, headers=headers)
+        r.raise_for_status()
+        return r
 
     def run(self):
 
@@ -462,8 +459,7 @@ class CommonHarvester(object):
         url = f"{self.mn_base_url}/v2/object/{existing_sid}"
 
         # Get the existing document.
-        r = self.session.get(url, headers={'Accept': 'text/xml'})
-        r.raise_for_status()
+        r = self.retrieve_url(url, headers={'Accept': 'text/xml'})
 
         old_doc = lxml.etree.parse(io.BytesIO(r.content))
 
@@ -674,9 +670,8 @@ class CommonHarvester(object):
         sitemap_url : str
             URL for a sitemap or sitemap index file.
         """
-        r = self.session.get(sitemap_url)
         try:
-            r.raise_for_status()
+            r = self.retrieve_url(sitemap_url)
         except requests.HTTPError as e:
             msg = f"{SITEMAP_RETRIEVAL_FAILURE_MESSAGE} due to {repr(e)}"
             self.logger.error(msg)

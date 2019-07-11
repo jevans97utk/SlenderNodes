@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 # 3rd party library imports
 import lxml.etree
+import requests
 import requests_mock
 
 # local imports
@@ -100,14 +101,14 @@ class TestSuite(TestCommon):
         SCENARIO:  an IEDA metadata document URL retrieval results in a
         requests.HTTPError exception being raised.
 
-        EXPECTED RESULT:  A RuntimeError is raised.
+        EXPECTED RESULT:  An HTTPError is raised.
         """
         harvester = IEDAHarvester()
 
         self.setUpRequestsMocking(harvester, status_codes=[400])
 
         url = 'http://abc/600121iso.xml'
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(requests.HTTPError):
             harvester.retrieve_metadata_document(url)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
