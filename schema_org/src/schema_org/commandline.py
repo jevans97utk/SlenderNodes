@@ -1,12 +1,13 @@
 # Standard library imports
 import argparse
+import asyncio
 
 # 3rd party library imports
 
 # Local imports
 from .arm import ARMHarvester
 from .ieda import IEDAHarvester
-from .testtool import D1TestTool
+from .testtool import D1TestTool, run_test_tool
 from .xml_validator import XMLValidator
 
 
@@ -60,13 +61,31 @@ def d1_check_site():
     help = "URL of site map"
     parser.add_argument('sitemap', type=str, help=help)
 
+    help = f"Log verbosity level"
+    choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    parser.add_argument('-v', '--verbose', choices=choices, default='INFO',
+                        help=help)
+
     help = "Limit number of documents retrieved to this number."
     parser.add_argument('--num-documents', type=int, default=-1, help=help)
 
+    help = (
+        "Limit number of workers operating asynchronously to this number. "
+    )
+    parser.add_argument('--num-workers', type=int, default=1, help=help)
+
     args = parser.parse_args()
 
-    o = D1TestTool(sitemap_url=args.sitemap, num_documents=args.num_documents)
-    o.run()
+    if args.num_workers == 1:
+        o = D1TestTool(sitemap_url=args.sitemap,
+                       num_documents=args.num_documents,
+                       verbosity=args.verbose)
+        o.run()
+    else:
+        asyncio.run(run_test_tool(args.sitemap,
+                                  num_workers=args.num_workers,
+                                  verbosity=args.verbose,
+                                  num_documents=args.num_documents))
 
 
 def arm():

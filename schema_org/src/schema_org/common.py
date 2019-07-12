@@ -160,7 +160,7 @@ class CommonHarvester(object):
         logging.basicConfig(filename=f'{logid}.log',
                             format='%(asctime)s %(levelname)-8s %(message)s',
                             level=level)
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger('datatone')
 
         # Also log to stdout.
         handler = logging.StreamHandler(sys.stdout)
@@ -329,7 +329,7 @@ class CommonHarvester(object):
         r.raise_for_status()
         return r
 
-    def run(self):
+    def get_last_harvest_time(self):
 
         if self.mn_host is not None:
             last_harvest_time_str = self.client_mgr.get_last_harvest_time()
@@ -338,6 +338,12 @@ class CommonHarvester(object):
         else:
             last_harvest_time_str = '1900-01-01T00:00:00Z'
             last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
+
+        return last_harvest_time
+
+    def run(self):
+
+        last_harvest_time = self.get_last_harvest_time()
 
         try:
             self.process_sitemap(self.site_map, last_harvest_time)
