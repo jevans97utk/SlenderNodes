@@ -3,9 +3,6 @@ import asyncio
 import importlib.resources as ir
 import io
 import re
-import sys
-import unittest
-from unittest.mock import patch
 
 # 3rd party library imports
 import lxml.etree
@@ -13,7 +10,6 @@ from aioresponses import aioresponses
 
 # local imports
 import schema_org
-import schema_org.commandline as commandline
 from schema_org import D1TestToolAsync
 from schema_org.common import (
     SITEMAP_RETRIEVAL_FAILURE_MESSAGE
@@ -500,4 +496,3 @@ class TestSuite(TestCommon):
         urls = doc.xpath('.//sm:loc/text()',
                          namespaces=schema_org.common.SITEMAP_NS)
         self.assertEqual(len(urls), 3)
-

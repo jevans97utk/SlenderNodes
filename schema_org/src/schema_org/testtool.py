@@ -263,7 +263,7 @@ class D1TestToolAsync(D1TestTool):
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
-        
+
     async def get_sitemap_document(self, sitemap_url):
         """
         Parameters
@@ -271,7 +271,7 @@ class D1TestToolAsync(D1TestTool):
         sitemap_url : str
             URL for a sitemap or sitemap index file.
         """
-        self.logger.debug(f'get_sitemap_document: {sitemap_url}, {type(sitemap_url)}')
+        self.logger.debug(f'get_sitemap_document: {sitemap_url}')
         try:
             r = await self.retrieve_url(sitemap_url)
         except Exception as e:
@@ -289,7 +289,8 @@ class D1TestToolAsync(D1TestTool):
 
             # was it compressed?
             try:
-                doc = lxml.etree.parse(io.BytesIO(gzip.decompress(await r.read())))
+                content = await r.read()
+                doc = lxml.etree.parse(io.BytesIO(gzip.decompress(content)))
             except OSError as e:
                 # Must not have been gzipped.
                 # TODO:  more exceptions possible here
@@ -309,7 +310,7 @@ async def run_test_tool(sitemap_url, **kwargs):
     for the reason behind this.  asyncio not well adapted to magic methods just
     yet, it would seem.
     """
-    obj = D1TestToolAsync(sitemap_url=sitmap_url, **kwargs)
+    obj = D1TestToolAsync(sitemap_url=sitemap_url, **kwargs)
     await obj._init()
     await obj.run()
     await obj._close()
