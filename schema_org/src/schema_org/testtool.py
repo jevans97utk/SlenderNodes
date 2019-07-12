@@ -1,10 +1,11 @@
 # Standard library imports
-import aiohttp
+import asyncio
 import gzip
 import io
 import urllib.parse
 
 # 3rd party library imports
+import aiohttp
 import lxml.etree
 import d1_scimeta.validate
 
@@ -47,8 +48,19 @@ class D1TestToolAsync(D1TestTool):
         """
         Setup any asyncio resources that really do belong in __init__ if that
         were actually possible.
+
+        Attributes
+        ----------
+        session : aiohttp session
+            Somewhat similar to a requests session
+
+        q : asyncio queue
+            URLs for landing page documents go here, to be processed by a set
+            number of workers.
         """
         await self._setup_session(None, None)
+
+        self.q = asyncio.Queue()
 
     async def _setup_session(self, certificate, private_key):
         """
@@ -131,6 +143,33 @@ class D1TestToolAsync(D1TestTool):
 
         return doc
 
+    async def consume(self, idx, q):
+        """
+        This corresponse to a worker drone.  Process records while we can.
+        """
+        self.logger.debug(f'consume({idx}):')
+        while True:
+            url, lastmod_time = await q.get()
+            self.logger.debug(f'consume({idx}) ==>  {url}, {lastmod_time}')
+            try:
+                await self.process_record(url, lastmod_time)
+            except Exception as e:
+                self.failed_count += 1
+                msg = (
+                    f"consume({idx}):  Unable to process {url} due to "
+                    f"{repr(e)}."
+                )
+                self.logger.error(msg)
+            else:
+                p = urllib.parse.urlparse(url)
+                basename = p.path.split('/')[-1]
+                msg = (
+                    f"consume({idx}):  {SUCCESSFUL_INGEST_MESSAGE}: {basename}"
+                )
+                self.logger.info(msg)
+
+            q.task_done()
+
     async def process_record(self, landing_page_url, record_date):
         """
         Read the remote document, extract the JSON-LD, and load it into the
@@ -207,22 +246,24 @@ class D1TestToolAsync(D1TestTool):
             According to the MN, this is the last time we, uh, harvested any
             document.
         """
-        self.logger.debug(f'process_sitemap_leaf')
+        self.logger.debug(f'process_sitemap_leaf:')
 
         records = self.extract_records_from_sitemap(doc, last_harvest_time)
         for url, lastmod_time in records:
-            try:
-                await self.process_record(url, lastmod_time)
-            except Exception as e:
-                self.failed_count += 1
-                msg = f"Unable to process {url} due to {repr(e)}."
-                self.logger.error(msg)
-            else:
-                p = urllib.parse.urlparse(url)
-                basename = p.path.split('/')[-1]
-                msg = f"{SUCCESSFUL_INGEST_MESSAGE}: {basename}"
-                self.logger.info(msg)
+            self.q.put_nowait((url, lastmod_time))
 
+        # Create the worker tasks to consume the URLs
+        tasks = []
+        for j in range(self.num_workers):
+            task = asyncio.create_task(self.consume(j, self.q))
+            tasks.append(task)
+        await self.q.join()
+
+        # Cancel any remaining tasks.
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        
     async def get_sitemap_document(self, sitemap_url):
         """
         Parameters
