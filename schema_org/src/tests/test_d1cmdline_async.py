@@ -370,7 +370,6 @@ class TestSuite(TestCommon):
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(self.run_test_tool(obj))
-
             self.assertSuccessfulIngest(cm.output, n=2)
 
     @aioresponses()
@@ -496,3 +495,47 @@ class TestSuite(TestCommon):
         urls = doc.xpath('.//sm:loc/text()',
                          namespaces=schema_org.common.SITEMAP_NS)
         self.assertEqual(len(urls), 3)
+
+    @aioresponses()
+    def test_multiple_workers(self, aioresp_mocker):
+        """
+        SCENARIO:  The sitemap references two documents, both of which are
+        good.  More than one worker is employed.
+
+        EXPECTED RESULT:  The successful ingest of both documents is logged.
+        """
+
+        # External calls to read the:
+        # Have to have a lot of documents because just two might not be enough
+        # to get more than one worker involved.
+        #
+        #   1) sitemap
+        #   2) HTML document for record 1
+        #   3) XML document for record 1
+        #   3) HTML document for record 2
+        #   4) XML document for record 2
+        #
+        contents = [
+            ir.read_text('tests.data.arm', 'sitemap2.xml'),
+
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.xml'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
+        ]
+        for content in contents:
+            aioresp_mocker.get(self.pattern, body=content)
+
+        url = 'https://www.archive.arm.gov/metadata/adc/sitemap2.xml'
+        obj = D1TestToolAsync(sitemap_url=url, num_workers=2)
+
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
+            asyncio.run(self.run_test_tool(obj))
+            self.assertSuccessfulIngest(cm.output, n=2)
+
+            # If there was more than one worker, then there should be messages
+            # logged that have the strings "consume(0)" and "consume(1)".
+            info_msgs = [msg for msg in cm.output if "create task for 0" in msg]
+            self.assertTrue(len(info_msgs) > 0)
+            info_msgs = [msg for msg in cm.output if "create task for 1" in msg]
+            self.assertTrue(len(info_msgs) > 0)

@@ -34,7 +34,7 @@ class D1TestTool(CommonHarvester):
         """
         We don't harvest, so we don't need to summarize it.
         """
-        pass
+        self.logger.info(f'Successfully processed {self.created_count} records.')
 
 
 class D1TestToolAsync(D1TestTool):
@@ -43,6 +43,7 @@ class D1TestToolAsync(D1TestTool):
         super().__init__(**kwargs)
 
         self.num_workers = num_workers
+        self.logger.debug(f'num_workers = {self.num_workers}')
 
     async def _init(self):
         """
@@ -147,16 +148,16 @@ class D1TestToolAsync(D1TestTool):
         """
         This corresponse to a worker drone.  Process records while we can.
         """
-        self.logger.debug(f'consume({idx}):')
+        self.logger.debug(f'consumer({idx}):')
         while True:
             url, lastmod_time = await q.get()
-            self.logger.debug(f'consume({idx}) ==>  {url}, {lastmod_time}')
+            self.logger.debug(f'consumer({idx}) ==>  {url}, {lastmod_time}')
             try:
                 await self.process_record(url, lastmod_time)
             except Exception as e:
                 self.failed_count += 1
                 msg = (
-                    f"consume({idx}):  Unable to process {url} due to "
+                    f"consumer({idx}):  Unable to process {url} due to "
                     f"{repr(e)}."
                 )
                 self.logger.error(msg)
@@ -164,9 +165,10 @@ class D1TestToolAsync(D1TestTool):
                 p = urllib.parse.urlparse(url)
                 basename = p.path.split('/')[-1]
                 msg = (
-                    f"consume({idx}):  {SUCCESSFUL_INGEST_MESSAGE}: {basename}"
+                    f"consumer({idx}):  {SUCCESSFUL_INGEST_MESSAGE}: {basename}"
                 )
                 self.logger.info(msg)
+                self.created_count += 1
 
             q.task_done()
 
@@ -255,6 +257,7 @@ class D1TestToolAsync(D1TestTool):
         # Create the worker tasks to consume the URLs
         tasks = []
         for j in range(self.num_workers):
+            self.logger.debug(f'process_sitemap_leaf: create task for {j}')
             task = asyncio.create_task(self.consume(j, self.q))
             tasks.append(task)
         await self.q.join()
@@ -279,7 +282,13 @@ class D1TestToolAsync(D1TestTool):
             self.logger.error(msg)
             raise
 
-        if r.headers['Content-Type'] not in ['text/xml', 'application/x-gzip']:
+        expected_headers = [
+            'text/xml',
+            'application/x-gzip',
+            'application/xml'
+        ]
+        if r.headers['Content-Type'] not in expected_headers:
+            self.logger.debug(f'get_sitemap_document: {r.headers}')
             self.logger.warning(SITEMAP_NOT_XML_MESSAGE)
 
         try:

@@ -832,4 +832,8 @@ class CommonHarvester(object):
                 if item['name'] == 'ISO Metadata Document'
             ]
             metadata_url = items[0]['url']
+            msg = (
+                "Found the metadata URL in the distribution hierarchy."
+            )
+            self.logger.info(msg)
             return metadata_url
