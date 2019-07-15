@@ -59,6 +59,14 @@ class TestSuite(TestCommon):
         self.xml_hdr = {'Content-Type': 'text/xml'}
         self.html_hdr = {'Content-Type': 'text/html'}
 
+    async def run_harvest(self, harvester, identifier, doc, record_date):
+        """
+        Helper routine to allow us to isolate the harvest_document method.
+        """
+        await harvester._finish_init()
+        await harvester.harvest_document(identifier, doc, record_date)
+        await harvester._close()
+
     def test_identifier_parsing(self):
         """
         SCENARIO:  The @id field from the JSON-LD must be parsed, we are
@@ -343,13 +351,8 @@ class TestSuite(TestCommon):
 
         aioresp_mocker.get(self.regex, status=500)
 
-        async def run_me(harvester):
-            await harvester._finish_init()
-            await harvester.run()
-            await harvester._close()
-
         with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
-            asyncio.run(run_me(harvester))
+            asyncio.run(run_harvester(harvester))
 
             self.assertErrorMessage(cm.output,
                                     SITEMAP_RETRIEVAL_FAILURE_MESSAGE)
@@ -391,18 +394,13 @@ class TestSuite(TestCommon):
         # to make ok to proceed.
         docbytes = ir.read_binary('tests.data.ieda', '600121iso-later.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
-        identifier = 'doi.10000/abcde'
-
-        async def run_me(harvester, identifier, doc, record_date):
-            await harvester._finish_init()
-            await harvester.harvest_document(identifier, doc, record_date)
-            await harvester._close()
+        doi = 'doi.10000/abcde'
 
         regex = re.compile('https://ieda.mn.org:443/')
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
-                asyncio.run(run_me(harvester, identifier, doc, record_date))
+                asyncio.run(self.run_harvest(harvester, doi, doc, record_date))
 
             # Did we see a warning?
             self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
@@ -448,18 +446,13 @@ class TestSuite(TestCommon):
         doc_bytes = ir.read_binary('tests.data.ieda', '600121iso-later.xml')
         doc = lxml.etree.parse(io.BytesIO(doc_bytes))
 
-        identifier = 'doi.10000/abcde'
-
-        async def run_me(harvester, identifier, doc, record_date):
-            await harvester._finish_init()
-            await harvester.harvest_document(identifier, doc, record_date)
-            await harvester._close()
+        doi = 'doi.10000/abcde'
 
         regex = re.compile('https://ieda.mn.org:443/')
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
-                asyncio.run(run_me(harvester, identifier, doc, record_date))
+                asyncio.run(self.run_harvest(harvester, doi, doc, record_date))
 
             # Did we see a warning?
             self.assertLogLevelCallCount(cm.output, level='WARNING', n=1)
@@ -493,7 +486,7 @@ class TestSuite(TestCommon):
         # This is the proposed update document that is the same except it is
         # marked as complete.
         update_doc_bytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
-        update_doc = lxml.etree.parse(io.BytesIO(update_doc_bytes))
+        doc = lxml.etree.parse(io.BytesIO(update_doc_bytes))
 
         record_date = dt.datetime.now()
         mock_check_if_identifier_exists.return_value = {
@@ -507,17 +500,12 @@ class TestSuite(TestCommon):
         harvester = IEDAHarvester(host=host, port=port)
         initial_updated_count = harvester.updated_count
 
-        identifier = 'doi.10000/abcde'
-
-        async def run_me(harvester, identifier, doc, record_date):
-            await harvester._finish_init()
-            await harvester.harvest_document(identifier, doc, record_date)
-            await harvester._close()
+        doi = 'doi.10000/abcde'
 
         regex = re.compile('https://ieda.mn.org:443/')
         with aioresponses() as m:
             m.get(regex, body=existing_content)
-            asyncio.run(run_me(harvester, identifier, update_doc, record_date))
+            asyncio.run(self.run_harvest(harvester, doi, doc, record_date))
 
         # Did we increase the failure count?
         self.assertEqual(harvester.updated_count, initial_updated_count + 1)
@@ -562,18 +550,13 @@ class TestSuite(TestCommon):
         doc_bytes = ir.read_binary('tests.data.ieda', '600121iso-earlier.xml')
         doc = lxml.etree.parse(io.BytesIO(doc_bytes))
 
-        identifier = 'doi.10000/abcde'
-
-        async def run_me(harvester, identifier, doc, record_date):
-            await harvester._finish_init()
-            await harvester.harvest_document(identifier, doc, record_date)
-            await harvester._close()
+        doi = 'doi.10000/abcde'
 
         regex = re.compile('https://ieda.mn.org:443/')
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
-                asyncio.run(run_me(harvester, identifier, doc, record_date))
+                asyncio.run(self.run_harvest(harvester, doi, doc, record_date))
 
             # Did we see a warning?
             self.assertLogLevelCallCount(cm.output, level='WARNING', n=2)
@@ -607,15 +590,10 @@ class TestSuite(TestCommon):
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
-        identifier = 'doi.10000/abcde'
-
-        async def run_me(harvester, identifier, doc, record_date):
-            await harvester._finish_init()
-            await harvester.harvest_document(identifier, doc, record_date)
-            await harvester._close()
+        doi = 'doi.10000/abcde'
 
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
-            asyncio.run(run_me(harvester, identifier, doc, record_date))
+            asyncio.run(self.run_harvest(harvester, doi, doc, record_date))
 
             # Did we see a warning?
             self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
@@ -649,10 +627,10 @@ class TestSuite(TestCommon):
             await harvester.harvest_document(identifier, doc, record_date)
             await harvester._close()
 
-        asyncio.run(run_me(harvester,
-                           'doi.10000/abcde',
-                           doc,
-                           record_date))
+        asyncio.run(self.run_harvest(harvester,
+                                     'doi.10000/abcde',
+                                     doc,
+                                     record_date))
 
         harvester.logger.warning.assert_called_once()
 
@@ -679,15 +657,10 @@ class TestSuite(TestCommon):
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
-        async def run_me(harvester, identifier, doc, record_date):
-            await harvester._finish_init()
-            await harvester.harvest_document(identifier, doc, record_date)
-            await harvester._close()
-
-        asyncio.run(run_me(harvester,
-                           'doi.10000/abcde',
-                           doc,
-                           dt.datetime.now()))
+        asyncio.run(self.run_harvest(harvester,
+                                     'doi.10000/abcde',
+                                     doc,
+                                     dt.datetime.now()))
 
         self.assertEqual(harvester.created_count, 1)
         harvester.logger.info.assert_called_once()
@@ -714,14 +687,9 @@ class TestSuite(TestCommon):
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
-        async def run_me(harvester, identifier, doc, record_date):
-            await harvester._finish_init()
-            await harvester.harvest_document(identifier, doc, record_date)
-            await harvester._close()
-
-        asyncio.run(run_me(harvester,
-                           'doi.10000/abcde',
-                           doc,
-                           dt.datetime.now()))
+        asyncio.run(self.run_harvest(harvester,
+                                     'doi.10000/abcde',
+                                     doc,
+                                     dt.datetime.now()))
 
         harvester.logger.error.assert_called_once()
