@@ -7,7 +7,7 @@ import asyncio
 # Local imports
 from .arm import ARMHarvester
 from .ieda import IEDAHarvester
-from .testtool import D1TestTool, run_test_tool
+from .testtool import D1TestTool, D1TestToolAsync, run_test_tool
 from .xml_validator import XMLValidator
 
 
@@ -82,10 +82,11 @@ def d1_check_site():
                        verbosity=args.verbose)
         o.run()
     else:
-        asyncio.run(run_test_tool(args.sitemap,
-                                  num_workers=args.num_workers,
-                                  verbosity=args.verbose,
-                                  num_documents=args.num_documents))
+        obj = D1TestToolAsync(sitemap_url=args.sitemap,
+                              num_workers=args.num_workers,
+                              verbosity=args.verbose,
+                              num_documents=args.num_documents)
+        asyncio.run(run_test_tool(obj))
 
 
 def arm():

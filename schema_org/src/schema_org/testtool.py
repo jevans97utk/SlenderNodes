@@ -34,7 +34,8 @@ class D1TestTool(CommonHarvester):
         """
         We don't harvest, so we don't need to summarize it.
         """
-        self.logger.info(f'Successfully processed {self.created_count} records.')
+        msg = f'Successfully processed {self.created_count} records.'
+        self.logger.info(msg)
 
 
 class D1TestToolAsync(D1TestTool):
@@ -165,7 +166,8 @@ class D1TestToolAsync(D1TestTool):
                 p = urllib.parse.urlparse(url)
                 basename = p.path.split('/')[-1]
                 msg = (
-                    f"consumer({idx}):  {SUCCESSFUL_INGEST_MESSAGE}: {basename}"
+                    f"consumer({idx}):  "
+                    f"{SUCCESSFUL_INGEST_MESSAGE}: {basename}"
                 )
                 self.logger.info(msg)
                 self.created_count += 1
@@ -311,7 +313,7 @@ class D1TestToolAsync(D1TestTool):
         return doc
 
 
-async def run_test_tool(sitemap_url, **kwargs):
+async def run_test_tool(d1_test_tool):
     """
     See https://stackoverflow.com
         /questions/33128325
@@ -319,7 +321,6 @@ async def run_test_tool(sitemap_url, **kwargs):
     for the reason behind this.  asyncio not well adapted to magic methods just
     yet, it would seem.
     """
-    obj = D1TestToolAsync(sitemap_url=sitemap_url, **kwargs)
-    await obj._init()
-    await obj.run()
-    await obj._close()
+    await d1_test_tool._init()
+    await d1_test_tool.run()
+    await d1_test_tool._close()
