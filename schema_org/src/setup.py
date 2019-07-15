@@ -32,8 +32,8 @@ kwargs = {
     'license': 'Apache License, Version 2.0',
     'packages': ['schema_org'],
     'install_requires': [
-        'python-dateutil', 'requests', 'lxml', 'importlib_resources',
-        'requests_mock'
+        'aiohttp', 'aioresponses', 'dataone.scimeta', 'importlib_resources',
+        'lxml', 'python-dateutil', 'requests', 'requests_mock',
     ],
     'classifiers': [
         'Development Status :: 5 - Production/Stable',

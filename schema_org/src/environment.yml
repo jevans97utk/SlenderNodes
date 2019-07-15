@@ -2,6 +2,7 @@ name: schemaorg
 channels:
   - conda-forge
 dependencies:
+  - aiohttp
   - asn1crypto
   - atomicwrites
   - attrs
@@ -53,7 +54,7 @@ dependencies:
   - rdflib
   - readline
   - requests
-  - requests_mock
+  - requests-mock
   - setuptools
   - six
   - sqlite
@@ -65,7 +66,9 @@ dependencies:
   - zipp
   - zlib
   - pip:
+    - aioresponses
     - dataone-cli==3.4.1
+    - dataone.scimeta
     - dataone-common==3.4.1
     - dataone-libclient==3.4.1
     - requests-toolbelt==0.9.1
