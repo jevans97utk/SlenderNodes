@@ -39,12 +39,42 @@ class TestCommon(unittest.TestCase):
         count = len([msg for msg in cm_output if message in msg])
         self.assertTrue(count >= 1)
 
-    def assertErrorCount(self, cm_output, n=1):
+    def assertLogLevelCallCount(self, cm_output, level='ERROR', n=1,
+                                tokens=None, debug=False):
         """
-        Verify we see this many log messages with ERROR.
+        Verify we see this many log messages with the specified level.
+
+        Parameters
+        ----------
+        tokens : str or list
+            Verify that these strings appear in the messages.
         """
-        error_count = sum(msg.startswith('ERROR') for msg in cm_output)
-        self.assertEqual(error_count, 1)
+        if debug:
+            print('\n'.join(cm_output))
+        msgs = [msg for msg in cm_output if msg.startswith(level)]
+        actual_count = len(msgs)
+
+        if actual_count > 0:
+            printable = '\n'.join(msgs)
+            msg = (
+                f"Detected messages a log level {level} are as follows:"
+                "\n\n"
+                f"{printable}"
+            )
+        else:
+            msg = ''
+        self.assertEqual(actual_count, n, msg)
+
+        # Check the tokens
+        if tokens is None:
+            return
+
+        if isinstance(tokens, str):
+            tokens = [tokens]
+
+        for token in tokens:
+            count = sum(msg.find(token) > -1 for msg in msgs)
+            self.assertTrue(count >= 1, f"Failed to verify token {token}")
 
     def setUpRequestsMocking(self, harvester, contents=None, status_codes=None,
                              headers=None, protocol='https'):

@@ -18,7 +18,6 @@ from unittest.mock import patch
 import aiohttp
 from aioresponses import aioresponses
 import lxml.etree
-import requests
 import requests_mock
 
 # local imports
@@ -38,15 +37,27 @@ class TestSuite(TestCommon):
         This intercepts all the outgoing HTTP requests
     pattern : str
         Match any URLs going to that site, we will catch them with
-        aioresponses. 
+        aioresponses.
     """
 
     def setUp(self):
+        """
+        Attributes
+        ----------
+        regex : obj
+            Any URL that matches this should have its request intercepted
+            by the mocking layer.
+        xml_hdr, html_hdr : dicts
+            Headers that the requests/aiohttp layer should send back.
+        """
 
         self.adapter = requests_mock.Adapter()
         self.protocol = 'http'
 
         self.regex = re.compile('http://get.iedadata.org/.*')
+
+        self.xml_hdr = {'Content-Type': 'text/xml'}
+        self.html_hdr = {'Content-Type': 'text/html'}
 
     def test_identifier_parsing(self):
         """
@@ -82,30 +93,38 @@ class TestSuite(TestCommon):
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier({'@id': 'djlfsdljfasl;'})
 
-    @patch('schema_org.common.logging.getLogger')
-    def test_metadata_document_retrieval(self, mock_logger):
+    def test_metadata_document_retrieval(self):
         """
         SCENARIO:  an IEDA metadata document URL is retrieved and properly
         transformed.
 
-        EXPECTED RESULT:  A byte-stream of a valid metadata document.  The
-        logger should have registered the retrieval at the INFO level.
+        EXPECTED RESULT:  A byte-stream of a valid metadata document.  There
+        are no ERROR or WARNING messages logged.
         """
+
+        url = 'http://get.iedadata.org/600121iso.xml'
         harvester = IEDAHarvester()
 
-        contents = [ir.read_binary('tests.data.ieda', '600121iso.xml')]
-        status_codes = [200]
-        self.setUpRequestsMocking(harvester, contents=contents,
-                                  status_codes=status_codes)
+        async def runme(harvester, url):
+            await harvester._finish_init()
+            resp = await harvester.retrieve_metadata_document(url)
+            await harvester._close()
+            return resp
 
-        doc1 = harvester.retrieve_metadata_document('http://somewhere/a.xml')
-        doc2 = lxml.etree.parse(io.BytesIO(contents[0]))
+        content = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+            with aioresponses() as m:
+                m.get(self.regex, body=content)
+                doc1 = asyncio.run(runme(harvester, url))
+
+            self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+            self.assertLogLevelCallCount(cm.output, level='WARNING', n=0)
+
+        doc2 = lxml.etree.parse(io.BytesIO(content))
         self.assertEqual(lxml.etree.tostring(doc1), lxml.etree.tostring(doc2))
 
-        harvester.logger.info.assert_called_once()
-
-    @aioresponses()
-    def test_metadata_document_retrieval_httperror(self, aioresp_mocker):
+    @patch('schema_org.common.logging.getLogger')
+    def test_metadata_document_retrieval_httperror(self, log_mocker):
         """
         SCENARIO:  an IEDA metadata document URL retrieval results in a
         requests.HTTPError exception being raised.
@@ -116,18 +135,20 @@ class TestSuite(TestCommon):
         asyncio.run(harvester._finish_init())
 
         url = 'http://get.iedadata.org/600121iso.xml'
-        aioresp_mocker.get(url, status=400)
 
         with self.assertRaises(aiohttp.client_exceptions.ClientResponseError):
-            asyncio.run(harvester.retrieve_metadata_document(url))
+            with aioresponses() as m:
+                m.get(url, status=400)
+                asyncio.run(harvester.retrieve_metadata_document(url))
 
+    @patch('schema_org.common.logging.getLogger')
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
-    @patch('schema_org.common.logging.getLogger')
-    def test_default_run(self, mock_logger, mock_harvest_time,
+    def test_default_run(self, mock_harvest_time,
                          mock_check_if_identifier_exists,
-                         mock_load_science_metadata):
+                         mock_load_science_metadata,
+                         mock_logger):
         """
         SCENARIO:  Process the sitemap where all the records are newer than
         the last time that the harvester was run.
@@ -164,10 +185,11 @@ class TestSuite(TestCommon):
             {'Content-Type': 'text/html'},
             {'Content-Type': 'text/xml'},
         ]
-        self.setUpRequestsMocking(harvester,
-                                  contents=contents, headers=headers)
+        with aioresponses() as m:
+            for content, headers in zip(contents, headers):
+                m.get(self.regex, body=content, headers=headers)
 
-        harvester.run()
+            asyncio.run(run_harvester(harvester))
 
         # There should be lots of log messages at the info level, but none
         # at the warning or error level.
@@ -214,23 +236,19 @@ class TestSuite(TestCommon):
             ir.read_binary('tests.data.ieda', 'ieda600048.html'),
             b'',
         ]
-        xml_hdr = {'Content-Type': 'text/xml'}
-        html_hdr = {'Content-Type': 'text/html'}
-
-        url = 'http://get.iedadata.org/sitemaps/usap_sitemap.xml'
 
         with aioresponses() as m:
-            m.get(self.regex, body=contents[0], headers=xml_hdr)
-            m.get(self.regex, body=contents[1], headers=html_hdr)
-            m.get(self.regex, body=contents[2], headers=xml_hdr)
-            m.get(self.regex, body=contents[3], headers=html_hdr)
-            m.get(self.regex, status=400, headers=xml_hdr)
+            m.get(self.regex, body=contents[0], headers=self.xml_hdr)
+            m.get(self.regex, body=contents[1], headers=self.html_hdr)
+            m.get(self.regex, body=contents[2], headers=self.xml_hdr)
+            m.get(self.regex, body=contents[3], headers=self.html_hdr)
+            m.get(self.regex, status=400, headers=self.xml_hdr)
 
             with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
                 asyncio.run(run_harvester(harvester))
 
                 self.assertSuccessfulIngest(cm.output, n=1)
-                self.assertErrorCount(cm.output, n=1)
+                self.assertLogLevelCallCount(cm.output, level='ERROR', n=1)
                 self.assertErrorMessage(cm.output, 'ClientResponseError')
 
     def test_ieda_600165_unescaped_double_quotes(self):
@@ -325,18 +343,21 @@ class TestSuite(TestCommon):
 
         aioresp_mocker.get(self.regex, status=500)
 
+        async def run_me(harvester):
+            await harvester._finish_init()
+            await harvester.run()
+            await harvester._close()
+
         with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
-            asyncio.run(run_harvester(harvester))
+            asyncio.run(run_me(harvester))
 
             self.assertErrorMessage(cm.output,
                                     SITEMAP_RETRIEVAL_FAILURE_MESSAGE)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.common.logging.getLogger')
     def test_document_already_harvested_but_can_be_successfully_updated(
         self,
-        mock_logger,
         mock_check_if_identifier_exists,
         mock_update_science_metadata
     ):
@@ -350,7 +371,6 @@ class TestSuite(TestCommon):
         """
         host, port = 'ieda.mn.org', 443
         harvester = IEDAHarvester(host=host, port=port)
-        update_count = harvester.updated_count
 
         # This is the existing document in the MN.  It is marked as complete.
         existing_content = ir.read_binary('tests.data.ieda', '600121iso.xml')
@@ -366,27 +386,34 @@ class TestSuite(TestCommon):
         harvester = IEDAHarvester(host=host, port=port)
         update_count = harvester.updated_count
 
-        self.protocol = 'https'
-        self.setUpRequestsMocking(harvester, contents=[existing_content])
-
         # This is the "update" document, same as the existing document.  It is
         # already marked as "complete".  Bump the timestamp to just a bit later
         # to make ok to proceed.
         docbytes = ir.read_binary('tests.data.ieda', '600121iso-later.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
-
         identifier = 'doi.10000/abcde'
-        harvester.harvest_document(identifier, doc, record_date)
 
-        harvester.logger.info.assert_called_once()
-        self.assertEqual(harvester.updated_count, update_count + 1)
+        async def run_me(harvester, identifier, doc, record_date):
+            await harvester._finish_init()
+            await harvester.harvest_document(identifier, doc, record_date)
+            await harvester._close()
+
+        regex = re.compile('https://ieda.mn.org:443/')
+        with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+            with aioresponses() as m:
+                m.get(regex, body=existing_content)
+                asyncio.run(run_me(harvester, identifier, doc, record_date))
+
+            # Did we see a warning?
+            self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
+
+            # Did we increase the update count?
+            self.assertEqual(harvester.updated_count, update_count + 1)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.common.logging.getLogger')
     def test_document_already_harvested_but_fails_to_update(
         self,
-        mock_logger,
         mock_check_if_identifier_exists,
         mock_update_science_metadata
     ):
@@ -416,22 +443,29 @@ class TestSuite(TestCommon):
         harvester = IEDAHarvester(host=host, port=port)
         initial_failed_count = harvester.failed_count
 
-        self.protocol = 'https'
-        self.setUpRequestsMocking(harvester, contents=[existing_content])
-
         # Read a document that is the same except it has a later metadata
         # timestamp.  This means that we should update it.
         doc_bytes = ir.read_binary('tests.data.ieda', '600121iso-later.xml')
         doc = lxml.etree.parse(io.BytesIO(doc_bytes))
 
         identifier = 'doi.10000/abcde'
-        harvester.harvest_document(identifier, doc, record_date)
 
-        # Did we increase the failure count?
-        self.assertEqual(harvester.failed_count, initial_failed_count + 1)
+        async def run_me(harvester, identifier, doc, record_date):
+            await harvester._finish_init()
+            await harvester.harvest_document(identifier, doc, record_date)
+            await harvester._close()
 
-        # Did we see a warning?
-        self.assertTrue(harvester.logger.warning.call_count > 0)
+        regex = re.compile('https://ieda.mn.org:443/')
+        with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+            with aioresponses() as m:
+                m.get(regex, body=existing_content)
+                asyncio.run(run_me(harvester, identifier, doc, record_date))
+
+            # Did we see a warning?
+            self.assertLogLevelCallCount(cm.output, level='WARNING', n=1)
+
+            # Did we increase the failure count?
+            self.assertEqual(harvester.failed_count, initial_failed_count + 1)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -473,11 +507,17 @@ class TestSuite(TestCommon):
         harvester = IEDAHarvester(host=host, port=port)
         initial_updated_count = harvester.updated_count
 
-        self.protocol = 'https'
-        self.setUpRequestsMocking(harvester, contents=[existing_content])
-
         identifier = 'doi.10000/abcde'
-        harvester.harvest_document(identifier, update_doc, record_date)
+
+        async def run_me(harvester, identifier, doc, record_date):
+            await harvester._finish_init()
+            await harvester.harvest_document(identifier, doc, record_date)
+            await harvester._close()
+
+        regex = re.compile('https://ieda.mn.org:443/')
+        with aioresponses() as m:
+            m.get(regex, body=existing_content)
+            asyncio.run(run_me(harvester, identifier, update_doc, record_date))
 
         # Did we increase the failure count?
         self.assertEqual(harvester.updated_count, initial_updated_count + 1)
@@ -487,10 +527,8 @@ class TestSuite(TestCommon):
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.common.logging.getLogger')
     def test_document_already_harvested__followup_record_is_too_old(
         self,
-        mock_logger,
         mock_check_if_identifier_exists,
         mock_update_science_metadata
     ):
@@ -517,9 +555,6 @@ class TestSuite(TestCommon):
         host, port = 'ieda.mn.org', 443
         harvester = IEDAHarvester(host=host, port=port)
 
-        self.protocol = 'https'
-        self.setUpRequestsMocking(harvester, contents=[existing_content])
-
         initial_rejected_count = harvester.rejected_count
 
         # Read a document that is the same except it has an earlier metadata
@@ -528,20 +563,28 @@ class TestSuite(TestCommon):
         doc = lxml.etree.parse(io.BytesIO(doc_bytes))
 
         identifier = 'doi.10000/abcde'
-        harvester.harvest_document(identifier, doc, record_date)
+
+        async def run_me(harvester, identifier, doc, record_date):
+            await harvester._finish_init()
+            await harvester.harvest_document(identifier, doc, record_date)
+            await harvester._close()
+
+        regex = re.compile('https://ieda.mn.org:443/')
+        with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+            with aioresponses() as m:
+                m.get(regex, body=existing_content)
+                asyncio.run(run_me(harvester, identifier, doc, record_date))
+
+            # Did we see a warning?
+            self.assertLogLevelCallCount(cm.output, level='WARNING', n=2)
 
         # Did we increase the failure count?
         self.assertEqual(harvester.rejected_count, initial_rejected_count + 1)
 
-        # Did we see a warning?
-        self.assertTrue(harvester.logger.warning.call_count > 0)
-
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.common.logging.getLogger')
     def test_document_already_harvested_at_same_date(
         self,
-        mock_logger,
         mock_check_if_identifier_exists,
         mock_update_science_metadata
     ):
@@ -565,9 +608,18 @@ class TestSuite(TestCommon):
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
         identifier = 'doi.10000/abcde'
-        harvester.harvest_document(identifier, doc, record_date)
 
-        harvester.logger.info.assert_called_once()
+        async def run_me(harvester, identifier, doc, record_date):
+            await harvester._finish_init()
+            await harvester.harvest_document(identifier, doc, record_date)
+            await harvester._close()
+
+        with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+            asyncio.run(run_me(harvester, identifier, doc, record_date))
+
+            # Did we see a warning?
+            self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
+
         self.assertEqual(harvester.skipped_exists_count, skipped_count + 1)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -592,8 +644,15 @@ class TestSuite(TestCommon):
 
         record_date = dt.datetime.now()
 
-        identifier = 'doi.10000/abcde'
-        harvester.harvest_document(identifier, doc, record_date)
+        async def run_me(harvester, identifier, doc, record_date):
+            await harvester._finish_init()
+            await harvester.harvest_document(identifier, doc, record_date)
+            await harvester._close()
+
+        asyncio.run(run_me(harvester,
+                           'doi.10000/abcde',
+                           doc,
+                           record_date))
 
         harvester.logger.warning.assert_called_once()
 
@@ -620,7 +679,15 @@ class TestSuite(TestCommon):
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
-        harvester.harvest_document('doi.10000/abcde', doc, dt.datetime.now())
+        async def run_me(harvester, identifier, doc, record_date):
+            await harvester._finish_init()
+            await harvester.harvest_document(identifier, doc, record_date)
+            await harvester._close()
+
+        asyncio.run(run_me(harvester,
+                           'doi.10000/abcde',
+                           doc,
+                           dt.datetime.now()))
 
         self.assertEqual(harvester.created_count, 1)
         harvester.logger.info.assert_called_once()
@@ -647,6 +714,14 @@ class TestSuite(TestCommon):
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
-        harvester.harvest_document('doi.10000/abcde', doc, dt.datetime.now())
+        async def run_me(harvester, identifier, doc, record_date):
+            await harvester._finish_init()
+            await harvester.harvest_document(identifier, doc, record_date)
+            await harvester._close()
+
+        asyncio.run(run_me(harvester,
+                           'doi.10000/abcde',
+                           doc,
+                           dt.datetime.now()))
 
         harvester.logger.error.assert_called_once()

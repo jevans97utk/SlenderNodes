@@ -1,20 +1,9 @@
 # Standard library imports
-import asyncio
-import gzip
-import io
-import urllib.parse
 
 # 3rd party library imports
-import aiohttp
-import lxml.etree
-import d1_scimeta.validate
 
 # local imports
-from .common import (
-    CommonHarvester, SITEMAP_RETRIEVAL_FAILURE_MESSAGE,
-    SITEMAP_NOT_XML_MESSAGE, DOI_IDENTIFIER_MSG, SUCCESSFUL_INGEST_MESSAGE,
-    SITEMAP_NS
-)
+from .common import CommonHarvester
 
 
 class D1TestToolAsync(CommonHarvester):
@@ -25,7 +14,7 @@ class D1TestToolAsync(CommonHarvester):
         self.site_map = sitemap_url
         self.logger.debug(f'num_workers = {self.num_workers}')
 
-    def harvest_document(self, doi, doc, record_date):
+    async def harvest_document(self, doi, doc, record_date):
         """
         We don't actually harvest.
         """
@@ -47,6 +36,6 @@ async def run_test_tool(d1_test_tool):
     for the reason behind this.  asyncio not well adapted to magic methods just
     yet, it would seem.
     """
-    await d1_test_tool._init()
+    await d1_test_tool._finish_init()
     await d1_test_tool.run()
     await d1_test_tool._close()

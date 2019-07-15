@@ -385,7 +385,7 @@ class CommonHarvester(object):
         self.logger.info(f'Rejected {self.rejected_count} records.')
         self.logger.info(f'Failed to update/create {self.failed_count} records.')  # noqa: E501
 
-    def harvest_document(self, doi, doc, record_date):
+    async def harvest_document(self, doi, doc, record_date):
         """
         Check if the member node has seen the document before and decide how to
         harvest it (or not) accordingly.
@@ -399,6 +399,7 @@ class CommonHarvester(object):
         record_date : datetime obj
             Last document modification time according to the site map.
         """
+        self.logger.debug(f'harvest_document:  {doi}')
         # Re-seriealize to bytes.
         docbytes = lxml.etree.tostring(doc, pretty_print=True,
                                        encoding='utf-8', standalone=True)
@@ -410,7 +411,7 @@ class CommonHarvester(object):
             and exists_dict['record_date'] != record_date
         ):
             current_sid = exists_dict['current_version_id']
-            if not self.can_be_updated(docbytes, doi, current_sid):
+            if not await self.can_be_updated(docbytes, doi, current_sid):
                 self.rejected_count += 1
                 self.logger.warning(f'Refused to update {doi}.')
 
@@ -473,7 +474,7 @@ class CommonHarvester(object):
                 self.logger.error(msg)
                 self.failed_count += 1
 
-    def can_be_updated(self, new_doc_bytes, doi, existing_sid):
+    async def can_be_updated(self, new_doc_bytes, doi, existing_sid):
         """
         We have an existing document in the system and have been give a
         proposed update document.  We need to decide if an update is warranted.
@@ -490,9 +491,9 @@ class CommonHarvester(object):
         url = f"{self.mn_base_url}/v2/object/{existing_sid}"
 
         # Get the existing document.
-        r = self.retrieve_url(url, headers={'Accept': 'text/xml'})
+        r = await self.retrieve_url(url, headers={'Accept': 'text/xml'})
 
-        old_doc = lxml.etree.parse(io.BytesIO(r.content))
+        old_doc = lxml.etree.parse(io.BytesIO(await r.read()))
 
         # Get the progress code
         parts = [
@@ -751,12 +752,23 @@ class CommonHarvester(object):
         -------
         The ElementTree document.
         """
-        self.logger.debug(f'retrieve_metadata_document')
+        msg = f'retrieve_metadata_document:  requesting {metadata_url}'
+        self.logger.debug(msg)
         # Retrieve the metadata document.
-        self.logger.info(f"Requesting {metadata_url}...")
         r = await self.retrieve_url(metadata_url)
+
         try:
-            doc = lxml.etree.parse(io.BytesIO(await r.read()))
+            content = await r.read()
+        except TypeError:
+            msg = 'Could not read response as binary, trying as text...'
+            self.logger.debug(msg)
+            text = await r.text()
+            content = text.encode('utf-8')
+        else:
+            self.logger.debug('Content read as binary')
+
+        try:
+            doc = lxml.etree.parse(io.BytesIO(content))
         except Exception as e:
             msg = (
                 f"Unable to parse the metadata document at {metadata_url} "
@@ -764,6 +776,7 @@ class CommonHarvester(object):
             )
             raise RuntimeError(msg)
 
+        self.logger.debug('Got the metadata document')
         return doc
 
     async def consume(self, idx, q):
@@ -828,7 +841,8 @@ class CommonHarvester(object):
         doc = await self.retrieve_metadata_document(metadata_url)
         d1_scimeta.validate.assert_valid(self.format_id, doc)
 
-        self.harvest_document(identifier, doc, record_date)
+        await self.harvest_document(identifier, doc, record_date)
+        self.logger.debug(f'process_record:  finished')
 
     async def process_sitemap(self, sitemap_url, last_harvest_time):
         """
@@ -847,6 +861,7 @@ class CommonHarvester(object):
 
         doc = await self.get_sitemap_document(sitemap_url)
         if self.is_sitemap_index_file(doc):
+            self.logger.debug("It is a sitemap index file.")
 
             sitemap_urls = doc.xpath('sm:sitemap/sm:loc/text()',
                                      namespaces=SITEMAP_NS)
@@ -855,6 +870,7 @@ class CommonHarvester(object):
                 await self.process_sitemap(sitemap_url, last_harvest_time)
 
         else:
+            self.logger.debug("It is a sitemap leaf.")
             await self.process_sitemap_leaf(doc, last_harvest_time)
 
     async def process_sitemap_leaf(self, doc, last_harvest_time):
@@ -911,7 +927,7 @@ class CommonHarvester(object):
             'application/xml'
         ]
         if r.headers['Content-Type'] not in expected_headers:
-            self.logger.debug(f'get_sitemap_document: {r.headers}')
+            self.logger.debug(f'get_sitemap_document: headers are {r.headers}')
             self.logger.warning(SITEMAP_NOT_XML_MESSAGE)
 
         try:

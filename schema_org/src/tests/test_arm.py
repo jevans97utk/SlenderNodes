@@ -1,16 +1,17 @@
 # Standard library imports
+import asyncio
 try:
     import importlib.resources as ir
 except ImportError:  # pragma:  nocover
     import importlib_resources as ir
+import re
 from unittest.mock import patch
 
 # 3rd party library imports
-import requests
+from aioresponses import aioresponses
 
 # local imports
 from schema_org.arm import ARMHarvester
-from schema_org.common import SITEMAP_RETRIEVAL_FAILURE_MESSAGE
 from .test_common import TestCommon
 
 
@@ -18,8 +19,7 @@ from .test_common import TestCommon
 class TestSuite(TestCommon):
 
     def setUp(self):
-        self.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
-        self.protocol = 'https'
+        self.regex = re.compile('https://www.archive.arm.gov/metadata/adc')
 
     def test_identifier_parsing(self, mock_logger):
         """
@@ -90,6 +90,7 @@ class TestSuite(TestCommon):
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
 
         harvester = ARMHarvester()
+        failed_count = harvester.failed_count
 
         # External calls to read the:
         #
@@ -103,34 +104,16 @@ class TestSuite(TestCommon):
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.xml'),
         ]
         status_codes = [200, 200, 400]
-        self.setUpRequestsMocking(harvester,
-                                  contents=contents, status_codes=status_codes)
 
-        failed_count = harvester.failed_count
+        async def run_me(harvester):
+            await harvester._finish_init()
+            await harvester.run()
+            await harvester._close()
 
-        harvester.run()
+        with aioresponses() as m:
+            for content, status_code in zip(contents, status_codes):
+                m.get(self.regex, body=content, status=status_code)
+
+            asyncio.run(run_me(harvester))
 
         self.assertEqual(harvester.failed_count, failed_count + 1)
-
-
-class TestSuite2(TestCommon):
-
-    def setUp(self):
-        self.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
-        self.protocol = 'https'
-
-    def test_site_map_retrieval_failure(self):
-        """
-        SCENARIO:  a non-200 status code is returned by the site map retrieval.
-
-        EXPECTED RESULT:  A requests HTTPError is raised and the exception is
-        logged.
-        """
-        harvester = ARMHarvester(verbosity='INFO')
-        self.setUpRequestsMocking(harvester, status_codes=[400])
-
-        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
-            with self.assertRaises(requests.HTTPError):
-                harvester.get_sitemap_document(harvester.site_map)
-            self.assertErrorMessage(cm.output,
-                                    SITEMAP_RETRIEVAL_FAILURE_MESSAGE)

@@ -75,7 +75,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(run_test_tool(obj))
 
-            self.assertErrorCount(cm.output, 1)
+            self.assertLogLevelCallCount(cm.output, n=1)
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -195,7 +195,7 @@ class TestSuite(TestCommon):
             asyncio.run(run_test_tool(obj))
 
             # Verify the single error message.
-            self.assertErrorCount(cm.output, 1)
+            self.assertLogLevelCallCount(cm.output, n=1)
 
             error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
             self.assertEqual(len(error_msgs), 1)
@@ -223,28 +223,36 @@ class TestSuite(TestCommon):
         #   4) XML document for record 2
         #
         contents = [
-            ir.read_text('tests.data.arm', 'sitemap2.xml'),
+            ir.read_binary('tests.data.arm', 'sitemap2.xml'),
             ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
             b'',
             ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
         ]
-        aioresp_mocker.get(self.pattern, body=contents[0])
-        aioresp_mocker.get(self.pattern, body=contents[1])
-        aioresp_mocker.get(self.pattern, status=400)
-        aioresp_mocker.get(self.pattern, body=contents[3])
-        aioresp_mocker.get(self.pattern, body=contents[4])
+        status_codes = [200, 200, 400, 200, 200]
+        headers = [
+            {'Content-Type': 'text/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'text/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'text/xml'},
+        ]
+        z = zip(contents, status_codes, headers)
+        for content, status_code, headers in z:
+            aioresp_mocker.get(self.pattern,
+                               body=content,
+                               status=status_code,
+                               headers=headers)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         obj = D1TestToolAsync(sitemap_url=url)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(run_test_tool(obj))
 
             # Verify the error message.
-            error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
-            self.assertEqual(len(error_msgs), 1)
-            self.assertIn('ClientResponseError', error_msgs[0])
+            self.assertLogLevelCallCount(cm.output, level='ERROR', n=1,
+                                         tokens='ClientResponseError')
 
             self.assertSuccessfulIngest(cm.output)
 
