@@ -3,6 +3,7 @@ Test suite for IEDA
 """
 
 # Standard library imports
+import asyncio
 import datetime as dt
 try:
     import importlib.resources as ir
@@ -10,9 +11,12 @@ except ImportError:  # pragma:  nocover
     import importlib_resources as ir
 import io
 import json
+import re
 from unittest.mock import patch
 
 # 3rd party library imports
+import aiohttp
+from aioresponses import aioresponses
 import lxml.etree
 import requests
 import requests_mock
@@ -21,7 +25,7 @@ import requests_mock
 from schema_org.ieda import IEDAHarvester
 from schema_org.common import (
     UNESCAPED_DOUBLE_QUOTES_MSG, OVER_ESCAPED_DOUBLE_QUOTES_MSG,
-    SITEMAP_RETRIEVAL_FAILURE_MESSAGE
+    SITEMAP_RETRIEVAL_FAILURE_MESSAGE, run_harvester
 )
 from .test_common import TestCommon
 
@@ -32,12 +36,17 @@ class TestSuite(TestCommon):
     ----------
     adapter : obj
         This intercepts all the outgoing HTTP requests
+    pattern : str
+        Match any URLs going to that site, we will catch them with
+        aioresponses. 
     """
 
     def setUp(self):
 
         self.adapter = requests_mock.Adapter()
         self.protocol = 'http'
+
+        self.regex = re.compile('http://get.iedadata.org/.*')
 
     def test_identifier_parsing(self):
         """
@@ -95,8 +104,8 @@ class TestSuite(TestCommon):
 
         harvester.logger.info.assert_called_once()
 
-    @patch('schema_org.common.logging.getLogger')
-    def test_metadata_document_retrieval_httperror(self, mock_logger):
+    @aioresponses()
+    def test_metadata_document_retrieval_httperror(self, aioresp_mocker):
         """
         SCENARIO:  an IEDA metadata document URL retrieval results in a
         requests.HTTPError exception being raised.
@@ -104,12 +113,13 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  An HTTPError is raised.
         """
         harvester = IEDAHarvester()
+        asyncio.run(harvester._finish_init())
 
-        self.setUpRequestsMocking(harvester, status_codes=[400])
+        url = 'http://get.iedadata.org/600121iso.xml'
+        aioresp_mocker.get(url, status=400)
 
-        url = 'http://abc/600121iso.xml'
-        with self.assertRaises(requests.HTTPError):
-            harvester.retrieve_metadata_document(url)
+        with self.assertRaises(aiohttp.client_exceptions.ClientResponseError):
+            asyncio.run(harvester.retrieve_metadata_document(url))
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -187,7 +197,7 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = True
 
-        harvester = IEDAHarvester()
+        harvester = IEDAHarvester(verbosity='DEBUG')
 
         # External calls to read the:
         #
@@ -202,26 +212,26 @@ class TestSuite(TestCommon):
             ir.read_binary('tests.data.ieda', 'ieda609246.html'),
             ir.read_binary('tests.data.ieda', '609246iso.xml'),
             ir.read_binary('tests.data.ieda', 'ieda600048.html'),
-            None,
+            b'',
         ]
-        status_codes = [200, 200, 200, 200, 400]
-        headers = [
-            {'Content-Type': 'text/xml'},
-            {'Content-Type': 'text/html'},
-            {'Content-Type': 'text/xml'},
-            {'Content-Type': 'text/html'},
-            {'Content-Type': 'text/xml'},
-        ]
+        xml_hdr = {'Content-Type': 'text/xml'}
+        html_hdr = {'Content-Type': 'text/html'}
 
-        self.setUpRequestsMocking(harvester,
-                                  contents=contents, status_codes=status_codes,
-                                  headers=headers)
+        url = 'http://get.iedadata.org/sitemaps/usap_sitemap.xml'
 
-        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
-            harvester.run()
+        with aioresponses() as m:
+            m.get(self.regex, body=contents[0], headers=xml_hdr)
+            m.get(self.regex, body=contents[1], headers=html_hdr)
+            m.get(self.regex, body=contents[2], headers=xml_hdr)
+            m.get(self.regex, body=contents[3], headers=html_hdr)
+            m.get(self.regex, status=400, headers=xml_hdr)
 
-            self.assertSuccessfulIngest(cm.output, n=1)
-            self.assertErrorCount(cm.output, n=1)
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                asyncio.run(run_harvester(harvester))
+
+                self.assertSuccessfulIngest(cm.output, n=1)
+                self.assertErrorCount(cm.output, n=1)
+                self.assertErrorMessage(cm.output, 'ClientResponseError')
 
     def test_ieda_600165_unescaped_double_quotes(self):
         """
@@ -303,7 +313,8 @@ class TestSuite(TestCommon):
         self.assertIsNotNone(j)
         json.dumps(j)
 
-    def test_site_map_retrieval_failure(self):
+    @aioresponses()
+    def test_site_map_retrieval_failure(self, aioresp_mocker):
         """
         SCENARIO:  a non-200 status code is returned by the site map retrieval.
 
@@ -312,10 +323,10 @@ class TestSuite(TestCommon):
         """
         harvester = IEDAHarvester()
 
-        self.setUpRequestsMocking(harvester, status_codes=[500])
+        aioresp_mocker.get(self.regex, status=500)
 
         with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
-            harvester.run()
+            asyncio.run(run_harvester(harvester))
 
             self.assertErrorMessage(cm.output,
                                     SITEMAP_RETRIEVAL_FAILURE_MESSAGE)
