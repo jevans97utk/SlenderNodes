@@ -660,11 +660,6 @@ class TestSuite(TestCommon):
 
         record_date = dt.datetime.now()
 
-        async def run_me(harvester, identifier, doc, record_date):
-            await harvester._async_finish_init()
-            await harvester.harvest_document(identifier, doc, record_date)
-            await harvester._async_close()
-
         asyncio.run(self.run_harvest(harvester,
                                      'doi.10000/abcde',
                                      doc,
