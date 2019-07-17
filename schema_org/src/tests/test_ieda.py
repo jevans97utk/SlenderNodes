@@ -66,7 +66,7 @@ class TestSuite(TestCommon):
         """
         await harvester._async_finish_init()
         await harvester.harvest_document(identifier, doc, record_date)
-        await harvester._close()
+        await harvester._async_close()
 
     def test_identifier_parsing(self):
         """
@@ -154,7 +154,7 @@ class TestSuite(TestCommon):
         async def runme(harvester, url):
             await harvester._async_finish_init()
             resp = await harvester.retrieve_metadata_document(url)
-            await harvester._close()
+            await harvester._async_close()
             return resp
 
         content = ir.read_binary('tests.data.ieda', '600121iso.xml')
@@ -663,7 +663,7 @@ class TestSuite(TestCommon):
         async def run_me(harvester, identifier, doc, record_date):
             await harvester._async_finish_init()
             await harvester.harvest_document(identifier, doc, record_date)
-            await harvester._close()
+            await harvester._async_close()
 
         asyncio.run(self.run_harvest(harvester,
                                      'doi.10000/abcde',

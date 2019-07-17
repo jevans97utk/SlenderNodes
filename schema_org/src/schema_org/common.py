@@ -192,7 +192,7 @@ class CommonHarvester(object):
         }
         self.async_session = aiohttp.ClientSession(headers=headers)
 
-    async def _close(self):
+    async def _async_close(self):
         """
         Cannot do this from __del__.
         """
@@ -964,4 +964,4 @@ async def run_harvester(harvester):
     """
     await harvester._async_finish_init()
     await harvester.run()
-    await harvester._close()
+    await harvester._async_close()

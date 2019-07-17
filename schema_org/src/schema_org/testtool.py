@@ -14,6 +14,13 @@ class D1TestToolAsync(CommonHarvester):
         self.site_map = sitemap_url
         self.logger.debug(f'num_workers = {self.num_workers}')
 
+    @classmethod
+    async def create(cls, **kwargs):
+        self = D1TestToolAsync(**kwargs)
+        await self._async_finish_init()
+        await self.run()
+        await self._async_close()
+
     async def harvest_document(self, doi, doc, record_date):
         """
         We don't actually harvest.
@@ -38,4 +45,4 @@ async def run_test_tool(d1_test_tool):
     """
     await d1_test_tool._async_finish_init()
     await d1_test_tool.run()
-    await d1_test_tool._close()
+    await d1_test_tool._async_close()

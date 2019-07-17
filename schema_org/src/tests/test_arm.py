@@ -108,7 +108,7 @@ class TestSuite(TestCommon):
         async def run_me(harvester):
             await harvester._async_finish_init()
             await harvester.run()
-            await harvester._close()
+            await harvester._async_close()
 
         with aioresponses() as m:
             for content, status_code in zip(contents, status_codes):
