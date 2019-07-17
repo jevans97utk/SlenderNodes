@@ -64,7 +64,7 @@ class TestSuite(TestCommon):
         """
         Helper routine to allow us to isolate the harvest_document method.
         """
-        await harvester._finish_init()
+        await harvester._async_finish_init()
         await harvester.harvest_document(identifier, doc, record_date)
         await harvester._close()
 
@@ -152,7 +152,7 @@ class TestSuite(TestCommon):
         harvester = IEDAHarvester()
 
         async def runme(harvester, url):
-            await harvester._finish_init()
+            await harvester._async_finish_init()
             resp = await harvester.retrieve_metadata_document(url)
             await harvester._close()
             return resp
@@ -178,7 +178,7 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  An HTTPError is raised.
         """
         harvester = IEDAHarvester()
-        asyncio.run(harvester._finish_init())
+        asyncio.run(harvester._async_finish_init())
 
         url = 'http://get.iedadata.org/600121iso.xml'
 
@@ -661,7 +661,7 @@ class TestSuite(TestCommon):
         record_date = dt.datetime.now()
 
         async def run_me(harvester, identifier, doc, record_date):
-            await harvester._finish_init()
+            await harvester._async_finish_init()
             await harvester.harvest_document(identifier, doc, record_date)
             await harvester._close()
 

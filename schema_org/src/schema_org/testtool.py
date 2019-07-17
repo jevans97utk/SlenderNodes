@@ -36,6 +36,6 @@ async def run_test_tool(d1_test_tool):
     for the reason behind this.  asyncio not well adapted to magic methods just
     yet, it would seem.
     """
-    await d1_test_tool._finish_init()
+    await d1_test_tool._async_finish_init()
     await d1_test_tool.run()
     await d1_test_tool._close()

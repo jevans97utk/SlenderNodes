@@ -106,7 +106,7 @@ class TestSuite(TestCommon):
         status_codes = [200, 200, 400]
 
         async def run_me(harvester):
-            await harvester._finish_init()
+            await harvester._async_finish_init()
             await harvester.run()
             await harvester._close()
 

@@ -156,7 +156,7 @@ class CommonHarvester(object):
             'From': 'jevans97@utk.edu'
         }
 
-    async def _finish_init(self):
+    async def _async_finish_init(self):
         """
         Setup any asyncio resources that really do belong in __init__ if that
         were actually possible.
@@ -962,6 +962,6 @@ async def run_harvester(harvester):
     for the reason behind this.  asyncio not well adapted to magic methods just
     yet, it would seem.
     """
-    await harvester._finish_init()
+    await harvester._async_finish_init()
     await harvester.run()
     await harvester._close()
