@@ -190,13 +190,13 @@ class CommonHarvester(object):
             'User-Agent': 'DataONE adapter for schema.org harvest',
             'From': 'jevans97@utk.edu'
         }
-        self.session = aiohttp.ClientSession(headers=headers)
+        self.async_session = aiohttp.ClientSession(headers=headers)
 
     async def _close(self):
         """
         Cannot do this from __del__.
         """
-        await self.session.close()
+        await self.async_session.close()
 
     def setup_logging(self, logid, verbosity):
         """
@@ -597,6 +597,9 @@ class CommonHarvester(object):
 
         z = zip(urls, lastmods)
 
+        msg = f"Extracted {len(urls)} from the sitemap document."
+        self.logger.info(msg)
+
         records = [
             (url, lastmod)
             for url, lastmod in z
@@ -611,6 +614,8 @@ class CommonHarvester(object):
             diff = self.num_records_processed - self.num_documents
             records = records[:-diff]
 
+        msg = f"Looking to process {len(records)} records..."
+        self.logger.info(msg)
         return records
 
     def extract_identifier(self, jsonld):
@@ -720,7 +725,7 @@ class CommonHarvester(object):
             Optional headers to supply with the retrieval.
         """
         self.logger.debug(f'retrieve_url: {url}')
-        r = await self.session.get(url, headers=headers)
+        r = await self.async_session.get(url, headers=headers)
         r.raise_for_status()
         return r
 
@@ -804,7 +809,6 @@ class CommonHarvester(object):
                     f"{SUCCESSFUL_INGEST_MESSAGE}: {basename}"
                 )
                 self.logger.info(msg)
-                self.created_count += 1
 
             q.task_done()
 

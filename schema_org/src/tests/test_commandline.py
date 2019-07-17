@@ -4,6 +4,7 @@ Test suite for command line tools.
 
 # Standard library imports
 import sys
+import unittest
 from unittest.mock import patch
 
 # Local imports
@@ -13,6 +14,7 @@ from .test_common import TestCommon
 
 class TestSuite(TestCommon):
 
+    @unittest.skip('rethink this')
     @patch.object(sys, 'argv', [''])
     @patch('schema_org.commandline.IEDAHarvester')
     def test_ieda(self, mock_ieda):

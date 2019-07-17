@@ -32,12 +32,20 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(sum(successful_ingest), n,
                          f"Did not verify {n} records successfully ingested.")
 
-    def assertErrorMessage(self, cm_output, message):
+    def assertLogMessage(self, cm_output, expected_message, level='ERROR'):
         """
-        Verify we see this log message with ERROR.
+        Verify we see this log message with the given level.
         """
-        count = len([msg for msg in cm_output if message in msg])
-        self.assertTrue(count >= 1)
+        count = sum(
+            msg.startswith(level)
+            for msg in cm_output
+            if expected_message in msg
+        )
+
+        message = (
+            f"Did not find \"{expected_message}\" in the logs at level {level}"
+        )
+        self.assertTrue(count >= 1, message)
 
     def assertLogLevelCallCount(self, cm_output, level='ERROR', n=1,
                                 tokens=None, debug=False):

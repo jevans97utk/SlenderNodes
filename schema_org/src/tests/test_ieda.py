@@ -17,6 +17,7 @@ from unittest.mock import patch
 # 3rd party library imports
 import aiohttp
 from aioresponses import aioresponses
+import dateutil.parser
 import lxml.etree
 import requests_mock
 
@@ -101,6 +102,43 @@ class TestSuite(TestCommon):
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier({'@id': 'djlfsdljfasl;'})
 
+    @patch('schema_org.common.logging.getLogger')
+    def test_restrict_to_2_items_from_sitemap(self, mock_logger):
+        """
+        SCENARIO:  The sitemap lists 3 documents, but we have specified that
+        only 2 are to be processed.
+
+        EXPECTED RESULT:  The list of documents retrieve has length 2.
+        """
+
+        harvester = IEDAHarvester(num_documents=2)
+
+        content = ir.read_binary('tests.data.ieda', 'sitemap3.xml')
+        doc = lxml.etree.parse(io.BytesIO(content))
+        last_harvest = dateutil.parser.parse('1900-01-01T00:00:00Z')
+
+        records = harvester.extract_records_from_sitemap(doc, last_harvest)
+        self.assertEqual(len(records), 2)
+
+    @patch('schema_org.common.logging.getLogger')
+    def test_sitemap_num_docs_restriction_does_not_apply(self, mock_logger):
+        """
+        SCENARIO:  The sitemap lists 3 documents, but we have specified that
+        4 are to be processed.
+
+        EXPECTED RESULT:  The list of documents retrieve has length 3.  The
+        setting of 4 has no effect.
+        """
+
+        harvester = IEDAHarvester(num_documents=4)
+
+        content = ir.read_binary('tests.data.ieda', 'sitemap3.xml')
+        doc = lxml.etree.parse(io.BytesIO(content))
+        last_harvest = dateutil.parser.parse('1900-01-01T00:00:00Z')
+
+        records = harvester.extract_records_from_sitemap(doc, last_harvest)
+        self.assertEqual(len(records), 3)
+
     def test_metadata_document_retrieval(self):
         """
         SCENARIO:  an IEDA metadata document URL is retrieved and properly
@@ -149,14 +187,12 @@ class TestSuite(TestCommon):
                 m.get(url, status=400)
                 asyncio.run(harvester.retrieve_metadata_document(url))
 
-    @patch('schema_org.common.logging.getLogger')
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
     def test_default_run(self, mock_harvest_time,
                          mock_check_if_identifier_exists,
-                         mock_load_science_metadata,
-                         mock_logger):
+                         mock_load_science_metadata):
         """
         SCENARIO:  Process the sitemap where all the records are newer than
         the last time that the harvester was run.
@@ -197,13 +233,16 @@ class TestSuite(TestCommon):
             for content, headers in zip(contents, headers):
                 m.get(self.regex, body=content, headers=headers)
 
-            asyncio.run(run_harvester(harvester))
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                asyncio.run(run_harvester(harvester))
 
-        # There should be lots of log messages at the info level, but none
-        # at the warning or error level.
-        self.assertTrue(harvester.logger.info.call_count > 0)
-        self.assertEqual(harvester.logger.warning.call_count, 0)
-        self.assertEqual(harvester.logger.error.call_count, 0)
+                # There should be lots of log messages at the info level, but
+                # none at the warning or error level.
+                self.assertLogLevelCallCount(cm.output, level='WARNING', n=0)
+                self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+
+                log_message = 'Created 2 new records'
+                self.assertLogMessage(cm.output, log_message, level='INFO')
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -257,7 +296,7 @@ class TestSuite(TestCommon):
 
                 self.assertSuccessfulIngest(cm.output, n=1)
                 self.assertLogLevelCallCount(cm.output, level='ERROR', n=1)
-                self.assertErrorMessage(cm.output, 'ClientResponseError')
+                self.assertLogMessage(cm.output, 'ClientResponseError')
 
     def test_ieda_600165_unescaped_double_quotes(self):
         """
@@ -354,8 +393,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
             asyncio.run(run_harvester(harvester))
 
-            self.assertErrorMessage(cm.output,
-                                    SITEMAP_RETRIEVAL_FAILURE_MESSAGE)
+            self.assertLogMessage(cm.output, SITEMAP_RETRIEVAL_FAILURE_MESSAGE)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501

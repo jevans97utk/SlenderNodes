@@ -51,6 +51,14 @@ def setup_parser(id):
     )
     parser.add_argument('--regex', default=None, help=help)
 
+    help = "Limit number of documents retrieved to this number."
+    parser.add_argument('--num-documents', type=int, default=-1, help=help)
+
+    help = (
+        "Limit number of workers operating asynchronously to this number. "
+    )
+    parser.add_argument('--num-workers', type=int, default=1, help=help)
+
     return parser
 
 
@@ -103,8 +111,10 @@ def ieda():
                                    verbosity=args.verbose,
                                    certificate=args.certificate,
                                    private_key=args.key,
-                                   regex=args.regex)
-    ieda_harvester.run()
+                                   regex=args.regex,
+                                   num_documents=args.num_documents,
+                                   num_workers=args.num_workers)
+    asyncio.run(run_test_tool(ieda_harvester))
 
 
 def validate():
