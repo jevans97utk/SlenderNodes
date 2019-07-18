@@ -172,8 +172,6 @@ class CommonHarvester(object):
         """
         await self._setup_session(None, None)
 
-        self.q = asyncio.Queue()
-
     async def _setup_session(self, certificate, private_key):
         """
         Instantiate a aiohttp session to help persist certain parameters
@@ -893,17 +891,19 @@ class CommonHarvester(object):
         """
         self.logger.debug(f'process_sitemap_leaf:')
 
+        queue = asyncio.Queue()
+
         records = self.extract_records_from_sitemap(doc, last_harvest_time)
         for url, lastmod_time in records:
-            self.q.put_nowait((url, lastmod_time))
+            queue.put_nowait((url, lastmod_time))
 
         # Create the worker tasks to consume the URLs
         tasks = []
         for j in range(self.num_workers):
             self.logger.debug(f'process_sitemap_leaf: create task for {j}')
-            task = asyncio.create_task(self.consume(j, self.q))
+            task = asyncio.create_task(self.consume(j, queue))
             tasks.append(task)
-        await self.q.join()
+        await queue.join()
 
         # Cancel any remaining tasks.
         for task in tasks:
