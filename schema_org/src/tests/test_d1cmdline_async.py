@@ -11,9 +11,8 @@ from aioresponses import aioresponses
 # local imports
 import schema_org
 from schema_org import D1TestToolAsync
-from schema_org.testtool import run_test_tool
 from schema_org.common import (
-    SITEMAP_RETRIEVAL_FAILURE_MESSAGE
+    SITEMAP_RETRIEVAL_FAILURE_MESSAGE, SITEMAP_NOT_XML_MESSAGE
 )
 from .test_common import TestCommon
 
@@ -35,7 +34,7 @@ class TestSuite(TestCommon):
         sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.txt'
         obj = D1TestToolAsync(sitemap_url=sitemap, verbosity='DEBUG')
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
             self.assertIn(SITEMAP_RETRIEVAL_FAILURE_MESSAGE, msgs[0])
@@ -73,7 +72,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=sitemap)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             self.assertLogLevelCallCount(cm.output, n=1)
             self.assertSuccessfulIngest(cm.output)
@@ -110,7 +109,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=sitemap)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             # Verify the single error message.
             error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
@@ -151,7 +150,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=sitemap)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             # Verify the error message.
             error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
@@ -192,7 +191,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             # Verify the single error message.
             self.assertLogLevelCallCount(cm.output, n=1)
@@ -248,7 +247,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             # Verify the error message.
             self.assertLogLevelCallCount(cm.output, level='ERROR', n=1,
@@ -289,7 +288,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             # Verify the error message, which is referenced twice.
             error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
@@ -332,7 +331,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             # Verify the error message, which is referenced twice.
             error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
@@ -373,7 +372,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
             self.assertSuccessfulIngest(cm.output, n=2)
 
     @aioresponses()
@@ -422,7 +421,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             self.assertSuccessfulIngest(cm.output, n=4)
 
@@ -431,7 +430,7 @@ class TestSuite(TestCommon):
         """
         SCENARIO:  The sitemap document is not XML.
 
-        EXPECTED RESULT:  There is a warning stating that the URL may not be
+        EXPECTED RESULT:  There is an error stating that the URL may not be
         XML, plus an XMLSyntaxError is raised.
         """
         content = ir.read_text('tests.data.arm', 'sitemap.txt')
@@ -442,22 +441,16 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             # Verify the warning about the sitemap possibly not being XML.
-            warning_msgs = [
-                msg for msg in cm.output if msg.startswith('WARNING')
-            ]
-            self.assertEqual(len(warning_msgs), 1)
-            self.assertIn(schema_org.common.SITEMAP_NOT_XML_MESSAGE,
-                          warning_msgs[0])
+            self.assertLogMessage(cm.output, SITEMAP_NOT_XML_MESSAGE,
+                                  level='WARNING')
 
             # Verify the two exceptions that are caught when trying to parse
             # the sitemap.
-            error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
-            self.assertEqual(len(error_msgs), 3)
-            self.assertIn('XMLSyntaxError', error_msgs[0])
-            self.assertIn('OSError', error_msgs[1])
+            self.assertLogMessage(cm.output, 'XMLSyntaxError', level='ERROR')
+            self.assertLogMessage(cm.output, 'OSError', level='ERROR')
 
     @aioresponses()
     def test_limit_number_of_documents(self, aioresp_mocker):
@@ -490,7 +483,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=url, num_documents=2)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
 
             self.assertSuccessfulIngest(cm.output, n=2)
 
@@ -534,7 +527,7 @@ class TestSuite(TestCommon):
         obj = D1TestToolAsync(sitemap_url=url, num_workers=2)
 
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
-            asyncio.run(run_test_tool(obj))
+            asyncio.run(obj.run())
             self.assertSuccessfulIngest(cm.output, n=2)
 
             # If there was more than one worker, then there should be messages

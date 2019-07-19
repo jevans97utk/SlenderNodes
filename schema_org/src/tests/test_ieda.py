@@ -25,7 +25,7 @@ import requests_mock
 from schema_org.ieda import IEDAHarvester
 from schema_org.common import (
     UNESCAPED_DOUBLE_QUOTES_MSG, OVER_ESCAPED_DOUBLE_QUOTES_MSG,
-    SITEMAP_RETRIEVAL_FAILURE_MESSAGE, run_harvester
+    SITEMAP_RETRIEVAL_FAILURE_MESSAGE
 )
 from .test_common import TestCommon
 
@@ -59,14 +59,6 @@ class TestSuite(TestCommon):
 
         self.xml_hdr = {'Content-Type': 'text/xml'}
         self.html_hdr = {'Content-Type': 'text/html'}
-
-    async def run_harvest(self, harvester, identifier, doc, record_date):
-        """
-        Helper routine to allow us to isolate the harvest_document method.
-        """
-        await harvester._async_finish_init()
-        await harvester.harvest_document(identifier, doc, record_date)
-        await harvester._async_close()
 
     def test_identifier_parsing(self):
         """
@@ -151,17 +143,11 @@ class TestSuite(TestCommon):
         url = 'http://get.iedadata.org/600121iso.xml'
         harvester = IEDAHarvester()
 
-        async def runme(harvester, url):
-            await harvester._async_finish_init()
-            resp = await harvester.retrieve_metadata_document(url)
-            await harvester._async_close()
-            return resp
-
         content = ir.read_binary('tests.data.ieda', '600121iso.xml')
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
             with aioresponses() as m:
                 m.get(self.regex, body=content)
-                doc1 = asyncio.run(runme(harvester, url))
+                doc1 = asyncio.run(harvester.retrieve_metadata_document(url))
 
             self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
             self.assertLogLevelCallCount(cm.output, level='WARNING', n=0)
@@ -178,7 +164,6 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  An HTTPError is raised.
         """
         harvester = IEDAHarvester()
-        asyncio.run(harvester._async_finish_init())
 
         url = 'http://get.iedadata.org/600121iso.xml'
 
@@ -234,7 +219,7 @@ class TestSuite(TestCommon):
                 m.get(self.regex, body=content, headers=headers)
 
             with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
-                asyncio.run(run_harvester(harvester))
+                asyncio.run(harvester.run())
 
                 # There should be lots of log messages at the info level, but
                 # none at the warning or error level.
@@ -292,7 +277,7 @@ class TestSuite(TestCommon):
             m.get(self.regex, status=400, headers=self.xml_hdr)
 
             with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
-                asyncio.run(run_harvester(harvester))
+                asyncio.run(harvester.run())
 
                 self.assertSuccessfulIngest(cm.output, n=1)
                 self.assertLogLevelCallCount(cm.output, level='ERROR', n=1)
@@ -391,7 +376,7 @@ class TestSuite(TestCommon):
         aioresp_mocker.get(self.regex, status=500)
 
         with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
-            asyncio.run(run_harvester(harvester))
+            asyncio.run(harvester.run())
 
             self.assertLogMessage(cm.output, SITEMAP_RETRIEVAL_FAILURE_MESSAGE)
 
@@ -438,7 +423,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
-                asyncio.run(self.run_harvest(harvester, doi, doc, record_date))
+                asyncio.run(harvester.harvest_document(doi, doc, record_date))
 
             # Did we see a warning?
             self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
@@ -490,7 +475,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
-                asyncio.run(self.run_harvest(harvester, doi, doc, record_date))
+                asyncio.run(harvester.harvest_document(doi, doc, record_date))
 
             # Did we see a warning?
             self.assertLogLevelCallCount(cm.output, level='WARNING', n=1)
@@ -543,7 +528,7 @@ class TestSuite(TestCommon):
         regex = re.compile('https://ieda.mn.org:443/')
         with aioresponses() as m:
             m.get(regex, body=existing_content)
-            asyncio.run(self.run_harvest(harvester, doi, doc, record_date))
+            asyncio.run(harvester.harvest_document(doi, doc, record_date))
 
         # Did we increase the failure count?
         self.assertEqual(harvester.updated_count, initial_updated_count + 1)
@@ -594,7 +579,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
-                asyncio.run(self.run_harvest(harvester, doi, doc, record_date))
+                asyncio.run(harvester.harvest_document(doi, doc, record_date))
 
             # Did we see a warning?
             self.assertLogLevelCallCount(cm.output, level='WARNING', n=2)
@@ -631,7 +616,7 @@ class TestSuite(TestCommon):
         doi = 'doi.10000/abcde'
 
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
-            asyncio.run(self.run_harvest(harvester, doi, doc, record_date))
+            asyncio.run(harvester.harvest_document(doi, doc, record_date))
 
             # Did we see a warning?
             self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
@@ -660,10 +645,8 @@ class TestSuite(TestCommon):
 
         record_date = dt.datetime.now()
 
-        asyncio.run(self.run_harvest(harvester,
-                                     'doi.10000/abcde',
-                                     doc,
-                                     record_date))
+        asyncio.run(harvester.harvest_document('doi.10000/abcde',
+                                               doc, record_date))
 
         harvester.logger.warning.assert_called_once()
 
@@ -690,10 +673,9 @@ class TestSuite(TestCommon):
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
-        asyncio.run(self.run_harvest(harvester,
-                                     'doi.10000/abcde',
-                                     doc,
-                                     dt.datetime.now()))
+        asyncio.run(harvester.harvest_document('doi.10000/abcde',
+                                               doc,
+                                               dt.datetime.now()))
 
         self.assertEqual(harvester.created_count, 1)
         harvester.logger.info.assert_called_once()
@@ -720,9 +702,8 @@ class TestSuite(TestCommon):
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
-        asyncio.run(self.run_harvest(harvester,
-                                     'doi.10000/abcde',
-                                     doc,
-                                     dt.datetime.now()))
+        asyncio.run(harvester.harvest_document('doi.10000/abcde',
+                                               doc,
+                                               dt.datetime.now()))
 
         harvester.logger.error.assert_called_once()

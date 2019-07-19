@@ -131,6 +131,8 @@ class CommonHarvester(object):
 
         self.num_workers = num_workers
 
+        self.async_session = None
+
         requests.packages.urllib3.disable_warnings()
 
     def setup_session(self, certificate, private_key):
@@ -155,46 +157,6 @@ class CommonHarvester(object):
             'User-Agent': 'DataONE adapter for schema.org harvest',
             'From': 'jevans97@utk.edu'
         }
-
-    async def _async_finish_init(self):
-        """
-        Setup any asyncio resources that really do belong in __init__ if that
-        were actually possible.
-
-        Attributes
-        ----------
-        session : aiohttp session
-            Somewhat similar to a requests session
-
-        q : asyncio queue
-            URLs for landing page documents go here, to be processed by a set
-            number of workers.
-        """
-        await self._setup_session(None, None)
-
-    async def _setup_session(self, certificate, private_key):
-        """
-        Instantiate a aiohttp session to help persist certain parameters
-        across requests.
-        """
-
-        # Setup the client side certificates if that makes sense.
-        if certificate is not None or private_key is not None:
-            msg = "SSL support not yet implemented."
-            raise NotImplementedError(msg)
-
-        # Always send these headers.
-        headers = {
-            'User-Agent': 'DataONE adapter for schema.org harvest',
-            'From': 'jevans97@utk.edu'
-        }
-        self.async_session = aiohttp.ClientSession(headers=headers)
-
-    async def _async_close(self):
-        """
-        Cannot do this from __del__.
-        """
-        await self.async_session.close()
 
     def setup_logging(self, logid, verbosity):
         """
@@ -489,9 +451,9 @@ class CommonHarvester(object):
         url = f"{self.mn_base_url}/v2/object/{existing_sid}"
 
         # Get the existing document.
-        r = await self.retrieve_url(url, headers={'Accept': 'text/xml'})
+        content = await self.retrieve_url(url, headers={'Accept': 'text/xml'})
 
-        old_doc = lxml.etree.parse(io.BytesIO(await r.read()))
+        old_doc = lxml.etree.parse(io.BytesIO(content))
 
         # Get the progress code
         parts = [
@@ -713,7 +675,7 @@ class CommonHarvester(object):
             self.logger.info(msg)
             return metadata_url
 
-    async def retrieve_url(self, url, headers=None):
+    async def retrieve_url(self, url, headers=None, check_xml_headers=False):
         """
         Parameters
         ----------
@@ -723,9 +685,32 @@ class CommonHarvester(object):
             Optional headers to supply with the retrieval.
         """
         self.logger.debug(f'retrieve_url: {url}')
-        r = await self.async_session.get(url, headers=headers)
-        r.raise_for_status()
-        return r
+
+        headers = {
+            'User-Agent': 'DataONE adapter for schema.org harvest',
+            'From': 'jevans97@utk.edu'
+        }
+        async with aiohttp.ClientSession(headers=headers) as session:
+
+            async with session.get(url) as response:
+
+                response.raise_for_status()
+
+                if check_xml_headers:
+                    exp_headers = [
+                        'text/xml',
+                        'application/x-gzip',
+                        'application/xml'
+                    ]
+                    if response.headers['Content-Type'] not in exp_headers:
+                        msg = (
+                            f"get_sitemap_document: headers are "
+                            f"{response.headers}"
+                        )
+                        self.logger.debug(msg)
+                        self.logger.warning(SITEMAP_NOT_XML_MESSAGE)
+
+                return await response.read()
 
     async def run(self):
 
@@ -758,17 +743,7 @@ class CommonHarvester(object):
         msg = f'retrieve_metadata_document:  requesting {metadata_url}'
         self.logger.debug(msg)
         # Retrieve the metadata document.
-        r = await self.retrieve_url(metadata_url)
-
-        try:
-            content = await r.read()
-        except TypeError:
-            msg = 'Could not read response as binary, trying as text...'
-            self.logger.debug(msg)
-            text = await r.text()
-            content = text.encode('utf-8')
-        else:
-            self.logger.debug('Content read as binary')
+        content = await self.retrieve_url(metadata_url)
 
         try:
             doc = lxml.etree.parse(io.BytesIO(content))
@@ -782,13 +757,21 @@ class CommonHarvester(object):
         self.logger.debug('Got the metadata document')
         return doc
 
-    async def consume(self, idx, q):
+    async def sitemap_consume(self, idx, sitemap_queue):
         """
-        This corresponse to a worker drone.  Process records while we can.
+        This corresponse to a worker drone.  Process records from the sitemap
+        while we can.
+
+        Parameters
+        ----------
+        idx:  int
+            The only purpose for this is to identify the consumer in the logs.
+        sitemap_queue : asyncio.Queue
+            Holds URLs and modification times retrieved from the sitemap.
         """
         self.logger.debug(f'consumer({idx}):')
         while True:
-            url, lastmod_time = await q.get()
+            url, lastmod_time = await sitemap_queue.get()
             self.logger.debug(f'consumer({idx}) ==>  {url}, {lastmod_time}')
             try:
                 await self.process_record(url, lastmod_time)
@@ -808,7 +791,7 @@ class CommonHarvester(object):
                 )
                 self.logger.info(msg)
 
-            q.task_done()
+            sitemap_queue.task_done()
 
     async def process_record(self, landing_page_url, record_date):
         """
@@ -824,12 +807,8 @@ class CommonHarvester(object):
         """
         self.logger.debug(f'process_record')
         self.logger.info(f"Requesting {landing_page_url}...")
-        r = await self.retrieve_url(landing_page_url)
-
-        try:
-            doc = lxml.etree.HTML(await r.text())
-        except ValueError:
-            doc = lxml.etree.HTML(await r.read())
+        content = await self.retrieve_url(landing_page_url)
+        doc = lxml.etree.HTML(content)
 
         jsonld = self.extract_jsonld(doc)
 
@@ -846,7 +825,7 @@ class CommonHarvester(object):
         await self.harvest_document(identifier, doc, record_date)
         self.logger.debug(f'process_record:  finished')
 
-    async def process_sitemap(self, sitemap_url, last_harvest_time):
+    async def process_sitemap(self, sitemap_url, last_harvest):
         """
         Process the sitemap.  This may involve recursive calls.
 
@@ -854,28 +833,28 @@ class CommonHarvester(object):
         ----------
         sitemap_url : str
             URL for a sitemap or sitemap index file
-        last_harvest_time : datetime
+        last_harvest : datetime
             According to the MN, this is the last time we, uh, harvested any
             document.
         """
-        msg = f"process_sitemap: {sitemap_url}, {last_harvest_time}"
+        msg = f"process_sitemap: {sitemap_url}, {last_harvest}"
         self.logger.info(msg)
 
         doc = await self.get_sitemap_document(sitemap_url)
         if self.is_sitemap_index_file(doc):
+
             self.logger.debug("It is a sitemap index file.")
-
-            sitemap_urls = doc.xpath('sm:sitemap/sm:loc/text()',
-                                     namespaces=SITEMAP_NS)
-
+            path = 'sm:sitemap/sm:loc/text()'
+            sitemap_urls = doc.xpath(path, namespaces=SITEMAP_NS)
             for sitemap_url in sitemap_urls:
-                await self.process_sitemap(sitemap_url, last_harvest_time)
+                await self.process_sitemap(sitemap_url, last_harvest)
 
         else:
-            self.logger.debug("It is a sitemap leaf.")
-            await self.process_sitemap_leaf(doc, last_harvest_time)
 
-    async def process_sitemap_leaf(self, doc, last_harvest_time):
+            self.logger.debug("It is a sitemap leaf.")
+            await self.process_sitemap_leaf(doc, last_harvest)
+
+    async def process_sitemap_leaf(self, doc, last_harvest):
         """
         We are at a sitemap leaf, i.e. the sitemap does not reference other
         sitemaps.  This is where we can retrieve landing pages instead of
@@ -885,25 +864,25 @@ class CommonHarvester(object):
         ----------
         doc : ElementTree object
             Describes the sitemap leaf.
-        last_harvest_time : datetime
+        last_harvest : datetime
             According to the MN, this is the last time we, uh, harvested any
             document.
         """
         self.logger.debug(f'process_sitemap_leaf:')
 
-        queue = asyncio.Queue()
+        sitemap_queue = asyncio.Queue()
 
-        records = self.extract_records_from_sitemap(doc, last_harvest_time)
+        records = self.extract_records_from_sitemap(doc, last_harvest)
         for url, lastmod_time in records:
-            queue.put_nowait((url, lastmod_time))
+            sitemap_queue.put_nowait((url, lastmod_time))
 
         # Create the worker tasks to consume the URLs
         tasks = []
         for j in range(self.num_workers):
             self.logger.debug(f'process_sitemap_leaf: create task for {j}')
-            task = asyncio.create_task(self.consume(j, queue))
+            task = asyncio.create_task(self.sitemap_consume(j, sitemap_queue))
             tasks.append(task)
-        await queue.join()
+        await sitemap_queue.join()
 
         # Cancel any remaining tasks.
         for task in tasks:
@@ -919,29 +898,20 @@ class CommonHarvester(object):
         """
         self.logger.debug(f'get_sitemap_document: {sitemap_url}')
         try:
-            r = await self.retrieve_url(sitemap_url)
+            content = await self.retrieve_url(sitemap_url,
+                                              check_xml_headers=True)
         except Exception as e:
             msg = f"{SITEMAP_RETRIEVAL_FAILURE_MESSAGE} due to {repr(e)}"
             self.logger.error(msg)
             raise
 
-        expected_headers = [
-            'text/xml',
-            'application/x-gzip',
-            'application/xml'
-        ]
-        if r.headers['Content-Type'] not in expected_headers:
-            self.logger.debug(f'get_sitemap_document: headers are {r.headers}')
-            self.logger.warning(SITEMAP_NOT_XML_MESSAGE)
-
         try:
-            doc = lxml.etree.parse(io.BytesIO(await r.read()))
+            doc = lxml.etree.parse(io.BytesIO(content))
         except lxml.etree.XMLSyntaxError as e:
             msg1 = repr(e)
 
             # was it compressed?
             try:
-                content = await r.read()
                 doc = lxml.etree.parse(io.BytesIO(gzip.decompress(content)))
             except OSError as e:
                 # Must not have been gzipped.
@@ -952,16 +922,3 @@ class CommonHarvester(object):
                 raise RuntimeError(msg)
 
         return doc
-
-
-async def run_harvester(harvester):
-    """
-    See https://stackoverflow.com
-        /questions/33128325
-        /how-to-set-class-attribute-with-await-in-init/33134213
-    for the reason behind this.  asyncio not well adapted to magic methods just
-    yet, it would seem.
-    """
-    await harvester._async_finish_init()
-    await harvester.run()
-    await harvester._async_close()

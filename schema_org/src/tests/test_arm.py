@@ -105,15 +105,10 @@ class TestSuite(TestCommon):
         ]
         status_codes = [200, 200, 400]
 
-        async def run_me(harvester):
-            await harvester._async_finish_init()
-            await harvester.run()
-            await harvester._async_close()
-
         with aioresponses() as m:
             for content, status_code in zip(contents, status_codes):
                 m.get(self.regex, body=content, status=status_code)
 
-            asyncio.run(run_me(harvester))
+            asyncio.run(harvester.run())
 
         self.assertEqual(harvester.failed_count, failed_count + 1)

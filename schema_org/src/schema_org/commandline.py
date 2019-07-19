@@ -7,7 +7,7 @@ import asyncio
 # Local imports
 from .arm import ARMHarvester
 from .ieda import IEDAHarvester
-from .testtool import D1TestToolAsync, run_test_tool
+from .testtool import D1TestToolAsync
 from .xml_validator import XMLValidator
 
 
@@ -88,7 +88,7 @@ def d1_check_site():
                           num_workers=args.num_workers,
                           verbosity=args.verbose,
                           num_documents=args.num_documents)
-    asyncio.run(run_test_tool(obj))
+    asyncio.run(obj.run())
 
 
 def arm():
@@ -100,7 +100,7 @@ def arm():
                                  certificate=args.certificate,
                                  private_key=args.key,
                                  regex=args.regex)
-    arm_harvester.run()
+    asyncio.run(arm_harvester.run())
 
 
 def ieda():
@@ -114,7 +114,7 @@ def ieda():
                                    regex=args.regex,
                                    num_documents=args.num_documents,
                                    num_workers=args.num_workers)
-    asyncio.run(run_test_tool(ieda_harvester))
+    asyncio.run(ieda_harvester.run())
 
 
 def validate():
