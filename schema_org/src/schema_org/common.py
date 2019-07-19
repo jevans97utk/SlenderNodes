@@ -360,6 +360,7 @@ class CommonHarvester(object):
             Last document modification time according to the site map.
         """
         self.logger.debug(f'harvest_document:  {doi}')
+
         # Re-seriealize to bytes.
         docbytes = lxml.etree.tostring(doc, pretty_print=True,
                                        encoding='utf-8', standalone=True)
@@ -774,7 +775,8 @@ class CommonHarvester(object):
             url, lastmod_time = await sitemap_queue.get()
             self.logger.debug(f'consumer({idx}) ==>  {url}, {lastmod_time}')
             try:
-                await self.retrieve_metadata(url, lastmod_time)
+                identifier, doc = await self.retrieve_record(url)
+                await self.process_record(identifier, doc, lastmod_time)
             except Exception as e:
                 self.failed_count += 1
                 msg = (
@@ -783,6 +785,8 @@ class CommonHarvester(object):
                 )
                 self.logger.error(msg)
             else:
+                # Use the last part of the URL to identify the record that was
+                # successfully processed.
                 p = urllib.parse.urlparse(url)
                 basename = p.path.split('/')[-1]
                 msg = (
@@ -793,19 +797,17 @@ class CommonHarvester(object):
 
             sitemap_queue.task_done()
 
-    async def retrieve_metadata(self, landing_page_url, record_date):
+    async def retrieve_record(self, landing_page_url):
         """
         Read the remote document, extract the JSON-LD, and load it into the
         system.
 
         Parameters
         ----------
-        jsonld_url : str
-            URL for remote IEDA HTML document
-        record_date : datetime obj
-            Last document modification time according to the site map.
+        landing_page_url : str
+            URL for remote landing page HTML
         """
-        self.logger.debug(f'retrieve_metadata')
+        self.logger.debug(f'retrieve_record')
         self.logger.info(f"Requesting {landing_page_url}...")
         content = await self.retrieve_url(landing_page_url)
         doc = lxml.etree.HTML(content)
@@ -820,10 +822,30 @@ class CommonHarvester(object):
         metadata_url = self.extract_metadata_url(jsonld)
 
         doc = await self.retrieve_metadata_document(metadata_url)
+        return identifier, doc
+
+    async def process_record(self, identifier, doc, last_mod_time):
+        """
+        Now that we have the record, validate and harvest it.
+
+        Parameters
+        ----------
+        identifier : str
+            Handle used to identify objects uniquely.
+        doc : bytes
+            serialized version of XML metadata document
+        last_mod_time : datetime.datetime
+            Last document modification time according to the site map.
+        """
+        self.logger.debug(f'process_record:  starting')
+
+        # Validate the document.  We do NOT want this to be subsumed into
+        # the harvest operation.
         d1_scimeta.validate.assert_valid(self.format_id, doc)
 
-        await self.harvest_document(identifier, doc, record_date)
-        self.logger.debug(f'retrieve_metadata:  finished')
+        await self.harvest_document(identifier, doc, last_mod_time)
+
+        self.logger.debug(f'process_record:  finished')
 
     async def process_sitemap(self, sitemap_url, last_harvest):
         """

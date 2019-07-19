@@ -333,11 +333,13 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
-            # Verify the error message, which is referenced twice.
-            error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
-            self.assertEqual(len(error_msgs), 1)
-            self.assertIn('XML document does not validate', error_msgs[0])
-            self.assertIn('CI_ResponsibleParty', error_msgs[0])
+            self.assertLogMessage(cm.output,
+                                  'XML document does not validate',
+                                  level='ERROR')
+            self.assertLogMessage(cm.output,
+                                  'CI_ResponsibleParty',
+                                  level='ERROR')
+            self.assertLogLevelCallCount(cm.output, level='ERROR', n=1)
 
             self.assertSuccessfulIngest(cm.output)
 

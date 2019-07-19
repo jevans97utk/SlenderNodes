@@ -35,6 +35,15 @@ class TestCommon(unittest.TestCase):
     def assertLogMessage(self, cm_output, expected_message, level='ERROR'):
         """
         Verify we see this log message with the given level.
+
+        Parameters
+        ----------
+        cm_output : list of str
+            Provided by assertLogs
+        expected_message : str
+            Look for this message in the cm_output
+        level : optional, str
+            Specify the log level.
         """
         count = sum(
             msg.startswith(level)
