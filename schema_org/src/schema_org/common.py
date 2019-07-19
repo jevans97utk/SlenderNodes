@@ -757,7 +757,7 @@ class CommonHarvester(object):
         self.logger.debug('Got the metadata document')
         return doc
 
-    async def sitemap_consume(self, idx, sitemap_queue):
+    async def consume_sitemap(self, idx, sitemap_queue):
         """
         This corresponse to a worker drone.  Process records from the sitemap
         while we can.
@@ -774,7 +774,7 @@ class CommonHarvester(object):
             url, lastmod_time = await sitemap_queue.get()
             self.logger.debug(f'consumer({idx}) ==>  {url}, {lastmod_time}')
             try:
-                await self.process_record(url, lastmod_time)
+                await self.retrieve_metadata(url, lastmod_time)
             except Exception as e:
                 self.failed_count += 1
                 msg = (
@@ -793,7 +793,7 @@ class CommonHarvester(object):
 
             sitemap_queue.task_done()
 
-    async def process_record(self, landing_page_url, record_date):
+    async def retrieve_metadata(self, landing_page_url, record_date):
         """
         Read the remote document, extract the JSON-LD, and load it into the
         system.
@@ -805,7 +805,7 @@ class CommonHarvester(object):
         record_date : datetime obj
             Last document modification time according to the site map.
         """
-        self.logger.debug(f'process_record')
+        self.logger.debug(f'retrieve_metadata')
         self.logger.info(f"Requesting {landing_page_url}...")
         content = await self.retrieve_url(landing_page_url)
         doc = lxml.etree.HTML(content)
@@ -823,7 +823,7 @@ class CommonHarvester(object):
         d1_scimeta.validate.assert_valid(self.format_id, doc)
 
         await self.harvest_document(identifier, doc, record_date)
-        self.logger.debug(f'process_record:  finished')
+        self.logger.debug(f'retrieve_metadata:  finished')
 
     async def process_sitemap(self, sitemap_url, last_harvest):
         """
@@ -880,7 +880,7 @@ class CommonHarvester(object):
         tasks = []
         for j in range(self.num_workers):
             self.logger.debug(f'process_sitemap_leaf: create task for {j}')
-            task = asyncio.create_task(self.sitemap_consume(j, sitemap_queue))
+            task = asyncio.create_task(self.consume_sitemap(j, sitemap_queue))
             tasks.append(task)
         await sitemap_queue.join()
 
