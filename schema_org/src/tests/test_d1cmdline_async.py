@@ -12,7 +12,8 @@ from aioresponses import aioresponses
 import schema_org
 from schema_org import D1TestToolAsync
 from schema_org.common import (
-    SITEMAP_RETRIEVAL_FAILURE_MESSAGE, SITEMAP_NOT_XML_MESSAGE
+    SITEMAP_RETRIEVAL_FAILURE_MESSAGE, SITEMAP_NOT_XML_MESSAGE,
+    NO_JSON_LD_SCRIPT_ELEMENTS, INVALID_JSONLD_MESSAGE
 )
 from .test_common import TestCommon
 
@@ -20,6 +21,8 @@ from .test_common import TestCommon
 class TestSuite(TestCommon):
 
     def setUp(self):
+        # Every URL request for ARM will match this pattern, so we set
+        # aioresponses to intercept all of them.
         self.pattern = re.compile(r'https://www.archive.arm.gov/metadata/adc')
 
     @aioresponses()
@@ -27,7 +30,7 @@ class TestSuite(TestCommon):
         """
         SCENARIO:  The given URL for the sitemap does not seem to exist.
 
-        EXPECTED RESULT:  A requests.HTTPError is raised.
+        EXPECTED RESULT:  Errors are recorded.
         """
         aioresp_mocker.get(self.pattern, status=400)
 
@@ -36,9 +39,8 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
-            msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
-            self.assertIn(SITEMAP_RETRIEVAL_FAILURE_MESSAGE, msgs[0])
-            self.assertIn('ClientResponseError', msgs[1])
+            msgs = [SITEMAP_RETRIEVAL_FAILURE_MESSAGE, 'ClientResponseError']
+            self.assertLogMessage(cm.output, msgs)
 
     @aioresponses()
     def test_landing_page_is_not_present(self, aioresp_mocker):
@@ -47,7 +49,7 @@ class TestSuite(TestCommon):
         page document that is not present, but the next one is fine.
 
         EXPECTED RESULT:  The log record reflects the successful calls, but
-        also the XML failure.
+        also failure to retrieve the XML failure.
         """
 
         # External calls to read the:
@@ -74,7 +76,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
-            self.assertLogLevelCallCount(cm.output, n=1)
+            self.assertLogMessage(cm.output, 'ClientResponseError')
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -111,12 +113,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
-            # Verify the single error message.
-            error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
-            self.assertEqual(len(error_msgs), 1)
-            self.assertIn(schema_org.common.NO_JSON_LD_SCRIPT_ELEMENTS,
-                          error_msgs[0])
-
+            self.assertLogMessage(cm.output, NO_JSON_LD_SCRIPT_ELEMENTS)
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -152,12 +149,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
-            # Verify the error message.
-            error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
-            self.assertEqual(len(error_msgs), 1)
-            self.assertIn(schema_org.common.INVALID_JSONLD_MESSAGE,
-                          error_msgs[0])
-
+            self.assertLogMessage(cm.output, INVALID_JSONLD_MESSAGE)
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -193,13 +185,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
-            # Verify the single error message.
-            self.assertLogLevelCallCount(cm.output, n=1)
-
-            error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
-            self.assertEqual(len(error_msgs), 1)
-            self.assertIn('KeyError', error_msgs[0])
-
+            self.assertLogMessage(cm.output, 'KeyError')
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -249,10 +235,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            # Verify the error message.
-            self.assertLogLevelCallCount(cm.output, level='ERROR', n=1,
-                                         tokens='ClientResponseError')
-
+            self.assertLogMessage(cm.output, 'ClientResponseError')
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -290,11 +273,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
-            # Verify the error message, which is referenced twice.
-            error_msgs = [msg for msg in cm.output if msg.startswith('ERROR')]
-            self.assertEqual(len(error_msgs), 1)
-            self.assertIn('XMLSyntaxError', error_msgs[0])
-
+            self.assertLogMessage(cm.output, 'XMLSyntaxError')
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -333,14 +312,10 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
-            self.assertLogMessage(cm.output,
-                                  'XML document does not validate',
-                                  level='ERROR')
-            self.assertLogMessage(cm.output,
-                                  'CI_ResponsibleParty',
-                                  level='ERROR')
-            self.assertLogLevelCallCount(cm.output, level='ERROR', n=1)
-
+            expected_msgs = [
+                'XML document does not validate', 'CI_ResponsibleParty'
+            ]
+            self.assertLogMessage(cm.output, expected_msgs)
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -458,10 +433,11 @@ class TestSuite(TestCommon):
     def test_limit_number_of_documents(self, aioresp_mocker):
         """
         SCENARIO:  We do not wish to go through the entire list of documents,
-        so a limit is specified.
+        so a limit is specified.  There are 3 records in the sitemap, only 2
+        are to be processed.
 
-        EXPECTED RESULT:  There is a warning stating that the URL may not be
-        XML, plus an XMLSyntaxError is raised.
+        EXPECTED RESULT:  Three records are detected in the sitemap, but the
+        log shows only two were processed.
         """
         # External calls to read the:
         #
@@ -478,8 +454,15 @@ class TestSuite(TestCommon):
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.fixed.xml'),
         ]
-        for content in contents:
-            aioresp_mocker.get(self.pattern, body=content)
+        headers = [
+            {'Content-Type': 'text/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'text/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'text/xml'},
+        ]
+        for content, headers in zip(contents, headers):
+            aioresp_mocker.get(self.pattern, body=content, headers=headers)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         obj = D1TestToolAsync(sitemap_url=url, num_documents=2)
@@ -487,6 +470,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
+            # Only two records processed.
             self.assertSuccessfulIngest(cm.output, n=2)
 
         # And just to show, there are 3 URLs in the sitemap.
@@ -499,9 +483,11 @@ class TestSuite(TestCommon):
     def test_multiple_workers(self, aioresp_mocker):
         """
         SCENARIO:  The sitemap references two documents, both of which are
-        good.  More than one worker is employed.
+        good.  More than one worker is employed.  Warning, this test seems
+        brittle.
 
         EXPECTED RESULT:  The successful ingest of both documents is logged.
+        Tasks can be seen as being created for both workers.
         """
 
         # External calls to read the:
@@ -534,11 +520,8 @@ class TestSuite(TestCommon):
 
             # If there was more than one worker, then there should be messages
             # logged that have the strings "consume(0)" and "consume(1)".
-            info_msgs = [
-                msg for msg in cm.output if "create task for 0" in msg
+            expected_msgs = [
+                f"create task for sitemap_consumer[{idx}]"
+                for idx in range(2)
             ]
-            self.assertTrue(len(info_msgs) > 0)
-            info_msgs = [
-                msg for msg in cm.output if "create task for 1" in msg
-            ]
-            self.assertTrue(len(info_msgs) > 0)
+            self.assertLogMessage(cm.output, expected_msgs, level='DEBUG')

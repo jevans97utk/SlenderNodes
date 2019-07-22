@@ -760,8 +760,8 @@ class CommonHarvester(object):
 
     async def consume_sitemap(self, idx, sitemap_queue):
         """
-        This corresponse to a worker drone.  Process records from the sitemap
-        while we can.
+        In a producer/consumer paradigm, here we are consuming work items
+        from the sitemap.
 
         Parameters
         ----------
@@ -770,18 +770,19 @@ class CommonHarvester(object):
         sitemap_queue : asyncio.Queue
             Holds URLs and modification times retrieved from the sitemap.
         """
-        self.logger.debug(f'consumer({idx}):')
+        self.logger.debug(f'sitemap_consumer[{idx}]:')
         while True:
             url, lastmod_time = await sitemap_queue.get()
-            self.logger.debug(f'consumer({idx}) ==>  {url}, {lastmod_time}')
+            msg = f'sitemap_consumer[{idx}] ==>  {url}, {lastmod_time}'
+            self.logger.debug(msg)
             try:
                 identifier, doc = await self.retrieve_record(url)
                 await self.process_record(identifier, doc, lastmod_time)
             except Exception as e:
                 self.failed_count += 1
                 msg = (
-                    f"consumer({idx}):  Unable to process {url} due to "
-                    f"{repr(e)}."
+                    f"sitemap_consumer[{idx}]:  Unable to process {url} due "
+                    f"to {repr(e)}."
                 )
                 self.logger.error(msg)
             else:
@@ -790,7 +791,7 @@ class CommonHarvester(object):
                 p = urllib.parse.urlparse(url)
                 basename = p.path.split('/')[-1]
                 msg = (
-                    f"consumer({idx}):  "
+                    f"sitemap_consumer[{idx}]:  "
                     f"{SUCCESSFUL_INGEST_MESSAGE}: {basename}"
                 )
                 self.logger.info(msg)
@@ -901,7 +902,10 @@ class CommonHarvester(object):
         # Create the worker tasks to consume the URLs
         tasks = []
         for j in range(self.num_workers):
-            self.logger.debug(f'process_sitemap_leaf: create task for {j}')
+            msg = (
+                f'process_sitemap_leaf: create task for sitemap_consumer[{j}]'
+            )
+            self.logger.debug(msg)
             task = asyncio.create_task(self.consume_sitemap(j, sitemap_queue))
             tasks.append(task)
         await sitemap_queue.join()
