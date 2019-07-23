@@ -51,7 +51,7 @@ class TestSuite(TestCommon):
         """
         SCENARIO:   A valid URL of a valid XML document is provided.
 
-        SCENARIO:  no errors
+        EXPECTED RESULT:  no errors
         """
         content = ir.read_binary('tests.data.ieda', '600121iso.xml')
         url = 'http://www.acme.org/600121iso.xml'
@@ -67,7 +67,7 @@ class TestSuite(TestCommon):
         SCENARIO:   A file on the local file system is passed into the
         validator.  The file contains invalid ISO 19115 metadata.
 
-        SCENARIO:  A TypeError exception is raised.
+        EXPECTED RESULT:  A TypeError exception is raised.
         """
         validator = XMLValidator()
 
@@ -76,3 +76,52 @@ class TestSuite(TestCommon):
 
         with self.assertRaises(d1_scimeta.util.SciMetaError):
             validator.validate(file)
+
+    def test_local_eml_file(self):
+        """
+        SCENARIO:   Run the validator against a local EML v2.1.1 file
+
+        EXPECTED RESULT:  no errors
+        """
+        validator = XMLValidator()
+
+        content = ir.read_binary('tests.data.eml', 'doi_10_5063_f1w957h4.xml')
+        file = io.BytesIO(content)
+
+        format_id = "eml://ecoinformatics.org/eml-2.1.1"
+        validator = XMLValidator()
+        validator.validate(file, format_id=format_id)
+
+    def test_local_pangaea_file(self):
+        """
+        SCENARIO:   Run the validator against a local Pangaea XML file.
+
+        EXPECTED RESULT:  no errors
+        """
+        validator = XMLValidator()
+
+        content = ir.read_binary('tests.data.pangaea',
+                                 '10p1594_pangaea.729391.xml')
+        file = io.BytesIO(content)
+
+        format_id = "http://www.isotc211.org/2005/gmd-pangaea"
+        validator = XMLValidator()
+        validator.validate(file, format_id=format_id)
+
+    def test_local_pangaea_file__wrong_format_id(self):
+        """
+        SCENARIO:   Run the validator against a local Pangaea XML file, but
+        give a wrong format ID.
+
+        EXPECTED RESULT:  no errors
+        """
+        validator = XMLValidator()
+
+        content = ir.read_binary('tests.data.pangaea',
+                                 '10p1594_pangaea.729391.xml')
+        file = io.BytesIO(content)
+
+        format_id = "eml://ecoinformatics.org/eml-2.1.1"
+        validator = XMLValidator()
+        with self.assertRaises(d1_scimeta.util.SciMetaError):
+            validator.validate(file, format_id=format_id)
