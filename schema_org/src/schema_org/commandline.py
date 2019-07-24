@@ -130,12 +130,8 @@ def validate():
     help = "XML file or URL"
     parser.add_argument('infile', help=help)
 
-    help = "Format ID"
-    parser.add_argument('--format-id',
-                        default='http://www.isotc211.org/2005/gmd',
-                        help=help)
-
     args = parser.parse_args()
 
     validator = XMLValidator()
-    validator.validate(args.infile, format_id=args.format_id)
+    format_id = validator.validate(args.infile)
+    print(format_id)
