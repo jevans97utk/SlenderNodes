@@ -46,14 +46,14 @@ class XMLValidator(object):
             format_ids = FORMAT_IDS
 
         successes = []
-        for format_id in format_ids:
+        for format_id_item in format_ids:
             try:
-                d1_scimeta.validate.assert_valid(format_id, doc)
+                d1_scimeta.validate.assert_valid(format_id_item, doc)
             except Exception:
                 pass
             else:
                 # Ok, the current format ID worked.  We're good.
-                successes.append(format_id)
+                successes.append(format_id_item)
 
         if len(successes) > 0:
             # If we actually found something, maybe more than one format ID
@@ -62,7 +62,8 @@ class XMLValidator(object):
 
         # If we are here, then none of the IDs have worked.  We will try again
         # with the default ID and let that error message speak for itself.
-        format_id = 'http://www.isotc211.org/2005/gmd'
+        if format_id is None:
+            format_id = 'http://www.isotc211.org/2005/gmd'
         try:
             d1_scimeta.validate.assert_valid(format_id, doc)
         except Exception as e:
