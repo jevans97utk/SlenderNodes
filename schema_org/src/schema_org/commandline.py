@@ -10,7 +10,6 @@ from .arm import ARMHarvester
 from .ieda import IEDAHarvester
 from .testtool import D1TestToolAsync
 from .xml_validator import XMLValidator
-from .common import FORMAT_IDS
 
 
 def setup_parser(id):

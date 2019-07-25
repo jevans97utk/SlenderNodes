@@ -9,8 +9,6 @@ import requests
 import d1_scimeta.validate
 import d1_scimeta.util
 
-# local imports
-from .common import FORMAT_IDS
 
 class XMLValidator(object):
     """
@@ -32,6 +30,8 @@ class XMLValidator(object):
         level = logging.INFO
         logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
                             level=level)
+        # logging.disable(logging.WARNING)
+
         self.logger = logging.getLogger(__name__)
 
         # Also log to stdout.
@@ -60,13 +60,16 @@ class XMLValidator(object):
             # If we can't even build a document, then we have to at least say
             # why.
             self.logger.error(repr(e))
+            return
 
         # If a specific format ID was specified, check against only it.
         # Otherwise check against all known format IDs.
         if format_id is not None:
+            self.logger.info(f'Running validation against {format_id}.')
             format_ids = [format_id]
         else:
-            format_ids = FORMAT_IDS
+            self.logger.info(f'Running validation against all format IDs.')
+            format_ids = d1_scimeta.util.get_supported_format_id_list()
 
         for format_id_item in format_ids:
             try:
@@ -76,7 +79,7 @@ class XMLValidator(object):
             else:
                 # Ok, the current format ID worked.  We're good.
                 msg = f"Validated against {format_id_item}"
-                logging.info(msg)
+                self.logger.info(msg)
 
         # If we are here, then none of the IDs have worked.  We will try again
         # with the default ID and let that error message speak for itself.

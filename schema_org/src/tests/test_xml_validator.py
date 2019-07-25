@@ -48,12 +48,14 @@ class TestSuite(TestCommon):
 
         path = pathlib.Path('tests/data/ieda/600121iso.xml')
 
-        actual = validator.validate(path)
-        expected = (
-            'http://www.isotc211.org/2005/gmd, '
-            'http://www.isotc211.org/2005/gmd-noaa'
-        )
-        self.assertEqual(actual, expected)
+        gmd = 'http://www.isotc211.org/2005/gmd'
+        gmd_noaa = 'http://www.isotc211.org/2005/gmd-noaa'
+
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(path)
+
+            self.assertLogMessage(cm.output, gmd, level='INFO')
+            self.assertLogMessage(cm.output, gmd_noaa, level='INFO')
 
     def test_url(self):
         """
@@ -82,8 +84,9 @@ class TestSuite(TestCommon):
         content = ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.xml')
         file = io.BytesIO(content)
 
-        actual = validator.validate(file)
-        self.assertIn('XMLSyntaxError', actual)
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file)
+            self.assertLogMessage(cm.output, 'XMLSyntaxError', level='ERROR')
 
     def test_local_eml_v200(self):
         """
@@ -96,9 +99,11 @@ class TestSuite(TestCommon):
         file = io.BytesIO(content)
 
         validator = XMLValidator()
-        actual = validator.validate(file)
-        expected = "eml://ecoinformatics.org/eml-2.0.0"
-        self.assertEqual(actual, expected)
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file)
+
+            expected = "eml://ecoinformatics.org/eml-2.0.0"
+            self.assertLogMessage(cm.output, expected, level='INFO')
 
     def test_local_eml_file(self):
         """
@@ -110,9 +115,11 @@ class TestSuite(TestCommon):
         file = io.BytesIO(content)
 
         validator = XMLValidator()
-        actual = validator.validate(file)
-        expected = "eml://ecoinformatics.org/eml-2.1.1"
-        self.assertEqual(actual, expected)
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file)
+
+            expected = "eml://ecoinformatics.org/eml-2.1.1"
+            self.assertLogMessage(cm.output, expected, level='INFO')
 
     def test_local_pangaea_file(self):
         """
@@ -125,9 +132,12 @@ class TestSuite(TestCommon):
         file = io.BytesIO(content)
 
         validator = XMLValidator()
-        actual = validator.validate(file)
         expected = "http://www.isotc211.org/2005/gmd-pangaea"
-        self.assertEqual(actual, expected)
+
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file)
+
+            self.assertLogMessage(cm.output, expected, level='INFO')
 
     def test_local_dryad_v3p1(self):
         """
@@ -139,12 +149,16 @@ class TestSuite(TestCommon):
         file = io.BytesIO(content)
 
         validator = XMLValidator()
-        actual = validator.validate(file)
-        expected = (
-            'http://datadryad.org/profile/v3.1, '
-            'http://purl.org/dryad/terms/'
-        )
-        self.assertEqual(actual, expected)
+
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+
+            validator.validate(file)
+
+            for expected in [
+                'http://datadryad.org/profile/v3.1',
+                'http://purl.org/dryad/terms/'
+            ]:
+                self.assertLogMessage(cm.output, expected, level='INFO')
 
     def test_local_gmd_noaa(self):
         """
@@ -156,13 +170,17 @@ class TestSuite(TestCommon):
         content = ir.read_binary('tests.data.gmd_noaa', 'example.xml')
         file = io.BytesIO(content)
 
-        validator = XMLValidator()
-        actual = validator.validate(file)
-        expected = (
-            'http://www.isotc211.org/2005/gmd, '
+        expected = [
+            'http://www.isotc211.org/2005/gmd',
             'http://www.isotc211.org/2005/gmd-noaa'
-        )
-        self.assertEqual(actual, expected)
+        ]
+
+        validator = XMLValidator()
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file)
+
+            for item in expected:
+                self.assertLogMessage(cm.output, expected, level='INFO')
 
     @unittest.skip('Does not validate')
     def test_local_fgdc_std_001_1998(self):
@@ -190,9 +208,11 @@ class TestSuite(TestCommon):
         file = io.BytesIO(content)
 
         validator = XMLValidator()
-        actual = validator.validate(file)
-        expected = 'eml://ecoinformatics.org/eml-2.0.1'
-        self.assertEqual(actual, expected)
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file)
+
+            expected = 'eml://ecoinformatics.org/eml-2.0.1'
+            self.assertLogMessage(cm.output, expected, level='INFO')
 
     def test_local_onedcx_v1p0(self):
         """
@@ -206,9 +226,11 @@ class TestSuite(TestCommon):
         file = io.BytesIO(content)
 
         validator = XMLValidator()
-        actual = validator.validate(file)
+
         expected = 'http://ns.dataone.org/metadata/schema/onedcx/v1.0'
-        self.assertEqual(actual, expected)
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file)
+            self.assertLogMessage(cm.output, expected, level='INFO')
 
     @unittest.skip('Does not work, file was not retrieved from dataone')
     def test_local_ncml_v2p2(self):
@@ -310,10 +332,12 @@ class TestSuite(TestCommon):
         content = ir.read_binary('tests.data.oai.2p0.oai_dc', 'example.xml')
         file = io.BytesIO(content)
 
-        validator = XMLValidator()
-        actual = validator.validate(file)
         expected = 'http://www.openarchives.org/OAI/2.0/oai_dc/'
-        self.assertEqual(actual, expected)
+
+        validator = XMLValidator()
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file)
+            self.assertLogMessage(cm.output, expected, level='INFO')
 
     @unittest.skip('Does not work, file was not retrieved from dataone')
     def test_local_waterml_v1p1(self):
