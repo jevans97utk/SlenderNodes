@@ -35,7 +35,11 @@ class TestSuite(TestCommon):
         content = ir.read_binary('tests.data.ieda', '600121iso.xml')
         file = io.BytesIO(content)
 
-        validator.validate(file)
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file)
+
+            gmd = 'http://www.isotc211.org/2005/gmd'
+            self.assertLogMessage(cm.output, gmd, level='INFO')
 
     def test_path(self):
         """
@@ -70,7 +74,8 @@ class TestSuite(TestCommon):
             m.get(url, content=content)
 
             validator = XMLValidator()
-            validator.validate(url)
+            with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+                validator.validate(url)
 
     def test_file_like_object_but_invalid_xml(self):
         """
