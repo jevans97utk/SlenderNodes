@@ -74,7 +74,7 @@ class TestSuite(TestCommon):
             m.get(url, content=content)
 
             validator = XMLValidator()
-            with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            with self.assertLogs(logger=validator.logger, level='INFO'):
                 validator.validate(url)
 
     def test_file_like_object_but_invalid_xml(self):

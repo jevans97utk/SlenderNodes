@@ -1,7 +1,6 @@
 # Standard library imports ...
 import io
 import logging
-import sys
 
 # Third party library imports ...
 import lxml.etree
@@ -27,20 +26,15 @@ class XMLValidator(object):
         verbosity : str
             Level of logging verbosity.
         """
+        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         level = logging.INFO
-        logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
-                            level=level)
-        # logging.disable(logging.WARNING)
+        logging.basicConfig(format=format, level=level)
 
         self.logger = logging.getLogger(__name__)
 
-        # Also log to stdout.
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(level)
-        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        formatter = logging.Formatter(format)
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+        # Disable d1_scimeta.util logging
+        logger = logging.getLogger('d1_scimeta.util')
+        logger.disabled = True
 
     def validate(self, src, format_id=None):
         """
