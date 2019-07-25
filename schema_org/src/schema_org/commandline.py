@@ -3,6 +3,7 @@ import argparse
 import asyncio
 
 # 3rd party library imports
+import d1_scimeta.util
 
 # Local imports
 from .arm import ARMHarvester
@@ -136,10 +137,11 @@ def validate():
         "only that format ID will be checked.  If not, all format IDs will be "
         "checked."
     )
-    parser.add_argument('--format-id', choices=FORMAT_IDS, help=help)
+    parser.add_argument('--format-id',
+                        help=help,
+                        choices=d1_scimeta.util.get_supported_format_id_list())
 
     args = parser.parse_args()
 
     validator = XMLValidator()
-    format_id = validator.validate(args.infile, format_id=args.format_id)
-    print(format_id)
+    validator.validate(args.infile, format_id=args.format_id)

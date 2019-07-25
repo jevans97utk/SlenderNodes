@@ -1,10 +1,13 @@
 # Standard library imports ...
 import io
+import logging
+import sys
 
 # Third party library imports ...
 import lxml.etree
 import requests
 import d1_scimeta.validate
+import d1_scimeta.util
 
 # local imports
 from .common import FORMAT_IDS
@@ -17,7 +20,27 @@ class XMLValidator(object):
         """
         Load the 19115-2 schema so that every XML file produced is validated.
         """
-        pass
+        self.setup_logging()
+
+    def setup_logging(self):
+        """
+        Parameters
+        ----------
+        verbosity : str
+            Level of logging verbosity.
+        """
+        level = logging.INFO
+        logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                            level=level)
+        self.logger = logging.getLogger(__name__)
+
+        # Also log to stdout.
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(level)
+        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        formatter = logging.Formatter(format)
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
 
     def validate(self, src, format_id=None):
         """
@@ -36,7 +59,7 @@ class XMLValidator(object):
         except Exception as e:
             # If we can't even build a document, then we have to at least say
             # why.
-            return repr(e)
+            self.logger.error(repr(e))
 
         # If a specific format ID was specified, check against only it.
         # Otherwise check against all known format IDs.
@@ -45,7 +68,6 @@ class XMLValidator(object):
         else:
             format_ids = FORMAT_IDS
 
-        successes = []
         for format_id_item in format_ids:
             try:
                 d1_scimeta.validate.assert_valid(format_id_item, doc)
@@ -53,12 +75,8 @@ class XMLValidator(object):
                 pass
             else:
                 # Ok, the current format ID worked.  We're good.
-                successes.append(format_id_item)
-
-        if len(successes) > 0:
-            # If we actually found something, maybe more than one format ID
-            # that works, return list of all of them.
-            return ", ".join(successes)
+                msg = f"Validated against {format_id_item}"
+                logging.info(msg)
 
         # If we are here, then none of the IDs have worked.  We will try again
         # with the default ID and let that error message speak for itself.
@@ -67,7 +85,8 @@ class XMLValidator(object):
         try:
             d1_scimeta.validate.assert_valid(format_id, doc)
         except Exception as e:
-            return repr(e)
+            self.logger.error(repr(e))
+            return
 
     def build_document_out_of_source(self, src):
         """
