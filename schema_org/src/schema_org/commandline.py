@@ -9,6 +9,7 @@ from .arm import ARMHarvester
 from .ieda import IEDAHarvester
 from .testtool import D1TestToolAsync
 from .xml_validator import XMLValidator
+from .common import FORMAT_IDS
 
 
 def setup_parser(id):
@@ -130,8 +131,15 @@ def validate():
     help = "XML file or URL"
     parser.add_argument('infile', help=help)
 
+    help = (
+        "Format ID for metadata standard.  If this argument is supplied, "
+        "only that format ID will be checked.  If not, all format IDs will be "
+        "checked."
+    )
+    parser.add_argument('--format-id', choices=FORMAT_IDS, help=help)
+
     args = parser.parse_args()
 
     validator = XMLValidator()
-    format_id = validator.validate(args.infile)
+    format_id = validator.validate(args.infile, format_id=args.format_id)
     print(format_id)
