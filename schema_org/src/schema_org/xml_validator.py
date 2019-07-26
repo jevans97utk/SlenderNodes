@@ -13,13 +13,13 @@ class XMLValidator(object):
     """
     Validates XML files according to 19115-2 schema.
     """
-    def __init__(self):
+    def __init__(self, verbosity='INFO'):
         """
         Load the 19115-2 schema so that every XML file produced is validated.
         """
-        self.setup_logging()
+        self.setup_logging(verbosity)
 
-    def setup_logging(self):
+    def setup_logging(self, verbosity):
         """
         Parameters
         ----------
@@ -27,13 +27,15 @@ class XMLValidator(object):
             Level of logging verbosity.
         """
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        level = logging.INFO
+        level = getattr(logging, verbosity)
         logging.basicConfig(format=format, level=level)
 
         self.logger = logging.getLogger(__name__)
 
-        # Disable d1_scimeta.util logging
+        # Disable d1_scimeta logging
         logger = logging.getLogger('d1_scimeta.util')
+        logger.disabled = True
+        logger = logging.getLogger('d1_scimeta.validate')
         logger.disabled = True
 
     def validate(self, src, format_id=None):
@@ -53,7 +55,8 @@ class XMLValidator(object):
         except Exception as e:
             # If we can't even build a document, then we have to at least say
             # why.
-            self.logger.error(repr(e))
+            self.logger.debug(repr(e))
+            self.logger.error(e)
             return
 
         # If a specific format ID was specified, check against only it.
@@ -82,7 +85,8 @@ class XMLValidator(object):
         try:
             d1_scimeta.validate.assert_valid(format_id, doc)
         except Exception as e:
-            self.logger.error(repr(e))
+            self.logger.debug(repr(e))
+            self.logger.error(e)
             return
 
     def build_document_out_of_source(self, src):

@@ -80,18 +80,40 @@ class TestSuite(TestCommon):
     def test_file_like_object_but_invalid_xml(self):
         """
         SCENARIO:   A file on the local file system is passed into the
-        validator.  The file contains invalid ISO 19115 metadata.
+        validator.  The file contains invalid XML, which is invalid even before
+        one starts to consider metadata standards.
 
-        EXPECTED RESULT:  A TypeError exception is raised.
+        EXPECTED RESULT:  An lxml XMLSyntaxError is detected at the DEBUG
+        level, with the text of the error showing up at the ERROR level.
         """
         validator = XMLValidator()
 
         content = ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.xml')
         file = io.BytesIO(content)
 
-        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+        with self.assertLogs(logger=validator.logger, level='DEBUG') as cm:
             validator.validate(file)
-            self.assertLogMessage(cm.output, 'XMLSyntaxError', level='ERROR')
+            self.assertLogMessage(cm.output, 'XMLSyntaxError', level='DEBUG')
+            self.assertLogMessage(cm.output, 'xmlParseEntityRef: no name',
+                                  level='ERROR')
+
+    def test_scimeta_error(self):
+        """
+        SCENARIO:   A file on the local file system is passed into the
+        validator.  The file
+
+        EXPECTED RESULT:  A d1_validate.SciMetaError is detected.
+        """
+        validator = XMLValidator()
+
+        content = ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.xml')
+        file = io.BytesIO(content)
+
+        with self.assertLogs(logger=validator.logger, level='DEBUG') as cm:
+            validator.validate(file)
+            self.assertLogMessage(cm.output, 'SciMetaError', level='DEBUG')
+            self.assertLogMessage(cm.output, 'XML document does not validate',
+                                  level='ERROR')
 
     def test_local_eml_v200(self):
         """

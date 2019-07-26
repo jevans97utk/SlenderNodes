@@ -140,7 +140,12 @@ def validate():
                         help=help,
                         choices=d1_scimeta.util.get_supported_format_id_list())
 
+    help = "Verbosity of log messages."
+    choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    parser.add_argument('-v', '--verbosity', help=help, choices=choices,
+                        default='INFO')
+
     args = parser.parse_args()
 
-    validator = XMLValidator()
+    validator = XMLValidator(verbosity=args.verbosity)
     validator.validate(args.infile, format_id=args.format_id)
