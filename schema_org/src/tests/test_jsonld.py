@@ -6,8 +6,6 @@ Tests for validity of schema.org JSON-LD.
 import importlib.resources as ir
 import json
 import logging
-import unittest
-
 # 3rd party library imports
 
 # Local imports
@@ -54,6 +52,21 @@ class TestSuite(TestCommon):
             expected = "@type key expected to be 'Dataset', not 'Book'."
             self.assertErrorLogMessage(cm.output, expected)
 
+    def test_dataset_type_is_camelcase(self):
+        """
+        SCENARIO:  The JSON-LD has "DataSet" instead of "Dataset".
+
+        EXPECTED RESULT.  An error is logged.
+        """
+
+        j = {'@type': 'DataSet'}
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+            expected = "@type key expected to be 'Dataset', not 'DataSet'."
+            self.assertErrorLogMessage(cm.output, expected)
+
     def test_missing_top_level_encoding_keyword(self):
         """
         SCENARIO:  The JSON-LD does not have the 'encoding' keyword at the
@@ -61,10 +74,13 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT.  An error is logged.
         """
-        j = { 
+        s = """
+        {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset"
         }
+        """
+        j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:

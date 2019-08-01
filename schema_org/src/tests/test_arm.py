@@ -93,9 +93,9 @@ class TestSuite2(TestCommon):
                          mock_check_if_identifier_exists,
                          mock_load_science_metadata):
         """
-        SCENARIO:  The XML metadata document is invalid.
+        SCENARIO:  We have a valid sitemap and valid documents.
 
-        EXPECTED RESULT:  The failure count goes up by one.
+        EXPECTED RESULT:  No errors are logged.
         """
 
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
@@ -103,7 +103,6 @@ class TestSuite2(TestCommon):
         mock_load_science_metadata.return_value = True
 
         harvester = ARMHarvester()
-        failed_count = harvester.failed_count
 
         # External calls to read the:
         #
@@ -113,8 +112,10 @@ class TestSuite2(TestCommon):
         #
         contents = [
             ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
-            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.html'),
-            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
+            ir.read_binary('tests.data.arm',
+                           'nsanimfraod1michC2.c1.fixed.html'),
+            ir.read_binary('tests.data.arm',
+                           'nsanimfraod1michC2.c1.fixed.xml'),
         ]
         status_codes = [200, 200, 200]
 
@@ -163,4 +164,3 @@ class TestSuite2(TestCommon):
                 self.assertLogMessage(cm.output, 'ClientResponseError')
 
         self.assertEqual(harvester.failed_count, failed_count + 1)
-

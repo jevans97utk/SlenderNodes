@@ -1,9 +1,7 @@
 # Standard library imports
-import io
 import json
 
 # 3rd party library imports
-import lxml.etree
 import pyshacl
 
 
@@ -72,8 +70,9 @@ class JSONLD_Validator(object):
             'debug': False,
             'serialize_report_graph': 'xml'
         }
-        conforms, v_graph, v_text = pyshacl.validate(json.dumps(j, indent=4), **kwargs)
+        conforms, v_graph, v_text = pyshacl.validate(json.dumps(j, indent=4),
+                                                     **kwargs)
 
         if not conforms:
-            doc = lxml.etree.parse(io.BytesIO(v_graph))
+            # doc = lxml.etree.parse(io.BytesIO(v_graph))
             self.logger.error(v_text)
