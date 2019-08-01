@@ -79,8 +79,56 @@ class TestSuite(TestCommon):
 
         self.assertEqual(actual, expected)
 
+
+class TestSuite2(TestCommon):
+
+    def setUp(self):
+        self.regex = re.compile('https://www.archive.arm.gov/metadata/adc')
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
-    def test_invalid_xml(self, mock_harvest_time, mock_logger):
+    def test_default_run(self,
+                         mock_harvest_time,
+                         mock_check_if_identifier_exists,
+                         mock_load_science_metadata):
+        """
+        SCENARIO:  The XML metadata document is invalid.
+
+        EXPECTED RESULT:  The failure count goes up by one.
+        """
+
+        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+        mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
+        mock_load_science_metadata.return_value = True
+
+        harvester = ARMHarvester()
+        failed_count = harvester.failed_count
+
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) HTML document for record 1
+        #   3) XML document for record 1
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
+            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.html'),
+            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
+        ]
+        status_codes = [200, 200, 200]
+
+        with aioresponses() as m:
+            for content, status_code in zip(contents, status_codes):
+                m.get(self.regex, body=content, status=status_code)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                asyncio.run(harvester.run())
+
+                self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_metadata_document_retrieval_failure(self, mock_harvest_time):
         """
         SCENARIO:  The XML metadata document is invalid.
 
@@ -109,6 +157,10 @@ class TestSuite(TestCommon):
             for content, status_code in zip(contents, status_codes):
                 m.get(self.regex, body=content, status=status_code)
 
-            asyncio.run(harvester.run())
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                asyncio.run(harvester.run())
+
+                self.assertLogMessage(cm.output, 'ClientResponseError')
 
         self.assertEqual(harvester.failed_count, failed_count + 1)
+

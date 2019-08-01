@@ -21,6 +21,7 @@ import d1_scimeta.validate
 
 # Local imports
 from .d1_client_manager import D1ClientManager
+from .jsonld_validator import JSONLD_Validator
 
 UNESCAPED_DOUBLE_QUOTES_MSG = 'Unescaped double-quotes have been corrected.'
 OVER_ESCAPED_DOUBLE_QUOTES_MSG = (
@@ -57,6 +58,8 @@ class CommonHarvester(object):
         Counters for the different ways that records are handled.  "failed" is
         different from "rejected" in the sense that this code knows why a
         rejection occurs.
+    jsonld_validator : obj
+        Run conformance checks on the JSON-LD extracted from a site page.
     logger : logging.Logger
         All events are recorded by this object.
     mn_base_url : str
@@ -69,12 +72,15 @@ class CommonHarvester(object):
     num_workers : int
         Limit number of workers operating asynchronously to this number.  If
         1, then it is essentially synchronous.
+    regex : re.Pattern or None
+        If not None, restrict processing to just the sitemap URL matching this
+        regular expression.
     session : requests.sessions.Session
         Makes all URL requests.
     """
 
     def __init__(self, host=None, port=None, certificate=None,
-                 private_key=None, verbosity='INFO', regex=None, id=None,
+                 private_key=None, verbosity='INFO', regex=None, id='none',
                  num_documents=-1, num_workers=1):
         """
         Parameters
@@ -117,6 +123,8 @@ class CommonHarvester(object):
                                           sys_meta_dict,
                                           self.logger)
         self.format_id = 'http://www.isotc211.org/2005/gmd'
+
+        self.jsonld_validator = JSONLD_Validator(logger=self.logger)
 
         # Count the different ways that we update/create/skip records.  This
         # will be logged when we are finished.
@@ -302,9 +310,16 @@ class CommonHarvester(object):
         except json.decoder.JSONDecodeError as e:
             # Log the error as a warning because we are going to try to fix it.
             self.logger.warning(repr(e))
-        else:
-            return jsonld
+            jsonld = self.attempt_json_fix(text)
 
+        self.jsonld_validator.check(jsonld)
+        return jsonld
+
+    def attempt_json_fix(self, text):
+        """
+        We have text that the JSON module cannot load.  Attempt to fix certain
+        possible issues.
+        """
         # May have to make two passes at this.
         count = 0
         while True:

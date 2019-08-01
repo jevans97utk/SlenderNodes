@@ -56,11 +56,28 @@ class TestCommon(unittest.TestCase):
                 if expected_message in msg
             )
 
-            message = (
+            lst = [msg for msg in cm_output if msg.startswith(level)]
+            msgs_at_level = '\n\n'.join(lst)
+
+            error_message = (
                 f"Did not find \"{expected_message}\" in the logs at level "
-                f"{level}."
+                f"{level}.\n\nHere are the messages we did find ...\n\n"
+                f"{msgs_at_level}"
             )
-            self.assertTrue(count >= 1, message)
+            self.assertTrue(count >= 1, error_message)
+
+    def assertErrorLogMessage(self, cm_output, expected_messages):
+        """
+        Verify we see this log message with the ERROR level.
+
+        Parameters
+        ----------
+        cm_output : list of str
+            Provided by assertLogs
+        expected_messages : list or str
+            Look for these message in the cm_output
+        """
+        self.assertLogMessage(cm_output, expected_messages, level='ERROR')
 
     def assertLogLevelCallCount(self, cm_output, level='ERROR', n=1,
                                 tokens=None, debug=False):
