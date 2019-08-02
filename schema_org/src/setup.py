@@ -31,6 +31,7 @@ kwargs = {
     'url': 'https://github.com/DataONEorg/d1_python',
     'license': 'Apache License, Version 2.0',
     'packages': ['schema_org'],
+    'package_date': {'schema_org': ['data/*.ttl']},
     'install_requires': [
         'aiohttp', 'aioresponses', 'dataone.scimeta', 'importlib_resources',
         'lxml', 'python-dateutil', 'requests', 'requests_mock',
