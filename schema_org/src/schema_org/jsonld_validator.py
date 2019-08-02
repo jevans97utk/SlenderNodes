@@ -113,7 +113,11 @@ class JSONLD_Validator(object):
                                                        do_owl_imports=False)
 
         try:
-            options = dict(inference='rdfs', logger=self.pyshacl_logger)
+            options = {
+                'inference': 'rdfs',
+                'logger': self.pyshacl_logger,
+                'abort_on_error': True
+            }
             validator = Validator(data_graph,
                                   shacl_graph=shacl_graph,
                                   options=options)
