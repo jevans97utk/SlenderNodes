@@ -11,7 +11,7 @@ schema:DatasetShape
         sh:path schema:encoding ;
         sh:node schema:MediaObjectShape ;
         sh:minCount 1 ;
-        sh:maxCount 1 ;
+	sh:message "JSON-LD is missing a top-level encoding keyword." ;
     ] .
 
 schema:MediaObjectShape
@@ -19,10 +19,12 @@ schema:MediaObjectShape
     sh:property [
         sh:path schema:contentUrl ;
         sh:minCount 1 ;
+	sh:message "JSON-LD encoding section is missing a contentUrl keyword." ;
     ] ;
     sh:property [
         sh:path schema:description ;
         sh:minCount 1 ;
+	sh:message "JSON-LD encoding section is missing a description keyword." ;
         sh:severity sh:Warning ;
     ] ;
     # sh:property [
@@ -33,5 +35,6 @@ schema:MediaObjectShape
     sh:property [
         sh:path schema:dateModified ;
         sh:minCount 1 ;
+	sh:message "JSON-LD encoding section is missing a dateModified keyword." ;
         sh:severity sh:Warning ;
     ] .

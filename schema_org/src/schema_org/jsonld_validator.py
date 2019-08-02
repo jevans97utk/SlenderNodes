@@ -144,11 +144,16 @@ class JSONLD_Validator(object):
             self.stream.seek(0)
             report_text = self.stream.getvalue()
 
-            # Reverse the order of the output items, make them easier to read.
-            items = report_text.split('\n\n')
-            report_text = '\n\n'.join(items[::-1])
+            # Parse out the sh:Message line.
+            # Strip away any leading or trailing \n\n sequences.
+            items = report_text.strip().split('\n\n')
+            msgs = [
+                line for line in items[0].splitlines()
+                if 'Message:' in line
+            ]
 
             if 'sh:Warning' in items[0]:
-                self.logger.warning(report_text)
+                self.logger.warning(msgs[0])
             else:
-                self.logger.error(report_text)
+                self.logger.error(msgs[0])
+            raise RuntimeError(msgs[0])

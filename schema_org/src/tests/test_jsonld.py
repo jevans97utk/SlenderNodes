@@ -51,7 +51,9 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
-            expected = "JSON-LD @type key expected to be 'Dataset', not 'Book'."
+            expected = (
+                "JSON-LD @type key expected to be 'Dataset', not 'Book'."
+            )
             self.assertErrorLogMessage(cm.output, expected)
 
     def test_dataset_type_is_camelcase(self):
@@ -89,13 +91,10 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
-            expected = [
-                'Constraint Violation',
-                'sh:maxCount',
-                'sh:minCount',
-                'schema:encoding'
-            ]
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+
+            expected = "JSON-LD is missing a top-level encoding keyword."
             self.assertErrorLogMessage(cm.output, expected)
 
     def test__encoding__missing_contentUrl_keyword(self):
@@ -110,7 +109,8 @@ class TestSuite(TestCommon):
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
             "encoding": {
-                "@type": "MediaObject"
+                "@type": "MediaObject",
+                "description": ""
             }
         }
         """
@@ -118,11 +118,11 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
-            expected = [
-                'sh:minCount',
-                'schema:contentUrl'
-            ]
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+            expected = (
+                "JSON-LD encoding section is missing a contentUrl keyword."
+            )
             self.assertErrorLogMessage(cm.output, expected)
 
     def test__encoding__missing_description_keyword(self):
@@ -138,7 +138,8 @@ class TestSuite(TestCommon):
             "@type": "Dataset",
             "encoding": {
                 "@type": "MediaObject",
-                "contentUrl": "https://somewhere.out.there.com/"
+                "contentUrl": "https://somewhere.out.there.com/",
+                "dateModified": "2004-02-02"
             }
         }
         """
@@ -146,12 +147,11 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
-            expected = [
-                'sh:Warning',
-                'sh:minCount',
-                'schema:description'
-            ]
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+            expected = (
+                "JSON-LD encoding section is missing a description keyword."
+            )
             self.assertWarningLogMessage(cm.output, expected)
 
     def test__encoding__missing_dateModified_keyword(self):
@@ -176,12 +176,11 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
-            expected = [
-                'sh:Warning',
-                'sh:minCount',
-                'schema:dateModified'
-            ]
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+            expected = (
+                "JSON-LD encoding section is missing a dateModified keyword."
+            )
             self.assertWarningLogMessage(cm.output, expected)
 
     def test__encoding__dateModified_is_date(self):
