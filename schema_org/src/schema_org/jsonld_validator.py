@@ -37,6 +37,11 @@ schema:MediaObjectShape
         sh:path schema:description ;
         sh:minCount 1 ;
         sh:severity sh:Warning ;
+    ] ;
+    sh:property [
+        sh:path schema:dateModified ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
     ] .
 """
 
@@ -133,7 +138,9 @@ class JSONLD_Validator(object):
             report_graph = report_graph.serialize(None, encoding='utf-8',
                                                   format='xml')
 
-        if not conforms:
+        if conforms:
+            self.logger.info("JSON-LD conforms.")
+        else:
             self.stream.seek(0)
             report_text = self.stream.getvalue()
 

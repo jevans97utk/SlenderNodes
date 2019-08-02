@@ -93,7 +93,7 @@ class TestSuite(TestCommon):
             ]
             self.assertErrorLogMessage(cm.output, expected)
 
-    def test_missing_encoding_contentUrl_keyword(self):
+    def test__encoding__missing_contentUrl_keyword(self):
         """
         SCENARIO:  The JSON-LD does not have the 'contentUrl' keyword in the
         'encoding' block.
@@ -120,7 +120,7 @@ class TestSuite(TestCommon):
             ]
             self.assertErrorLogMessage(cm.output, expected)
 
-    def test__encoding__missing_description(self):
+    def test__encoding__missing_description_keyword(self):
         """
         SCENARIO:  The JSON-LD does not have the 'description' keyword in the
         'encoding' block.
@@ -143,7 +143,64 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
             v.check(j)
             expected = [
+                'sh:Warning',
                 'sh:minCount',
                 'schema:description'
             ]
             self.assertWarningLogMessage(cm.output, expected)
+
+    def test__encoding__missing_dateModified_keyword(self):
+        """
+        SCENARIO:  The JSON-LD does not have the 'dateModified' keyword in the
+        'encoding' block.
+
+        EXPECTED RESULT.  An warning is logged, as dateModified is optional.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": ""
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+            expected = [
+                'sh:Warning',
+                'sh:minCount',
+                'schema:dateModified'
+            ]
+            self.assertWarningLogMessage(cm.output, expected)
+
+    def test__encoding__dateModified_is_date(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword in the date
+        format.
+
+        EXPECTED RESULT.  No errors or warnings are logged.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-02"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+            self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
