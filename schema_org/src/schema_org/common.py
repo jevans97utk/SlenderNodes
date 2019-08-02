@@ -298,6 +298,7 @@ class CommonHarvester(object):
             The parsed HTML.  The JSON-LD should be embedded within a
             <SCRIPT> element embedded in the <HEAD> element.
         """
+        self.logger.debug('extract_jsonld:')
         scripts = doc.xpath('head/script[@type="application/ld+json"]')
         if len(scripts) == 0:
             raise RuntimeError(NO_JSON_LD_SCRIPT_ELEMENTS)

@@ -92,3 +92,32 @@ class TestSuite(TestCommon):
                 'schema:encoding'
             ]
             self.assertErrorLogMessage(cm.output, expected)
+
+    def test_missing_encoding_contentUrl_keyword(self):
+        """
+        SCENARIO:  The JSON-LD does not have the 'contentUrl' keyword in the
+        'encoding' block.
+
+        EXPECTED RESULT.  An error is logged.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "encoding": {
+                "@type": "MediaObject"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+            expected = [
+                'Constraint Violation',
+                'sh:maxCount',
+                'sh:minCount',
+                'schema:contentUrl'
+            ]
+            self.assertErrorLogMessage(cm.output, expected)
