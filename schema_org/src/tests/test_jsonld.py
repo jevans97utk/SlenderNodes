@@ -33,7 +33,8 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
+            with self.assertRaises(RuntimeError):
+                v.check(j)
             expected = 'JSON-LD missing top-level "@type" key.'
             self.assertErrorLogMessage(cm.output, expected)
 
