@@ -66,6 +66,19 @@ class TestCommon(unittest.TestCase):
             )
             self.assertTrue(count >= 1, error_message)
 
+    def assertWarningLogMessage(self, cm_output, expected_messages):
+        """
+        Verify we see this log message with the WARNING level.
+
+        Parameters
+        ----------
+        cm_output : list of str
+            Provided by assertLogs
+        expected_messages : list or str
+            Look for these message in the cm_output
+        """
+        self.assertLogMessage(cm_output, expected_messages, level='WARNING')
+
     def assertErrorLogMessage(self, cm_output, expected_messages):
         """
         Verify we see this log message with the ERROR level.

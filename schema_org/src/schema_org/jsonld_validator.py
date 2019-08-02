@@ -32,6 +32,11 @@ schema:MediaObjectShape
     sh:property [
         sh:path schema:contentUrl ;
         sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path schema:description ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
     ] .
 """
 
@@ -104,30 +109,33 @@ class JSONLD_Validator(object):
                                                       do_owl_imports=False)
 
         shacl_graph = pyshacl.rdfutil.load_from_source(shacl_graph_src,
-                                                       rdf_format='turtle',             
+                                                       rdf_format='turtle',
                                                        do_owl_imports=False)
 
-
-        try:                                                                            
+        try:
             options = dict(inference='rdfs', logger=self.pyshacl_logger)
             validator = Validator(data_graph,
-                                  shacl_graph=shacl_graph,                              
+                                  shacl_graph=shacl_graph,
                                   options=options)
             with contextlib.redirect_stdout(io.StringIO()):
                 # Why do I need to redirect stdio here?
-                conforms, report_graph, report_text = validator.run()                       
-        except Exception as e:                                                  
-            conforms = False                                                            
-            report_graph = e                                                            
+                conforms, report_graph, report_text = validator.run()
+        except Exception as e:
+            conforms = False
+            report_graph = e
             report_text = f"Validation Failure - {repr(e)}"
             raise RuntimeError(report_text)
-        else:                                                                           
-            report_graph = report_graph.serialize(None, encoding='utf-8',               
+        else:
+            report_graph = report_graph.serialize(None, encoding='utf-8',
                                                   format='xml')
-                                                                                
+
         if not conforms:
             self.stream.seek(0)
             report_text = self.stream.getvalue()
 
-            # doc = lxml.etree.parse(io.BytesIO(v_graph))
-            self.logger.error(report_text)
+            items = report_text.split('\n\n')
+
+            if 'sh:Warning' in items[0]:
+                self.logger.warning(items[0])
+            else:
+                self.logger.error(items[0])

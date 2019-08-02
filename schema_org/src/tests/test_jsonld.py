@@ -115,9 +115,35 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
             v.check(j)
             expected = [
-                'Constraint Violation',
-                'sh:maxCount',
                 'sh:minCount',
                 'schema:contentUrl'
             ]
             self.assertErrorLogMessage(cm.output, expected)
+
+    def test__encoding__missing_description(self):
+        """
+        SCENARIO:  The JSON-LD does not have the 'description' keyword in the
+        'encoding' block.
+
+        EXPECTED RESULT.  An warning is logged.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+            expected = [
+                'sh:minCount',
+                'schema:description'
+            ]
+            self.assertWarningLogMessage(cm.output, expected)
