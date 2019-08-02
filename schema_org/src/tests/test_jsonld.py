@@ -204,3 +204,57 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
             v.check(j)
             self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+
+    def test__encoding__dateModified_is_invalid_date(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
+        a valid date or datetime format.
+
+        EXPECTED RESULT.  An error is logged.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-0A"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+            expected = ['Invalid dateModified key']
+            self.assertErrorLogMessage(cm.output, expected)
+
+    def test__encoding__dateModified_is_invalid_datetime(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
+        a valid date or datetime format.
+
+        EXPECTED RESULT.  An error is logged.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-08T23:59:70"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+            expected = ['Invalid dateModified key']
+            self.assertErrorLogMessage(cm.output, expected)

@@ -5,6 +5,7 @@ import json
 import logging
 
 # 3rd party library imports
+import dateutil.parser
 from pyshacl import Validator
 import pyshacl.rdfutil
 import pyshacl.monkey
@@ -38,6 +39,11 @@ schema:MediaObjectShape
         sh:minCount 1 ;
         sh:severity sh:Warning ;
     ] ;
+    # sh:property [
+    #     sh:path schema:dateModified ;
+    #     sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}($|(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?))" ;
+    #     sh:message "Valid examples might be 2004-02-02 or 2019-07-23T23:59:59Z" ;
+    # ] ;
     sh:property [
         sh:path schema:dateModified ;
         sh:minCount 1 ;
@@ -95,6 +101,35 @@ class JSONLD_Validator(object):
             return
 
         self.check_shacl(j)
+
+        self.post_shacl_checks(j)
+
+    def post_shacl_checks(self, j):
+        """
+        Run tests that do not lend themselves well to SHACL.
+
+        Parameters
+        ----------
+        j : dict
+            JSON extracted from a landing page <SCRIPT> element.
+        """
+        self.logger.debug(f'{__name__}:post_shacl_checks')
+
+        # SHACL seems to have a hard time validating dates.
+        #
+        # Validate the dateModified key if it is there.
+        if 'encoding' in j and 'dateModified' in j['encoding']:
+            try:
+                dateutil.parser.isoparse(j['encoding']['dateModified'])
+            except ValueError as e:
+                msg = (
+                    f"Invalid dateModified key:  "
+                    f"Value \"{j['encoding']['dateModified']}\" "
+                    f"produced error message \"{e}\".  "
+                    f"Valid examples might be '2002-04-04' or "
+                    f"'2019-08-02T23:59:59Z'"
+                )
+                self.logger.error(msg)
 
     def check_shacl(self, j):
         """
