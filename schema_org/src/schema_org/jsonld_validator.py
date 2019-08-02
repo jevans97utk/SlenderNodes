@@ -58,9 +58,12 @@ class JSONLD_Validator(object):
             raise RuntimeError(msg)
 
         if j['@type'] != 'Dataset':
-            msg = f"@type key expected to be 'Dataset', not '{j['@type']}'."
+            msg = (
+                f"JSON-LD @type key expected to be 'Dataset', not "
+                f"'{j['@type']}'."
+            )
             self.logger.error(msg)
-            return
+            raise RuntimeError(msg)
 
         self.check_shacl(j)
 

@@ -62,7 +62,7 @@ class TestSuite(TestCommon):
         contents = [
             ir.read_text('tests.data.arm', 'sitemap2.xml'),
             b'',
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
         ]
         aioresp_mocker.get(self.pattern, body=contents[0])
@@ -99,7 +99,7 @@ class TestSuite(TestCommon):
         contents = [
             ir.read_text('tests.data.arm', 'sitemap2.xml'),
             ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.no_jsonld.html'),  # noqa: E501
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
         ]
         aioresp_mocker.get(self.pattern, body=contents[0])
@@ -137,7 +137,7 @@ class TestSuite(TestCommon):
         contents = [
             ir.read_text('tests.data.arm', 'sitemap2.xml'),
             ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.invalid_jsonld.html'),  # noqa: E501
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
         ]
         for content in contents:
@@ -173,7 +173,7 @@ class TestSuite(TestCommon):
         contents = [
             ir.read_text('tests.data.arm', 'sitemap2.xml'),
             ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.missing_id.html'),  # noqa: E501
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
         ]
         for content in contents:
@@ -209,9 +209,9 @@ class TestSuite(TestCommon):
         #
         contents = [
             ir.read_binary('tests.data.arm', 'sitemap2.xml'),
-            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.html'),
             b'',
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
         ]
         status_codes = [200, 200, 400, 200, 200]
@@ -259,9 +259,9 @@ class TestSuite(TestCommon):
         #
         contents = [
             ir.read_text('tests.data.arm', 'sitemap2.xml'),
-            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.html'),
             ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.invalid.xml'),
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
         for content in contents:
@@ -298,9 +298,9 @@ class TestSuite(TestCommon):
         #
         contents = [
             ir.read_text('tests.data.arm', 'sitemap2.xml'),
-            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.html'),
             ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.xml'),
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
         ]
         for content in contents:
@@ -337,9 +337,9 @@ class TestSuite(TestCommon):
         #
         contents = [
             ir.read_binary('tests.data.arm', 'sitemap2.xml.gz'),
-            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.html'),
             ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.xml'),
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
         ]
         for content in contents:
@@ -380,15 +380,15 @@ class TestSuite(TestCommon):
             ir.read_text('tests.data.arm', 'sitemap_index_file.xml'),
 
             ir.read_binary('tests.data.arm', 'sitemap2.xml.gz'),
-            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.html'),
             ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.xml'),
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
 
             ir.read_binary('tests.data.arm', 'sitemap2.xml.gz'),
-            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.html'),
             ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.xml'),
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
         for content in contents:
@@ -449,9 +449,9 @@ class TestSuite(TestCommon):
         #
         contents = [
             ir.read_binary('tests.data.arm', 'sitemap3.xml'),
-            ir.read_binary('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
+            ir.read_binary('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.html'),
             ir.read_binary('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.xml'),
-            ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.fixed.xml'),
         ]
         headers = [
@@ -503,9 +503,9 @@ class TestSuite(TestCommon):
         contents = [
             ir.read_text('tests.data.arm', 'sitemap2.xml'),
 
-            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.html'),
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.html'),
             ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.xml'),
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.html'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
             ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
         ]
         for content in contents:

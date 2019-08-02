@@ -49,8 +49,9 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
-            expected = "@type key expected to be 'Dataset', not 'Book'."
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+            expected = "JSON-LD @type key expected to be 'Dataset', not 'Book'."
             self.assertErrorLogMessage(cm.output, expected)
 
     def test_dataset_type_is_camelcase(self):
@@ -64,8 +65,11 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
-            expected = "@type key expected to be 'Dataset', not 'DataSet'."
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+            expected = (
+                "JSON-LD @type key expected to be 'Dataset', not 'DataSet'."
+            )
             self.assertErrorLogMessage(cm.output, expected)
 
     def test_missing_top_level_encoding_keyword(self):

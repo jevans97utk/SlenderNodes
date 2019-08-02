@@ -149,7 +149,7 @@ class TestSuite2(TestCommon):
         #
         contents = [
             ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
-            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.html'),
+            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.html'),  # noqa: E501
             ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.xml'),
         ]
         status_codes = [200, 200, 400]
