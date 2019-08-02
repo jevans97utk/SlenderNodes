@@ -1,0 +1,37 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <http://schema.org/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+schema:DatasetShape
+    a sh:NodeShape ;
+    sh:targetClass schema:Dataset ;
+    sh:property [
+        sh:path schema:encoding ;
+        sh:node schema:MediaObjectShape ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .
+
+schema:MediaObjectShape
+    a sh:NodeShape ;
+    sh:property [
+        sh:path schema:contentUrl ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path schema:description ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+    ] ;
+    # sh:property [
+    #     sh:path schema:dateModified ;
+    #     sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}($|(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?))" ;
+    #     sh:message "Valid examples might be 2004-02-02 or 2019-07-23T23:59:59Z" ;
+    # ] ;
+    sh:property [
+        sh:path schema:dateModified ;
+        sh:minCount 1 ;
+        sh:severity sh:Warning ;
+    ] .

@@ -1,5 +1,6 @@
 # Standard library imports
 import contextlib
+import importlib.resources as ir
 import io
 import json
 import logging
@@ -9,47 +10,6 @@ import dateutil.parser
 from pyshacl import Validator
 import pyshacl.rdfutil
 import pyshacl.monkey
-
-
-shacl_graph_src = """
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix schema: <http://schema.org/> .
-@prefix sh: <http://www.w3.org/ns/shacl#> .
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-
-schema:DatasetShape
-    a sh:NodeShape ;
-    sh:targetClass schema:Dataset ;
-    sh:property [
-        sh:path schema:encoding ;
-        sh:node schema:MediaObjectShape ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
-    ] .
-
-schema:MediaObjectShape
-    a sh:NodeShape ;
-    sh:property [
-        sh:path schema:contentUrl ;
-        sh:minCount 1 ;
-    ] ;
-    sh:property [
-        sh:path schema:description ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-    ] ;
-    # sh:property [
-    #     sh:path schema:dateModified ;
-    #     sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}($|(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?))" ;
-    #     sh:message "Valid examples might be 2004-02-02 or 2019-07-23T23:59:59Z" ;
-    # ] ;
-    sh:property [
-        sh:path schema:dateModified ;
-        sh:minCount 1 ;
-        sh:severity sh:Warning ;
-    ] .
-"""
 
 
 class JSONLD_Validator(object):
@@ -66,13 +26,15 @@ class JSONLD_Validator(object):
         ----------
         logger : logging.Logger
             Same logger as 'dataone'.
-        shacl_logger : logging.logger
+        pyshacl_logger : logging.logger
             We will recover pyshacl log messages from this logger and pass
             some of them (only some) back to our own logger.
         stream : io.StreamIO
             Recover pyshacl messages from this.
         """
         self.logger = logger
+
+        self.shacl_graph_src = ir.read_text('schema_org.data', 'shacl.ttl')
 
         self.stream = io.StringIO()
         handler = logging.StreamHandler(self.stream)
@@ -148,7 +110,7 @@ class JSONLD_Validator(object):
                                                       rdf_format='json-ld',
                                                       do_owl_imports=False)
 
-        shacl_graph = pyshacl.rdfutil.load_from_source(shacl_graph_src,
+        shacl_graph = pyshacl.rdfutil.load_from_source(self.shacl_graph_src,
                                                        rdf_format='turtle',
                                                        do_owl_imports=False)
 
