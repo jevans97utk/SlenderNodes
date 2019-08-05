@@ -12,6 +12,20 @@ schema:DatasetShape
         sh:node schema:MediaObjectShape ;
         sh:minCount 1 ;
 	sh:message "JSON-LD is missing a top-level encoding keyword." ;
+    ] ;
+    sh:property [
+        sh:path schema:identifier ;
+        sh:node schema:PropertyValueShape ;
+        sh:minCount 1 ;
+	sh:message "JSON-LD is missing a top-level identifier keyword." ;
+    ] .
+
+schema:PropertyValueShape
+    a sh:NodeShape ;
+    sh:property [
+        sh:path schema:value ;
+        sh:minCount 1 ;
+	sh:message "JSON-LD identifier section is missing a value keyword." ;
     ] .
 
 schema:MediaObjectShape

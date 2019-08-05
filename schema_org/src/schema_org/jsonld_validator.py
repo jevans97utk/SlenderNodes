@@ -145,16 +145,31 @@ class JSONLD_Validator(object):
             self.stream.seek(0)
             report_text = self.stream.getvalue()
 
-            # Parse out the sh:Message line.
             # Strip away any leading or trailing \n\n sequences.
             items = report_text.strip().split('\n\n')
-            msgs = [
-                line for line in items[0].splitlines()
-                if 'Message:' in line
-            ]
 
-            if 'sh:Warning' in items[0]:
-                self.logger.warning(msgs[0])
-            else:
-                self.logger.error(msgs[0])
-            raise RuntimeError(msgs[0])
+            # Log each message appropriately.
+            error_count = 0
+            print(report_text)
+            for item in items:
+                breakpoint()
+
+                # Parse out the message line and severity line
+                message = [
+                    line for line in item.splitlines() if 'Message:' in line
+                ]
+                message = ' '.join(message[0].split(' ')[1:])
+
+                severity = [
+                    line for line in item.splitlines() if 'Severity:' in line
+                ]
+                severity = ' '.join(severity[0].split(' ')[1:])
+
+                if 'sh:Warning' in severity:
+                    self.logger.warning(message)
+                else:
+                    error_count += 1
+                    self.logger.error(message)
+
+            if error_count > 0:
+                raise RuntimeError("JSON-LD does not conform.")
