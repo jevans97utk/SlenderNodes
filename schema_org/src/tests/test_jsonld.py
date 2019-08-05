@@ -214,7 +214,7 @@ class TestSuite(TestCommon):
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
         a valid date or datetime format.
 
-        EXPECTED RESULT.  An error is logged.
+        EXPECTED RESULT.  A ValueError is raised and the error is logged.
         """
         s = """
         {
@@ -232,7 +232,8 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
+            with self.assertRaises(ValueError):
+                v.check(j)
             expected = ['Invalid dateModified key']
             self.assertErrorLogMessage(cm.output, expected)
 
@@ -241,7 +242,7 @@ class TestSuite(TestCommon):
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
         a valid date or datetime format.
 
-        EXPECTED RESULT.  An error is logged.
+        EXPECTED RESULT.  A ValueError is raised and the error is logged.
         """
         s = """
         {
@@ -259,6 +260,7 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
+            with self.assertRaises(ValueError):
+                v.check(j)
             expected = ['Invalid dateModified key']
             self.assertErrorLogMessage(cm.output, expected)

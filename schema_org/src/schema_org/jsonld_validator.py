@@ -95,6 +95,7 @@ class JSONLD_Validator(object):
                     f"'2019-08-02T23:59:59Z'"
                 )
                 self.logger.error(msg)
+                raise
 
     def check_shacl(self, j):
         """
@@ -121,7 +122,7 @@ class JSONLD_Validator(object):
             options = {
                 'inference': 'rdfs',
                 'logger': self.pyshacl_logger,
-                'abort_on_error': True
+                'abort_on_error': False
             }
             validator = Validator(data_graph,
                                   shacl_graph=shacl_graph,
