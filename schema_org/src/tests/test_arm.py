@@ -161,6 +161,6 @@ class TestSuite2(TestCommon):
             with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
                 asyncio.run(harvester.run())
 
-                self.assertLogMessage(cm.output, 'ClientResponseError')
+                self.assertDebugLogMessage(cm.output, 'ClientResponseError')
 
         self.assertEqual(harvester.failed_count, failed_count + 1)

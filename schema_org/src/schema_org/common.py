@@ -129,6 +129,7 @@ class CommonHarvester(object):
         # Count the different ways that we update/create/skip records.  This
         # will be logged when we are finished.
         self.created_count = 0
+        self.acquired_count = 0
         self.failed_count = 0
         self.rejected_count = 0
         self.skipped_exists_count = 0
@@ -758,7 +759,7 @@ class CommonHarvester(object):
         The ElementTree document.
         """
         msg = f'retrieve_metadata_document:  requesting {metadata_url}'
-        self.logger.debug(msg)
+        self.logger.info(msg)
         # Retrieve the metadata document.
         content = await self.retrieve_url(metadata_url)
 
@@ -794,13 +795,18 @@ class CommonHarvester(object):
             try:
                 identifier, doc = await self.retrieve_record(url)
                 await self.process_record(identifier, doc, lastmod_time)
+
             except Exception as e:
+
                 self.failed_count += 1
+                self.logger.error(f"{e}")
+
                 msg = (
-                    f"sitemap_consumer[{idx}]:  Unable to process {url} due "
-                    f"to {repr(e)}."
+                    f"sitemap_consumer[{idx}]:  "
+                    f"Unable to process {url} due to this error: {repr(e)}."
                 )
-                self.logger.error(msg)
+                self.logger.debug(msg)
+
             else:
                 # Use the last part of the URL to identify the record that was
                 # successfully processed.
@@ -811,6 +817,8 @@ class CommonHarvester(object):
                     f"{SUCCESSFUL_INGEST_MESSAGE}: {basename}"
                 )
                 self.logger.info(msg)
+
+                self.acquired_count += 1
 
             sitemap_queue.task_done()
 

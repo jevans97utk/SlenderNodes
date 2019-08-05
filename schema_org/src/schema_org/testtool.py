@@ -24,5 +24,5 @@ class D1TestToolAsync(CommonHarvester):
         """
         We don't harvest, so summarization is much simpler.
         """
-        msg = f'Successfully processed {self.created_count} records.'
+        msg = f'Successfully acquired {self.acquired_count} records.'
         self.logger.info(msg)

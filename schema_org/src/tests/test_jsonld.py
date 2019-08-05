@@ -9,6 +9,7 @@ import logging
 # 3rd party library imports
 
 # Local imports
+from schema_org import jsonld_validator as jv
 from schema_org.jsonld_validator import JSONLD_Validator
 from .test_common import TestCommon
 
@@ -32,11 +33,11 @@ class TestSuite(TestCommon):
         j = json.loads(content)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
             expected = 'JSON-LD missing top-level "@type" key.'
-            self.assertErrorLogMessage(cm.output, expected)
+            self.assertDebugLogMessage(cm.output, expected)
 
     def test_missing_top_level_type_dataset_keypair(self):
         """
@@ -48,13 +49,13 @@ class TestSuite(TestCommon):
         j = {'@type': 'Book'}
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
             expected = (
                 "JSON-LD @type key expected to be 'Dataset', not 'Book'."
             )
-            self.assertErrorLogMessage(cm.output, expected)
+            self.assertDebugLogMessage(cm.output, expected)
 
     def test_dataset_type_is_camelcase(self):
         """
@@ -66,13 +67,13 @@ class TestSuite(TestCommon):
         j = {'@type': 'DataSet'}
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
             expected = (
                 "JSON-LD @type key expected to be 'Dataset', not 'DataSet'."
             )
-            self.assertErrorLogMessage(cm.output, expected)
+            self.assertDebugLogMessage(cm.output, expected)
 
     def test_missing_top_level_encoding_keyword(self):
         """
@@ -90,12 +91,12 @@ class TestSuite(TestCommon):
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
 
-            expected = "JSON-LD is missing a top-level encoding keyword."
-            self.assertErrorLogMessage(cm.output, expected)
+            expected = jv.ENCODING_KEYWORD_MISSING_MSG
+            self.assertDebugLogMessage(cm.output, expected)
 
     def test__encoding__missing_contentUrl_keyword(self):
         """
@@ -117,13 +118,12 @@ class TestSuite(TestCommon):
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
-            expected = (
-                "JSON-LD encoding section is missing a contentUrl keyword."
-            )
-            self.assertErrorLogMessage(cm.output, expected)
+
+            expected = jv.ENCODING_CONTENTURL_KEYWORD_MISSING_MSG
+            self.assertDebugLogMessage(cm.output, expected)
 
     def test__encoding__missing_description_keyword(self):
         """
@@ -140,6 +140,10 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "dateModified": "2004-02-02"
+            },
+            "identifier": {
+                "@type": "PropertyValue",
+                "value": "something"
             }
         }
         """
@@ -147,12 +151,11 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            with self.assertRaises(RuntimeError):
-                v.check(j)
-            expected = (
-                "JSON-LD encoding section is missing a description keyword."
-            )
-            self.assertWarningLogMessage(cm.output, expected)
+            v.check(j)
+
+            expctd = jv.ENCODING_DESCRIPTION_KEYWORD_MISSING_MSG
+            self.assertWarningLogMessage(cm.output, expctd)
+            self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
 
     def test__encoding__missing_dateModified_keyword(self):
         """
@@ -169,6 +172,10 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": ""
+            },
+            "identifier": {
+                "@type": "PropertyValue",
+                "value": "something"
             }
         }
         """
@@ -176,11 +183,8 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            with self.assertRaises(RuntimeError):
-                v.check(j)
-            expected = (
-                "JSON-LD encoding section is missing a dateModified keyword."
-            )
+            v.check(j)
+            expected = jv.ENCODING_DATEMODIFIED_KEYWORD_MISSING_MSG
             self.assertWarningLogMessage(cm.output, expected)
 
     def test__encoding__dateModified_is_date(self):
@@ -199,13 +203,17 @@ class TestSuite(TestCommon):
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
                 "dateModified": "2019-08-02"
+            },
+            "identifier": {
+                "@type": "PropertyValue",
+                "value": "something"
             }
         }
         """
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
             v.check(j)
             self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
 
@@ -214,7 +222,7 @@ class TestSuite(TestCommon):
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
         a valid date or datetime format.
 
-        EXPECTED RESULT.  An error is logged.
+        EXPECTED RESULT.  A ValueError is raised and the error is logged.
         """
         s = """
         {
@@ -231,17 +239,18 @@ class TestSuite(TestCommon):
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
-            expected = ['Invalid dateModified key']
-            self.assertErrorLogMessage(cm.output, expected)
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+            expected = ['invalid dateModified key']
+            self.assertDebugLogMessage(cm.output, expected)
 
     def test__encoding__dateModified_is_invalid_datetime(self):
         """
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
         a valid date or datetime format.
 
-        EXPECTED RESULT.  An error is logged.
+        EXPECTED RESULT.  A ValueError is raised and the error is logged.
         """
         s = """
         {
@@ -258,7 +267,37 @@ class TestSuite(TestCommon):
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            v.check(j)
-            expected = ['Invalid dateModified key']
-            self.assertErrorLogMessage(cm.output, expected)
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+            expected = ['invalid dateModified key']
+            self.assertDebugLogMessage(cm.output, expected)
+
+    def test__identifier_block_missing(self):
+        """
+        SCENARIO:  The JSON-LD is missing the identifier section at the top
+        level.
+
+        EXPECTED RESULT.  An error is logged.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-08T23:59:59"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+
+            expected = jv.IDENTIFIER_KEYWORD_MISSING_MSG
+            self.assertDebugLogMessage(cm.output, expected)

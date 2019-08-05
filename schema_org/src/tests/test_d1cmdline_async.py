@@ -73,10 +73,10 @@ class TestSuite(TestCommon):
         sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap_not.xml'
         obj = D1TestToolAsync(sitemap_url=sitemap)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertLogMessage(cm.output, 'ClientResponseError')
+            self.assertDebugLogMessage(cm.output, 'ClientResponseError')
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -182,10 +182,10 @@ class TestSuite(TestCommon):
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         obj = D1TestToolAsync(sitemap_url=url)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertLogMessage(cm.output, 'KeyError')
+            self.assertDebugLogMessage(cm.output, 'KeyError')
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -235,7 +235,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertLogMessage(cm.output, 'ClientResponseError')
+            self.assertDebugLogMessage(cm.output, 'ClientResponseError')
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
