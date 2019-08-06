@@ -127,38 +127,41 @@ class JSONLD_Validator(object):
             validator = Validator(data_graph,
                                   shacl_graph=shacl_graph,
                                   options=options)
-            with contextlib.redirect_stdout(io.StringIO()):
-                # Why do I need to redirect stdio here?
-                conforms, report_graph, report_text = validator.run()
+            conforms, report_graph, report_text = validator.run()
+
+            self.stream.seek(0)
+            s = self.stream.getvalue()
+            if len(s) > 0:
+                report_text = s
         except Exception as e:
             conforms = False
             report_graph = e
-            report_text = f"Validation Failure - {repr(e)}"
-            raise RuntimeError(report_text)
+            self.stream.seek(0)
+            s = self.stream.getvalue()
+            if len(s) == 0:
+                report_text = f"Validation Failure - {repr(e)}"
+                self.logger.debug(report_text)
+                raise RuntimeError("JSON-LD does not conform.")
+            else:
+                print(s)
         else:
             report_graph = report_graph.serialize(None, encoding='utf-8',
                                                   format='xml')
-
         if conforms:
             self.logger.info("JSON-LD conforms.")
+            return
+
         else:
             self.stream.seek(0)
             report_text = self.stream.getvalue()
-
-            # Strip away any leading or trailing \n\n sequences.
             items = report_text.strip().split('\n\n')
-
-            # Log each message appropriately.
             error_count = 0
-            print(report_text)
             for item in items:
-                breakpoint()
-
-                # Parse out the message line and severity line
                 message = [
-                    line for line in item.splitlines() if 'Message:' in line
-                ]
-                message = ' '.join(message[0].split(' ')[1:])
+                    line.strip() for line in item.splitlines()
+                    if 'Message:' in line
+                ][0]
+                message = ' '.join(message.split(' ')[1:])
 
                 severity = [
                     line for line in item.splitlines() if 'Severity:' in line

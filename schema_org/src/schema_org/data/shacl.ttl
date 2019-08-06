@@ -3,52 +3,98 @@
 @prefix schema: <http://schema.org/> .
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix d1: <http://ns.dataone.org/schema/2019/08/SO/Dataset#> .
 
-schema:DatasetShape
+d1:DatasetShape
+    # Specifies required properties of a Dataset instance which 
+    # is used to describe a dataset and how it can be accessed.
     a sh:NodeShape ;
     sh:targetClass schema:Dataset ;
-    sh:property [
-        sh:path schema:encoding ;
-        sh:node schema:MediaObjectShape ;
-        sh:minCount 1 ;
-	sh:message "JSON-LD is missing a top-level encoding keyword." ;
-    ] ;
+
     sh:property [
         sh:path schema:identifier ;
-        sh:node schema:PropertyValueShape ;
         sh:minCount 1 ;
-	sh:message "JSON-LD is missing a top-level identifier keyword." ;
+        sh:message "A dataset must have an identifier."@en ;
+    ] ;
+
+    sh:property [
+        # A Dataset must have an encoding property of type MediaObject
+        # The encoding property provides the location and format of
+        # an alternate encoding of metadata describing the dataset.
+        
+        sh:path schema:encoding ;
+        sh:class schema:MediaObject ;
+        sh:minCount 1 ;
+        sh:message "A MediaObject is required in order to identify the location of the XML encoding of the metadata."@en ;
+        sh:severity sh:Violation ;
+        
+        sh:property [
+            # The contentUrl must be provided and is expected to resolve to 
+            # the described serialization of the metadata.            
+            sh:path schema:contentUrl ;
+            sh:minCount 1 ;
+            sh:severity sh:Violation ;
+            sh:message "A contentUrl must provide the location of the metadata encoding."@en ;
+        ] ;        
+        sh:property [
+            sh:path schema:description ;
+            sh:minCount 1 ;
+            sh:severity sh:Warning ;
+            sh:message "A description property is recommended."@en ;
+        ] ;
+        sh:property [
+            sh:path schema:dateModified ;
+            sh:minCount 1 ;
+            sh:severity sh:Warning ;
+            sh:message "A dateModified property indicating when the encoding was last updated is recommended."@en ;
+        ] ;
     ] .
 
-schema:PropertyValueShape
-    a sh:NodeShape ;
-    sh:property [
-        sh:path schema:value ;
-        sh:minCount 1 ;
-	sh:message "JSON-LD identifier section is missing a value keyword." ;
-    ] .
-
-schema:MediaObjectShape
-    a sh:NodeShape ;
-    sh:property [
-        sh:path schema:contentUrl ;
-        sh:minCount 1 ;
-	sh:message "JSON-LD encoding section is missing a contentUrl keyword." ;
-    ] ;
-    sh:property [
-        sh:path schema:description ;
-        sh:minCount 1 ;
-	sh:message "JSON-LD encoding section is missing a description keyword." ;
-        sh:severity sh:Warning ;
-    ] ;
-    # sh:property [
-    #     sh:path schema:dateModified ;
-    #     sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}($|(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?))" ;
-    #     sh:message "Valid examples might be 2004-02-02 or 2019-07-23T23:59:59Z" ;
-    # ] ;
-    sh:property [
-        sh:path schema:dateModified ;
-        sh:minCount 1 ;
-	sh:message "JSON-LD encoding section is missing a dateModified keyword." ;
-        sh:severity sh:Warning ;
-    ] .
+# schema:DatasetShape
+#     a sh:NodeShape ;
+#     sh:targetClass schema:Dataset ;
+#     sh:property [
+#         sh:path schema:encoding ;
+#         sh:node schema:MediaObjectShape ;
+#         sh:minCount 1 ;
+# 	sh:message "JSON-LD is missing a top-level encoding keyword." ;
+#     ] ;
+#     sh:property [
+#         sh:path schema:identifier ;
+#         sh:node schema:PropertyValueShape ;
+#         sh:minCount 1 ;
+# 	sh:message "JSON-LD is missing a top-level identifier keyword." ;
+#     ] .
+# 
+# schema:PropertyValueShape
+#     a sh:NodeShape ;
+#     sh:property [
+#         sh:path schema:value ;
+#         sh:minCount 1 ;
+# 	sh:message "JSON-LD identifier section is missing a value keyword." ;
+#     ] .
+# 
+# schema:MediaObjectShape
+#     a sh:NodeShape ;
+#     sh:property [
+#         sh:path schema:contentUrl ;
+#         sh:minCount 1 ;
+# 	sh:message "JSON-LD encoding section is missing a contentUrl keyword." ;
+#     ] ;
+#     sh:property [
+#         sh:path schema:description ;
+#         sh:minCount 1 ;
+# 	sh:message "JSON-LD encoding section is missing a description keyword." ;
+#         sh:severity sh:Warning ;
+#     ] ;
+#     # sh:property [
+#     #     sh:path schema:dateModified ;
+#     #     sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}($|(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?))" ;
+#     #     sh:message "Valid examples might be 2004-02-02 or 2019-07-23T23:59:59Z" ;
+#     # ] ;
+#     sh:property [
+#         sh:path schema:dateModified ;
+#         sh:minCount 1 ;
+# 	sh:message "JSON-LD encoding section is missing a dateModified keyword." ;
+#         sh:severity sh:Warning ;
+#     ] .

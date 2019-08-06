@@ -90,9 +90,10 @@ class TestSuite(TestCommon):
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
+            return
 
             expected = "JSON-LD is missing a top-level encoding keyword."
             self.assertErrorLogMessage(cm.output, expected)
@@ -121,7 +122,7 @@ class TestSuite(TestCommon):
             with self.assertRaises(RuntimeError):
                 v.check(j)
             expected = (
-                "JSON-LD encoding section is missing a contentUrl keyword."
+                "A contentUrl must provide the location of the metadata encoding."
             )
             self.assertErrorLogMessage(cm.output, expected)
 
@@ -151,11 +152,8 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            with self.assertRaises(RuntimeError):
-                v.check(j)
-            expected = (
-                "JSON-LD encoding section is missing a description keyword."
-            )
+            v.check(j)
+            expected = 'A description property is recommended.'
             self.assertWarningLogMessage(cm.output, expected)
             self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
 
@@ -184,7 +182,8 @@ class TestSuite(TestCommon):
             with self.assertRaises(RuntimeError):
                 v.check(j)
             expected = (
-                "JSON-LD encoding section is missing a dateModified keyword."
+                'A dateModified property indicating when the encoding was '
+                'last updated is recommended.'
             )
             self.assertWarningLogMessage(cm.output, expected)
 
@@ -199,6 +198,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "identifier": "thing",
             "encoding": {
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
@@ -225,6 +225,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "identifier": "thing",
             "encoding": {
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
@@ -253,6 +254,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "identifier": "thing",
             "encoding": {
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
@@ -295,5 +297,5 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
-            expected = ['JSON-LD is missing a top-level identifier keyword']
+            expected = 'A dataset must have an identifier.'
             self.assertErrorLogMessage(cm.output, expected)
