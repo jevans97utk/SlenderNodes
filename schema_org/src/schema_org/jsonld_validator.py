@@ -129,21 +129,12 @@ class JSONLD_Validator(object):
                                   options=options)
             conforms, report_graph, report_text = validator.run()
 
-            self.stream.seek(0)
-            s = self.stream.getvalue()
-            if len(s) > 0:
-                report_text = s
         except Exception as e:
             conforms = False
             report_graph = e
-            self.stream.seek(0)
-            s = self.stream.getvalue()
-            if len(s) == 0:
-                report_text = f"Validation Failure - {repr(e)}"
-                self.logger.debug(report_text)
-                raise RuntimeError("JSON-LD does not conform.")
-            else:
-                print(s)
+            report_text = f"Validation Failure - {repr(e)}"
+            self.logger.debug(report_text)
+            raise RuntimeError("JSON-LD does not conform.")
         else:
             report_graph = report_graph.serialize(None, encoding='utf-8',
                                                   format='xml')
@@ -151,28 +142,28 @@ class JSONLD_Validator(object):
             self.logger.info("JSON-LD conforms.")
             return
 
-        else:
-            self.stream.seek(0)
-            report_text = self.stream.getvalue()
-            items = report_text.strip().split('\n\n')
-            error_count = 0
-            for item in items:
-                message = [
-                    line.strip() for line in item.splitlines()
-                    if 'Message:' in line
-                ][0]
-                message = ' '.join(message.split(' ')[1:])
+        self.stream.seek(0)
+        report_text = self.stream.getvalue()
 
-                severity = [
-                    line for line in item.splitlines() if 'Severity:' in line
-                ]
-                severity = ' '.join(severity[0].split(' ')[1:])
+        items = report_text.strip().split('\n\n')
+        error_count = 0
+        for item in items:
+            message = [
+                line.strip() for line in item.splitlines()
+                if 'Message:' in line
+            ][0]
+            message = ' '.join(message.split(' ')[1:])
 
-                if 'sh:Warning' in severity:
-                    self.logger.warning(message)
-                else:
-                    error_count += 1
-                    self.logger.error(message)
+            severity = [
+                line for line in item.splitlines() if 'Severity:' in line
+            ]
+            severity = ' '.join(severity[0].split(' ')[1:])
 
-            if error_count > 0:
-                raise RuntimeError("JSON-LD does not conform.")
+            if 'sh:Warning' in severity:
+                self.logger.warning(message)
+            else:
+                error_count += 1
+                self.logger.error(message)
+
+        if error_count > 0:
+            raise RuntimeError("JSON-LD does not conform.")

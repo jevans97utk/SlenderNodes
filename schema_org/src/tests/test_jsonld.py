@@ -294,7 +294,7 @@ class TestSuite(TestCommon):
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
             expected = 'A dataset must have an identifier.'

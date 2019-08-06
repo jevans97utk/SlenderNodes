@@ -66,6 +66,19 @@ class TestCommon(unittest.TestCase):
             )
             self.assertTrue(count >= 1, error_message)
 
+    def assertDebugLogMessage(self, cm_output, expected_messages):
+        """
+        Verify we see this log message with the DEBUG level.
+
+        Parameters
+        ----------
+        cm_output : list of str
+            Provided by assertLogs
+        expected_messages : list or str
+            Look for these message in the cm_output
+        """
+        self.assertLogMessage(cm_output, expected_messages, level='DEBUG')
+
     def assertWarningLogMessage(self, cm_output, expected_messages):
         """
         Verify we see this log message with the WARNING level.
@@ -92,18 +105,36 @@ class TestCommon(unittest.TestCase):
         """
         self.assertLogMessage(cm_output, expected_messages, level='ERROR')
 
+    def assertDebugLogCallCount(self, cm_output, n=1, tokens=None):
+        """
+        Verify we see this many log messages at the DEBUG level.
+
+        Parameters
+        ----------
+        cm_output : list of str
+            Log messages provided by assertLogs
+        n : int
+            How many log calls at the DEBUG level to verify.
+        tokens : str or list
+            Verify that these strings appear in the messages.
+        """
+        self.assertLogLevelCallCount(cm_output, level='DEBUG', n=n,
+                                     tokens=tokens, debug=debug)
+
     def assertLogLevelCallCount(self, cm_output, level='ERROR', n=1,
-                                tokens=None, debug=False):
+                                tokens=None):
         """
         Verify we see this many log messages with the specified level.
 
         Parameters
         ----------
+        cm_output : list of str
+            Log messages provided by assertLogs
+        n : int
+            How many log calls at the given level to verify.
         tokens : str or list
             Verify that these strings appear in the messages.
         """
-        if debug:
-            print('\n'.join(cm_output))
         msgs = [msg for msg in cm_output if msg.startswith(level)]
         actual_count = len(msgs)
 
