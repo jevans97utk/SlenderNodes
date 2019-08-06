@@ -41,16 +41,16 @@ class JSONLD_Validator(object):
         self.pyshacl_logger.setLevel(logging.DEBUG)
         self.pyshacl_logger.addHandler(handler)
 
-    def check(self, j):
+    def pre_shacl_checks(self, j):
         """
-        Run JSON-LD compliance checks, both DATAONE and SHACL.
+        Run JSON-LD compliance checks that do not include SHACL.
 
         Parameters
         ----------
         j : dict
             JSON extracted from a landing page <SCRIPT> element.
         """
-        self.logger.debug(f'{__name__}:check')
+        self.logger.debug(f'{__name__}:pre_shacl_checks')
         if '@type' not in j:
             msg = 'JSON-LD missing top-level "@type" key.'
             raise RuntimeError(msg)
@@ -62,8 +62,22 @@ class JSONLD_Validator(object):
             )
             raise RuntimeError(msg)
 
-        self.check_shacl(j)
+        if '@id' not in j:
+            msg = 'JSON-LD missing top-level "@id" key.'
+            raise RuntimeError(msg)
 
+    def check(self, j):
+        """
+        Run JSON-LD compliance checks, both DATAONE and SHACL.
+
+        Parameters
+        ----------
+        j : dict
+            JSON extracted from a landing page <SCRIPT> element.
+        """
+        self.logger.debug(f'{__name__}:check')
+        self.pre_shacl_checks(j)
+        self.check_shacl(j)
         self.post_shacl_checks(j)
 
     def post_shacl_checks(self, j):

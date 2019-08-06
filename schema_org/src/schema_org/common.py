@@ -757,8 +757,8 @@ class CommonHarvester(object):
         -------
         The ElementTree document.
         """
-        msg = f'retrieve_metadata_document:  requesting {metadata_url}'
-        self.logger.debug(msg)
+        msg = f'requesting {metadata_url}'
+        self.logger.info(msg)
         # Retrieve the metadata document.
         content = await self.retrieve_url(metadata_url)
 

@@ -25,36 +25,53 @@ class TestSuite(TestCommon):
         """
         SCENARIO:  The JSON-LD does not have the '@type': 'Dataset' keypair.
 
-        EXPECTED RESULT.  An error is logged.
+        EXPECTED RESULT.  A RuntimeError is issued.
         """
 
         content = ir.read_text('tests.data.jsonld', 'missing_dataset.json')
         j = json.loads(content)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            with self.assertRaises(RuntimeError):
-                v.check(j)
-            expected = 'JSON-LD missing top-level "@type" key.'
-            self.assertErrorLogMessage(cm.output, expected)
+        with self.assertRaises(RuntimeError):
+            v.check(j)
+
+    def test__top_level_id_missing(self):
+        """
+        SCENARIO:  The JSON-LD is missing the @id entry at the top
+        level.
+
+        EXPECTED RESULT.  A RuntimeError is issued.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-08T23:59:59"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertRaises(RuntimeError):
+            v.check(j)
 
     def test_missing_top_level_type_dataset_keypair(self):
         """
         SCENARIO:  The JSON-LD does not have the '@type': 'Dataset' keypair.
 
-        EXPECTED RESULT.  An error is logged.
+        EXPECTED RESULT.  A RuntimeError is issued.
         """
 
         j = {'@type': 'Book'}
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            with self.assertRaises(RuntimeError):
-                v.check(j)
-            expected = (
-                "JSON-LD @type key expected to be 'Dataset', not 'Book'."
-            )
-            self.assertErrorLogMessage(cm.output, expected)
+        with self.assertRaises(RuntimeError):
+            v.check(j)
 
     def test_dataset_type_is_camelcase(self):
         """
@@ -66,9 +83,8 @@ class TestSuite(TestCommon):
         j = {'@type': 'DataSet'}
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            with self.assertRaises(RuntimeError):
-                v.check(j)
+        with self.assertRaises(RuntimeError):
+            v.check(j)
 
     def test_missing_top_level_encoding_keyword(self):
         """
@@ -105,6 +121,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
             "encoding": {
                 "@type": "MediaObject",
                 "description": ""
@@ -134,6 +151,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
             "encoding": {
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
@@ -165,6 +183,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
             "identifier": "thing",
             "encoding": {
                 "@type": "MediaObject",
@@ -197,6 +216,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
             "identifier": "thing",
             "encoding": {
                 "@type": "MediaObject",
@@ -224,6 +244,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
             "identifier": "thing",
             "encoding": {
                 "@type": "MediaObject",
@@ -253,6 +274,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
             "identifier": "thing",
             "encoding": {
                 "@type": "MediaObject",
@@ -282,6 +304,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
             "encoding": {
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",

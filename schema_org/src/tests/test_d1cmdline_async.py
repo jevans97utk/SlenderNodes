@@ -49,7 +49,7 @@ class TestSuite(TestCommon):
         page document that is not present, but the next one is fine.
 
         EXPECTED RESULT:  The log record reflects the successful calls, but
-        also failure to retrieve the XML failure.
+        also failure to retrieve the HTML.
         """
 
         # External calls to read the:
@@ -73,10 +73,11 @@ class TestSuite(TestCommon):
         sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap_not.xml'
         obj = D1TestToolAsync(sitemap_url=sitemap)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertLogMessage(cm.output, 'ClientResponseError')
+            self.assertDebugLogMessage(cm.output, 'ClientResponseError')
+            self.assertErrorLogMessage(cm.output, 'Bad Request')
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -185,7 +186,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
-            self.assertLogMessage(cm.output, 'KeyError')
+            self.assertErrorLogMessage(cm.output, '@id')
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
@@ -235,7 +236,8 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertLogMessage(cm.output, 'ClientResponseError')
+            self.assertDebugLogMessage(cm.output, 'ClientResponseError')
+            self.assertErrorLogMessage(cm.output, 'Bad Request')
             self.assertSuccessfulIngest(cm.output)
 
     @aioresponses()
