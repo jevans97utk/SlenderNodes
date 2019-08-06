@@ -1,5 +1,4 @@
 # Standard library imports
-import contextlib
 import importlib.resources as ir
 import io
 import json

@@ -119,7 +119,7 @@ class TestCommon(unittest.TestCase):
             Verify that these strings appear in the messages.
         """
         self.assertLogLevelCallCount(cm_output, level='DEBUG', n=n,
-                                     tokens=tokens, debug=debug)
+                                     tokens=tokens)
 
     def assertLogLevelCallCount(self, cm_output, level='ERROR', n=1,
                                 tokens=None):

@@ -122,7 +122,8 @@ class TestSuite(TestCommon):
             with self.assertRaises(RuntimeError):
                 v.check(j)
             expected = (
-                "A contentUrl must provide the location of the metadata encoding."
+                "A contentUrl must provide the location of the metadata "
+                "encoding."
             )
             self.assertErrorLogMessage(cm.output, expected)
 
