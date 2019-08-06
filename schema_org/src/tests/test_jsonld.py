@@ -169,6 +169,7 @@ class TestSuite(TestCommon):
         {
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
+            "identifier": "thing",
             "encoding": {
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
@@ -180,13 +181,14 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            with self.assertRaises(RuntimeError):
-                v.check(j)
+            v.check(j)
+
             expected = (
                 'A dateModified property indicating when the encoding was '
                 'last updated is recommended.'
             )
             self.assertWarningLogMessage(cm.output, expected)
+            self.assertErrorLogCallCount(cm.output, n=0)
 
     def test__encoding__dateModified_is_date(self):
         """

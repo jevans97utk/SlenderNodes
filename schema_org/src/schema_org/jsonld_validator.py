@@ -143,6 +143,8 @@ class JSONLD_Validator(object):
         self.stream.seek(0)
         report_text = self.stream.getvalue()
 
+        # Process each report stanza.  If there was only one error, there
+        # should only be one report stanza.
         items = report_text.strip().split('\n\n')
         error_count = 0
         for item in items:

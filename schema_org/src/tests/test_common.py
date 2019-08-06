@@ -105,6 +105,22 @@ class TestCommon(unittest.TestCase):
         """
         self.assertLogMessage(cm_output, expected_messages, level='ERROR')
 
+    def assertErrorLogCallCount(self, cm_output, n=1, tokens=None):
+        """
+        Verify we see this many log messages at the ERROR level.
+
+        Parameters
+        ----------
+        cm_output : list of str
+            Log messages provided by assertLogs
+        n : int
+            How many log calls at the ERROR level to verify.
+        tokens : str or list
+            Verify that these strings appear in the messages.
+        """
+        self.assertLogLevelCallCount(cm_output, level='ERROR', n=n,
+                                     tokens=tokens)
+
     def assertDebugLogCallCount(self, cm_output, n=1, tokens=None):
         """
         Verify we see this many log messages at the DEBUG level.
