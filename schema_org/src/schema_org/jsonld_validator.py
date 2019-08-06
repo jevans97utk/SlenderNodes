@@ -53,7 +53,6 @@ class JSONLD_Validator(object):
         self.logger.debug(f'{__name__}:check')
         if '@type' not in j:
             msg = 'JSON-LD missing top-level "@type" key.'
-            self.logger.error(msg)
             raise RuntimeError(msg)
 
         if j['@type'] != 'Dataset':
@@ -61,7 +60,6 @@ class JSONLD_Validator(object):
                 f"JSON-LD @type key expected to be 'Dataset', not "
                 f"'{j['@type']}'."
             )
-            self.logger.error(msg)
             raise RuntimeError(msg)
 
         self.check_shacl(j)

@@ -800,7 +800,8 @@ class CommonHarvester(object):
                     f"sitemap_consumer[{idx}]:  Unable to process {url} due "
                     f"to {repr(e)}."
                 )
-                self.logger.error(msg)
+                self.logger.debug(msg)
+                self.logger.error(e)
             else:
                 # Use the last part of the URL to identify the record that was
                 # successfully processed.

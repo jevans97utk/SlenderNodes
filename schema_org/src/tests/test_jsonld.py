@@ -69,10 +69,6 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
-            expected = (
-                "JSON-LD @type key expected to be 'Dataset', not 'DataSet'."
-            )
-            self.assertErrorLogMessage(cm.output, expected)
 
     def test_missing_top_level_encoding_keyword(self):
         """
