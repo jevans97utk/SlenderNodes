@@ -126,21 +126,20 @@ class JSONLD_Validator(object):
             validator = Validator(data_graph,
                                   shacl_graph=shacl_graph,
                                   options=options)
-            conforms, report_graph, report_text = validator.run()
+            conforms, _, _ = validator.run()
 
         except Exception as e:
             conforms = False
-            report_graph = e
             report_text = f"Validation Failure - {repr(e)}"
             self.logger.debug(report_text)
             raise RuntimeError("JSON-LD does not conform.")
-        else:
-            report_graph = report_graph.serialize(None, encoding='utf-8',
-                                                  format='xml')
+
         if conforms:
             self.logger.info("JSON-LD conforms.")
             return
 
+        # Ok, we had a validation failure.  What happened?
+        # Recover the DEBUG log from pyshacl.
         self.stream.seek(0)
         report_text = self.stream.getvalue()
 
