@@ -268,6 +268,34 @@ class TestSuite(TestCommon):
             v.check(j)
             self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
 
+    def test__encoding__dateModified_is_datetime_with_fractional_seconds(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword in the datetime
+        format.  There are fractional seconds.
+
+        EXPECTED RESULT.  No errors or warnings are logged.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-02T01:02:03.123Z"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+            self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+
     def test__encoding__dateModified_is_invalid_date__month_00(self):
         """
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
@@ -511,6 +539,35 @@ class TestSuite(TestCommon):
 
             print('\n'.join(cm.output))
             self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
+
+    def test__encoding__dateModified__leading_minus(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword in datetime
+        format.  The year number is negatively signed.
+
+        EXPECTED RESULT.  No errors reported.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "-2019-08-08T23:59:59+14:00"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+
+            self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
 
     def test__encoding__dateModified__valid_zone_minute_offset1(self):
         """
