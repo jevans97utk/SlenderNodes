@@ -3,7 +3,6 @@ import importlib.resources as ir
 import json
 
 # 3rd party library imports
-import dateutil.parser
 from pyshacl import Validator
 import pyshacl.rdfutil
 import pyshacl.monkey
@@ -65,35 +64,6 @@ class JSONLD_Validator(object):
         self.logger.debug(f'{__name__}:check')
         self.pre_shacl_checks(j)
         self.check_shacl(j)
-        self.post_shacl_checks(j)
-
-    def post_shacl_checks(self, j):
-        """
-        Run tests that do not lend themselves well to SHACL.
-
-        Parameters
-        ----------
-        j : dict
-            JSON extracted from a landing page <SCRIPT> element.
-        """
-        self.logger.debug(f'{__name__}:post_shacl_checks')
-
-        # SHACL seems to have a hard time validating dates.
-        #
-        # Validate the dateModified key if it is there.
-        if 'encoding' in j and 'dateModified' in j['encoding']:
-            try:
-                dateutil.parser.isoparse(j['encoding']['dateModified'])
-            except ValueError as e:
-                msg = (
-                    f"Invalid dateModified key:  "
-                    f"Value \"{j['encoding']['dateModified']}\" "
-                    f"produced error message \"{e}\".  "
-                    f"Valid examples might be '2002-04-04' or "
-                    f"'2019-08-02T23:59:59Z'"
-                )
-                self.logger.error(msg)
-                raise
 
     def check_shacl(self, j):
         """

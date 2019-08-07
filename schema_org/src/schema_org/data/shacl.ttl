@@ -48,53 +48,15 @@ d1:DatasetShape
             sh:severity sh:Warning ;
             sh:message "A dateModified property indicating when the encoding was last updated is recommended."@en ;
         ] ;
+        sh:property [
+            sh:path schema:dateModified ;
+            sh:message "A dateModified property, if present, should conform to xsd:date or xsd:datetime patterns."@en ;
+            sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}($|T[0-9]{2}:[0-9]{2}:[0-5][0-9])" ;
+        ] ;
     ] .
 
-# schema:DatasetShape
-#     a sh:NodeShape ;
-#     sh:targetClass schema:Dataset ;
-#     sh:property [
-#         sh:path schema:encoding ;
-#         sh:node schema:MediaObjectShape ;
-#         sh:minCount 1 ;
-# 	sh:message "JSON-LD is missing a top-level encoding keyword." ;
-#     ] ;
-#     sh:property [
-#         sh:path schema:identifier ;
-#         sh:node schema:PropertyValueShape ;
-#         sh:minCount 1 ;
-# 	sh:message "JSON-LD is missing a top-level identifier keyword." ;
-#     ] .
-# 
-# schema:PropertyValueShape
-#     a sh:NodeShape ;
-#     sh:property [
-#         sh:path schema:value ;
-#         sh:minCount 1 ;
-# 	sh:message "JSON-LD identifier section is missing a value keyword." ;
-#     ] .
-# 
-# schema:MediaObjectShape
-#     a sh:NodeShape ;
-#     sh:property [
-#         sh:path schema:contentUrl ;
-#         sh:minCount 1 ;
-# 	sh:message "JSON-LD encoding section is missing a contentUrl keyword." ;
-#     ] ;
-#     sh:property [
-#         sh:path schema:description ;
-#         sh:minCount 1 ;
-# 	sh:message "JSON-LD encoding section is missing a description keyword." ;
-#         sh:severity sh:Warning ;
-#     ] ;
 #     # sh:property [
 #     #     sh:path schema:dateModified ;
 #     #     sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}($|(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?))" ;
 #     #     sh:message "Valid examples might be 2004-02-02 or 2019-07-23T23:59:59Z" ;
 #     # ] ;
-#     sh:property [
-#         sh:path schema:dateModified ;
-#         sh:minCount 1 ;
-# 	sh:message "JSON-LD encoding section is missing a dateModified keyword." ;
-#         sh:severity sh:Warning ;
-#     ] .

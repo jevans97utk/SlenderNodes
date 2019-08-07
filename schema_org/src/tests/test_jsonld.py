@@ -240,7 +240,7 @@ class TestSuite(TestCommon):
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
         a valid date or datetime format.
 
-        EXPECTED RESULT.  A ValueError is raised and the error is logged.
+        EXPECTED RESULT.  A RuntimeError is raised and the error is logged.
         """
         s = """
         {
@@ -259,10 +259,11 @@ class TestSuite(TestCommon):
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            with self.assertRaises(ValueError):
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
+            with self.assertRaises(RuntimeError):
                 v.check(j)
-            expected = ['Invalid dateModified key']
+
+            expected = "A dateModified property, if present, should conform to xsd:date or xsd:datetime patterns."
             self.assertErrorLogMessage(cm.output, expected)
 
     def test__encoding__dateModified_is_invalid_datetime(self):
@@ -270,7 +271,7 @@ class TestSuite(TestCommon):
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
         a valid date or datetime format.
 
-        EXPECTED RESULT.  A ValueError is raised and the error is logged.
+        EXPECTED RESULT.  A RuntimeError is raised and the error is logged.
         """
         s = """
         {
@@ -290,9 +291,11 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
-            with self.assertRaises(ValueError):
+            with self.assertRaises(RuntimeError):
                 v.check(j)
-            expected = ['Invalid dateModified key']
+
+            print('\n'.join(cm.output))
+            expected = "A dateModified property, if present, should conform to xsd:date or xsd:datetime patterns."
             self.assertErrorLogMessage(cm.output, expected)
 
     def test__identifier_block_missing(self):
