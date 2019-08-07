@@ -416,6 +416,36 @@ class TestSuite(TestCommon):
 
             self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
+    def test__encoding__dateModified_is_invalid_date__invalid_day(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword that has an
+        invalid day of 32.
+
+        EXPECTED RESULT.  A RuntimeError is raised and the error is logged.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-32"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='DEBUG') as cm:
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+
+            self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
+
     def test__encoding__dateModified_has_invalid_hours1(self):
         """
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
