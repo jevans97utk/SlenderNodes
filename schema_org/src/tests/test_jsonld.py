@@ -484,6 +484,35 @@ class TestSuite(TestCommon):
             print('\n'.join(cm.output))
             self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
+    def test__encoding__dateModified__valid_zone_designator_hour_offset(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword that has a
+        valid zone designator hour offset.
+
+        EXPECTED RESULT.  No errors reported.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-08T23:59:59+14"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+
+            self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+
     def test__encoding__dateModified__valid_zone_designator_letter(self):
         """
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that has a
