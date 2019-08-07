@@ -616,7 +616,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
-                "dateModified": "2019-08-08T23:59:59+14"
+                "dateModified": "2019-08-08T23:59:59+14:00"
             }
         }
         """
