@@ -484,6 +484,65 @@ class TestSuite(TestCommon):
             print('\n'.join(cm.output))
             self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
+    def test__encoding__dateModified__valid_zone_designator_letter(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword that has a
+        valid zone designator letter.  Only "Z" is allowed.
+
+        EXPECTED RESULT.  No errors reported.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-08T23:59:59Z"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+
+            self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+
+    def test__encoding__dateModified__invalid_zone_designator_letter(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword that has an
+        invalid zone designator letter.  Only "Z" is allowed.
+
+        EXPECTED RESULT.  No errors reported.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-08T23:59:59A"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+
+            self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
+
     def test__identifier_block_missing(self):
         """
         SCENARIO:  The JSON-LD is missing the identifier section at the top
