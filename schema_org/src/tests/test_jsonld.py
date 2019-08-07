@@ -122,9 +122,11 @@ class TestSuite(TestCommon):
             "@context": { "@vocab": "http://schema.org/" },
             "@type": "Dataset",
             "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
             "encoding": {
                 "@type": "MediaObject",
-                "description": ""
+                "description": "",
+                "dateModified": "2002-04-04"
             }
         }
         """

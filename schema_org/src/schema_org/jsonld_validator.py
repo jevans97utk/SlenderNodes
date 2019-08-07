@@ -1,8 +1,6 @@
 # Standard library imports
 import importlib.resources as ir
-import io
 import json
-import logging
 
 # 3rd party library imports
 import dateutil.parser
@@ -25,21 +23,10 @@ class JSONLD_Validator(object):
         ----------
         logger : logging.Logger
             Same logger as 'dataone'.
-        pyshacl_logger : logging.logger
-            We will recover pyshacl log messages from this logger and pass
-            some of them (only some) back to our own logger.
-        stream : io.StreamIO
-            Recover pyshacl messages from this.
         """
         self.logger = logger
 
         self.shacl_graph_src = ir.read_text('schema_org.data', 'shacl.ttl')
-
-        self.stream = io.StringIO()
-        handler = logging.StreamHandler(self.stream)
-        self.pyshacl_logger = logging.getLogger('dataone-shacl')
-        self.pyshacl_logger.setLevel(logging.DEBUG)
-        self.pyshacl_logger.addHandler(handler)
 
     def pre_shacl_checks(self, j):
         """
@@ -132,13 +119,12 @@ class JSONLD_Validator(object):
         try:
             options = {
                 'inference': 'rdfs',
-                'logger': self.pyshacl_logger,
                 'abort_on_error': False
             }
             validator = Validator(data_graph,
                                   shacl_graph=shacl_graph,
                                   options=options)
-            conforms, _, _ = validator.run()
+            conforms, report_graph, report_text = validator.run()
 
         except Exception as e:
             conforms = False
@@ -149,11 +135,6 @@ class JSONLD_Validator(object):
         if conforms:
             self.logger.info("JSON-LD conforms.")
             return
-
-        # Ok, we had a validation failure.  What happened?
-        # Recover the DEBUG log from pyshacl.
-        self.stream.seek(0)
-        report_text = self.stream.getvalue()
 
         # Process each report stanza.  If there was only one error, there
         # should only be one report stanza.
