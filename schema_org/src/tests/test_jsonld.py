@@ -518,7 +518,7 @@ class TestSuite(TestCommon):
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that has an
         invalid zone designator letter.  Only "Z" is allowed.
 
-        EXPECTED RESULT.  No errors reported.
+        EXPECTED RESULT.  A RuntimeError is issued and an error is logged.
         """
         s = """
         {
