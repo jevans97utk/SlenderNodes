@@ -51,7 +51,7 @@ d1:DatasetShape
         sh:property [
             sh:path schema:dateModified ;
             sh:message "A dateModified property, if present, should conform to xsd:date or xsd:datetime patterns."@en ;
-            sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}($|T[0-9]{2}:[0-5][0-9]:[0-5][0-9])" ;
+            sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}($|T([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9])" ;
         ] ;
     ] .
 

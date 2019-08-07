@@ -270,6 +270,68 @@ class TestSuite(TestCommon):
 
             self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
+    def test__encoding__dateModified_has_invalid_hours1(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
+        a valid date or datetime format.  A value of 29 is an invalid hour.
+
+        EXPECTED RESULT.  A RuntimeError is raised and the error is logged.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-08T29:59:59"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+
+            print('\n'.join(cm.output))
+            self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
+
+    def test__encoding__dateModified_has_invalid_hours2(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
+        a valid date or datetime format.  A value of 31 is an invalid hour.
+
+        EXPECTED RESULT.  A RuntimeError is raised and the error is logged.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "dateModified": "2019-08-08T31:59:59"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+
+            print('\n'.join(cm.output))
+            self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
+
     def test__encoding__dateModified_has_invalid_minutes(self):
         """
         SCENARIO:  The JSON-LD has the 'dateModified' keyword that is not in
