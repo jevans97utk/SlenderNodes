@@ -12,6 +12,11 @@ import logging
 from schema_org.jsonld_validator import JSONLD_Validator
 from .test_common import TestCommon
 
+XSD_DATE_MSG = (
+    "A dateModified property, if present, should conform to xsd:date or "
+    "xsd:datetime patterns."
+)
+
 
 class TestSuite(TestCommon):
 
@@ -263,8 +268,7 @@ class TestSuite(TestCommon):
             with self.assertRaises(RuntimeError):
                 v.check(j)
 
-            expected = "A dateModified property, if present, should conform to xsd:date or xsd:datetime patterns."
-            self.assertErrorLogMessage(cm.output, expected)
+            self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
     def test__encoding__dateModified_is_invalid_datetime(self):
         """
@@ -295,8 +299,7 @@ class TestSuite(TestCommon):
                 v.check(j)
 
             print('\n'.join(cm.output))
-            expected = "A dateModified property, if present, should conform to xsd:date or xsd:datetime patterns."
-            self.assertErrorLogMessage(cm.output, expected)
+            self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
     def test__identifier_block_missing(self):
         """
