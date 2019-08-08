@@ -272,7 +272,7 @@ class TestSuite(TestCommon):
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         obj = D1TestToolAsync(sitemap_url=url)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
             self.assertLogMessage(cm.output, 'XMLSyntaxError')

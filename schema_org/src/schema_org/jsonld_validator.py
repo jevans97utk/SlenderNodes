@@ -8,6 +8,13 @@ import pyshacl.rdfutil
 import pyshacl.monkey
 
 
+class InvalidContextError(RuntimeError):
+    """
+    Raise this exception if the @context key is invalid.
+    """
+    pass
+
+
 class JSONLD_Validator(object):
     """
     Attributes
@@ -37,6 +44,19 @@ class JSONLD_Validator(object):
             JSON extracted from a landing page <SCRIPT> element.
         """
         self.logger.debug(f'{__name__}:pre_shacl_checks')
+        if '@context' not in j:
+            msg = 'JSON-LD missing top-level "@context" key.'
+            raise RuntimeError(msg)
+
+        if j['@context'] == "https://schema.org":
+            msg = (
+                "The context cannot be \"https://schema.org\", as that URL "
+                "does not point to a context document.  A minimally valid "
+                "@context entry might be '\"@context\": {\"@vocab\": "
+                "\"https://schema.org\"}'."
+            )
+            raise InvalidContextError(msg)
+
         if '@type' not in j:
             msg = 'JSON-LD missing top-level "@type" key.'
             raise RuntimeError(msg)

@@ -4,6 +4,8 @@
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix d1: <http://ns.dataone.org/schema/2019/08/SO/Dataset#> .
+@prefix datacite: <http://purl.org/spar/datacite/> .
+@prefix dash: <http://datashapes.org/dash#> .
 
 d1:DatasetShape
     # Specifies required properties of a Dataset instance which 
@@ -54,9 +56,3 @@ d1:DatasetShape
             sh:pattern "^-?[0-9]{4}-(0[1-9]|1[1-2])-([0-2][0-9]|3[0-1])($|T([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]([.][0-9]+)?(Z$|([+-](((0[0-9]|1[0-3]):[0-5][0-9])$|14:00$))|$))" ;
         ] ;
     ] .
-
-#     # sh:property [
-#     #     sh:path schema:dateModified ;
-#     #     sh:pattern "^[0-9]{4}-[0-9]{2}-[0-9]{2}($|(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?))" ;
-#     #     sh:message "Valid examples might be 2004-02-02 or 2019-07-23T23:59:59Z" ;
-#     # ] ;

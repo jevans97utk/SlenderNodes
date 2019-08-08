@@ -9,7 +9,7 @@ import logging
 # 3rd party library imports
 
 # Local imports
-from schema_org.jsonld_validator import JSONLD_Validator
+from schema_org.jsonld_validator import JSONLD_Validator, InvalidContextError
 from .test_common import TestCommon
 
 XSD_DATE_MSG = (
@@ -474,7 +474,6 @@ class TestSuite(TestCommon):
             with self.assertRaises(RuntimeError):
                 v.check(j)
 
-            print('\n'.join(cm.output))
             self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
     def test__encoding__dateModified_has_invalid_hours2(self):
@@ -505,7 +504,6 @@ class TestSuite(TestCommon):
             with self.assertRaises(RuntimeError):
                 v.check(j)
 
-            print('\n'.join(cm.output))
             self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
     def test__encoding__dateModified_has_invalid_minutes(self):
@@ -536,7 +534,6 @@ class TestSuite(TestCommon):
             with self.assertRaises(RuntimeError):
                 v.check(j)
 
-            print('\n'.join(cm.output))
             self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
     def test__encoding__dateModified_is_invalid_datetime__seconds(self):
@@ -567,7 +564,6 @@ class TestSuite(TestCommon):
             with self.assertRaises(RuntimeError):
                 v.check(j)
 
-            print('\n'.join(cm.output))
             self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
     def test__encoding__dateModified__leading_minus(self):
@@ -806,3 +802,72 @@ class TestSuite(TestCommon):
                 v.check(j)
             expected = 'A dataset must have an identifier.'
             self.assertErrorLogMessage(cm.output, expected)
+
+    def test__encoding__dateModified_is_datetime_with_fractional_seconds_arm(self):
+        """
+        SCENARIO:  The JSON-LD has the 'dateModified' keyword in the datetime
+        format.  There are fractional seconds.
+
+        EXPECTED RESULT.  No errors or warnings are logged.
+
+        The context is wacky.
+        """
+        s = """
+        {
+            "@type": "Dataset",
+            "@context": { "@vocab": "http://schema.org/" },
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": {
+                "@type": [
+                    "PropertyValue",
+                    "datacite:ResourceIdentifier"
+                ]
+            },
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://www.archive.arm.gov/metadata.xml",
+                "description": "ISO TC211 XML rendering of metadata.",
+                "dateModified": "2019-06-24T09:04:28.886943"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            v.check(j)
+            self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+
+    def test_bad_arm_context(self):
+        """
+        SCENARIO:  The context can optionally be specified inline, but if so,
+        it is supposed to reference a context document.  ARM's examples try
+        to just reference "https://schema.org", which is not the URL of a
+        reference document.
+
+        EXPECTED RESULT.  An InvalidContextError is issued.
+        """
+        s = """
+        {
+            "@type": "Dataset",
+            "@context": "https://schema.org",
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": {
+                "@type": [
+                    "PropertyValue",
+                    "datacite:ResourceIdentifier"
+                ]
+            },
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://www.archive.arm.gov/metadata.xml",
+                "description": "ISO TC211 XML rendering of metadata.",
+                "dateModified": "2019-06-24T09:04:28.886943"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertRaises(InvalidContextError):
+            v.check(j)
