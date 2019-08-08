@@ -36,7 +36,7 @@ d1:DatasetShape
             sh:path schema:contentUrl ;
             sh:minCount 1 ;
             sh:severity sh:Violation ;
-            sh:message "A contentUrl must provide the location of the metadata encoding."@en ;
+            sh:message "A contentUrl entry must provide the location of the metadata encoding."@en ;
         ] ;        
         sh:property [
             sh:path schema:description ;

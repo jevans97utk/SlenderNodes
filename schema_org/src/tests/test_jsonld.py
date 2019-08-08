@@ -147,8 +147,9 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=v.logger, level='INFO') as cm:
             with self.assertRaises(RuntimeError):
                 v.check(j)
+
             expected = (
-                "A contentUrl must provide the location of the metadata "
+                "A contentUrl entry must provide the location of the metadata "
                 "encoding."
             )
             self.assertErrorLogMessage(cm.output, expected)
@@ -939,3 +940,40 @@ class TestSuite(TestCommon):
                 v.check(j)
 
             self.assertErrorLogMessage(cm.output, ENCODING_FORMAT_MSG)
+
+    def test__two_errors(self):
+        """
+        SCENARIO:  The encodingFormat term is missing from the encoding map
+        and the dateModified value in the encoding map is invalid.
+
+        EXPECTED RESULT.  A RuntimeError is issued.  There are two errors
+        logged.
+        """
+        s = """
+        {
+            "@type": "Dataset",
+            "@context": { "@vocab": "http://schema.org/" },
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": {
+                "@type": [
+                    "PropertyValue",
+                    "datacite:ResourceIdentifier"
+                ]
+            },
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://www.archive.arm.gov/metadata.xml",
+                "description": "ISO TC211 XML rendering of metadata.",
+                "dateModified": "2019-06-24T09:04:61"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+
+            self.assertErrorLogMessage(cm.output, ENCODING_FORMAT_MSG)
+            self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)

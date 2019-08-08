@@ -129,29 +129,27 @@ class JSONLD_Validator(object):
             self.logger.info("JSON-LD conforms.")
             return
 
-        # Process each report stanza.  If there was only one error, there
-        # should only be one report stanza.
-        items = report_text.strip().split('\n\n')
-        error_count = 0
-        for item in items:
-            d = self.parse_stanza(item)
+        # So the JSON-LD did not conform.  Parse the report text and log
+        # human-readable messages.
+        reports = self.parse_reports(report_text)
 
-            if 'sh:Warning' in d['Severity']:
-                self.logger.warning(f"{d['Result Path']}: {d['Value Node']}")
-                self.logger.warning(d['Message'])
+        error_count = 0
+        for report in reports:
+
+            if 'sh:Warning' in report['Severity']:
+                self.logger.warning(report['Message'])
             else:
                 error_count += 1
-                self.logger.error(f"{d['Result Path']}: {d['Value Node']}")
-                self.logger.error(d['Message'])
+                self.logger.error(report['Message'])
 
         if error_count > 0:
             raise RuntimeError("JSON-LD does not conform.")
 
-    def parse_stanza(self, stanza):
+    def parse_reports(self, report_text):
         """
         Parameters
         ----------
-        stanza : str
+        report_text : str
             A part of the report text provided by pyshacl.  
 
             Constraint Violation in MinCountConstraintComponent ... :
@@ -165,40 +163,62 @@ class JSONLD_Validator(object):
         ------------
         dictionary of the individual items
         """
-        d = {}
+        reports = []
 
-        try:
-            value_node = [
-                line.strip() for line in stanza.splitlines()
-                if 'Value Node:' in line
+        items = report_text.split('Constraint Violation')
+        for item in items:
+
+            if 'Source Shape' not in item:
+                # We don't have an actualy constraint violation text stanza
+                # here.  Likely it is something that looks like
+                #
+                # Validation Report
+                # Conforms: False
+                # Results (2):
+                #
+                # which is the leading text.
+                continue
+
+            d = {}
+
+            try:
+                value_node = [
+                    line.strip() for line in item.splitlines()
+                    if 'Value Node:' in line
+                ][0]
+                value_node = ' '.join(value_node.split(' ')[2:])
+            except IndexError:
+                d['Value Node'] = ''
+            else:
+                d['Value Node'] = value_node
+    
+            message = [
+                line.strip() for line in item.splitlines()
+                if 'Message:' in line
             ][0]
-            value_node = ' '.join(value_node.split(' ')[2:])
-        except IndexError:
-            d['Value Node'] = ''
-        else:
-            d['Value Node'] = value_node
+            message = ' '.join(message.split(' ')[1:])
+            d['Message'] = message
+    
+            severity = [
+                line.strip() for line in item.splitlines() if 'Severity:' in line
+            ]
+            severity = ' '.join(severity[0].split(' ')[1:])
+            d['Severity'] = severity
+    
+            result_path = [
+                line.strip() for line in item.splitlines()
+                if 'Result Path:' in line
+            ]
+            result_path = ' '.join(result_path[0].split(' ')[2:])
+            d['Result Path'] = result_path
+    
+            # The Message field will be an amalgamation.
+            if d['Value Node'] is not None:
+                d['Message'] += f"  The value found was {d['Value Node']}"
 
-        message = [
-            line.strip() for line in stanza.splitlines()
-            if 'Message:' in line
-        ][0]
-        message = ' '.join(message.split(' ')[1:])
-        d['Message'] = message
+            reports.append(d)
 
-        severity = [
-            line.strip() for line in stanza.splitlines() if 'Severity:' in line
-        ]
-        severity = ' '.join(severity[0].split(' ')[1:])
-        d['Severity'] = severity
-
-        result_path = [
-            line.strip() for line in stanza.splitlines()
-            if 'Result Path:' in line
-        ]
-        result_path = ' '.join(result_path[0].split(' ')[2:])
-        d['Result Path'] = result_path
-
-        return d
+        return reports
 
 
 class D1CheckHtmlFile(object):
