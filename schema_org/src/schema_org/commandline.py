@@ -9,6 +9,7 @@ import d1_scimeta.util
 from .arm import ARMHarvester
 from .ieda import IEDAHarvester
 from .testtool import D1TestToolAsync
+from .jsonld_validator import D1CheckHtmlFile
 from .xml_validator import XMLValidator
 
 
@@ -61,6 +62,24 @@ def setup_parser(id):
     parser.add_argument('--num-workers', type=int, default=1, help=help)
 
     return parser
+
+
+def d1_check_html():
+
+    parser = argparse.ArgumentParser()
+
+    help = "path to local HTML file"
+    parser.add_argument('htmlfile', type=str, help=help)
+
+    help = f"log verbosity level"
+    choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+    parser.add_argument('-v', '--verbose', choices=choices, default='INFO',
+                        help=help)
+
+    args = parser.parse_args()
+
+    obj = D1CheckHtmlFile(args.htmlfile, verbosity=args.verbose)
+    obj.run()
 
 
 def d1_check_site():

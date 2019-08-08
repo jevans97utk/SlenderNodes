@@ -336,6 +336,7 @@ class TestSuite(TestCommon):
             with self.assertRaises(RuntimeError):
                 v.check(j)
 
+            self.assertErrorLogMessage(cm.output, '2019-00-08')
             self.assertErrorLogMessage(cm.output, XSD_DATE_MSG)
 
     def test__encoding__dateModified_is_invalid_date__month_19(self):

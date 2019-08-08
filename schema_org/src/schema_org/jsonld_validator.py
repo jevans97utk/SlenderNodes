@@ -1,8 +1,11 @@
 # Standard library imports
 import importlib.resources as ir
 import json
+import logging
+import sys
 
 # 3rd party library imports
+import lxml.etree
 from pyshacl import Validator
 import pyshacl.rdfutil
 import pyshacl.monkey
@@ -53,7 +56,7 @@ class JSONLD_Validator(object):
                 "The context cannot be \"https://schema.org\", as that URL "
                 "does not point to a context document.  A minimally valid "
                 "@context entry might be '\"@context\": {\"@vocab\": "
-                "\"https://schema.org\"}'."
+                "\"http://schema.org/\"}'."
             )
             raise InvalidContextError(msg)
 
@@ -131,22 +134,113 @@ class JSONLD_Validator(object):
         items = report_text.strip().split('\n\n')
         error_count = 0
         for item in items:
-            message = [
-                line.strip() for line in item.splitlines()
-                if 'Message:' in line
-            ][0]
-            message = ' '.join(message.split(' ')[1:])
+            d = self.parse_stanza(item)
 
-            severity = [
-                line for line in item.splitlines() if 'Severity:' in line
-            ]
-            severity = ' '.join(severity[0].split(' ')[1:])
-
-            if 'sh:Warning' in severity:
-                self.logger.warning(message)
+            if 'sh:Warning' in d['Severity']:
+                self.logger.warning(f"{d['Result Path']}: {d['Value Node']}")
+                self.logger.warning(d['Message'])
             else:
                 error_count += 1
-                self.logger.error(message)
+                self.logger.error(f"{d['Result Path']}: {d['Value Node']}")
+                self.logger.error(d['Message'])
 
         if error_count > 0:
             raise RuntimeError("JSON-LD does not conform.")
+
+    def parse_stanza(self, stanza):
+        """
+        Parameters
+        ----------
+        stanza : str
+            A part of the report text provided by pyshacl.  
+
+            Constraint Violation in MinCountConstraintComponent ... :
+                Severity: sh:Violation
+                Source Shape: [ ... ]
+                Value Node: ...
+                Result Path: ...
+                Message: ...
+            
+        Return Value
+        ------------
+        dictionary of the individual items
+        """
+        d = {}
+
+        try:
+            value_node = [
+                line.strip() for line in stanza.splitlines()
+                if 'Value Node:' in line
+            ][0]
+            value_node = ' '.join(value_node.split(' ')[2:])
+        except IndexError:
+            d['Value Node'] = ''
+        else:
+            d['Value Node'] = value_node
+
+        message = [
+            line.strip() for line in stanza.splitlines()
+            if 'Message:' in line
+        ][0]
+        message = ' '.join(message.split(' ')[1:])
+        d['Message'] = message
+
+        severity = [
+            line.strip() for line in stanza.splitlines() if 'Severity:' in line
+        ]
+        severity = ' '.join(severity[0].split(' ')[1:])
+        d['Severity'] = severity
+
+        result_path = [
+            line.strip() for line in stanza.splitlines()
+            if 'Result Path:' in line
+        ]
+        result_path = ' '.join(result_path[0].split(' ')[2:])
+        d['Result Path'] = result_path
+
+        return d
+
+
+class D1CheckHtmlFile(object):
+    """
+    This is useful only for local debugging.
+    """
+    def __init__(self, html_file, verbosity=None):
+        self.html_file = html_file
+        self.setup_logging(verbosity)
+
+        self.validator = JSONLD_Validator(self.logger)
+
+    def run(self):
+
+        self.logger.info('Running...')
+        with open(self.html_file) as f:
+            text = f.read()
+        doc = lxml.etree.HTML(text)
+        scripts = doc.xpath('head/script[@type="application/ld+json"]')
+        script = scripts[0]
+
+        self.logger.info('Loading...')
+        j = json.loads(script.text)
+
+        self.logger.info('Validating...')
+        self.validator.check(j)
+
+    def setup_logging(self, verbosity):
+        """
+        Parameters
+        ----------
+        verbosity : str
+            Level of logging verbosity.
+        """
+        level = getattr(logging, verbosity)
+        self.logger = logging.getLogger(__name__)
+
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(level)
+        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        formatter = logging.Formatter(format)
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+
+

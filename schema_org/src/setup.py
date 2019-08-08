@@ -51,6 +51,7 @@ kwargs = {
         'console_scripts': [
             'dataone-validate=schema_org.commandline:validate',
             'd1-check-site=schema_org.commandline:d1_check_site',
+            'd1-check-html=schema_org.commandline:d1_check_html',
             'harvest-arm=schema_org.commandline:arm',
             'harvest-ieda=schema_org.commandline:ieda',
         ],
