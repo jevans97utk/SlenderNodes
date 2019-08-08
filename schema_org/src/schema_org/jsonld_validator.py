@@ -213,7 +213,7 @@ class JSONLD_Validator(object):
             d['Result Path'] = result_path
     
             # The Message field will be an amalgamation.
-            if d['Value Node'] is not None:
+            if d['Value Node'] != '':
                 d['Message'] += f"  The value found was {d['Value Node']}"
 
             reports.append(d)

@@ -115,6 +115,6 @@ d1:DatasetShape
                 "http://www.isotc211.org/2005/gmd-pangaea"
                 "http://www.openarchives.org/OAI/2.0/oai_dc/"
             ) ;
-	    sh:message "The encoding format drawn from the list of DataONE formatIds should be provided to avoid ambiguity."@en ;
+	    sh:message "The encodingFormat should be provided in the encoding map and must drawn from the list of DataONE formatIds to avoid ambiguity."@en ;
         ] ;
     ] .
