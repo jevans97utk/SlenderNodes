@@ -16,6 +16,10 @@ XSD_DATE_MSG = (
     "A dateModified property, if present, should conform to xsd:date or "
     "xsd:datetime patterns."
 )
+ENCODING_FORMAT_MSG = (
+    "The encoding format drawn from the list of DataONE formatIds should be "
+    "provided to avoid ambiguity."
+)
 
 
 class TestSuite(TestCommon):
@@ -55,6 +59,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T23:59:59"
             }
         }
@@ -131,7 +136,8 @@ class TestSuite(TestCommon):
             "encoding": {
                 "@type": "MediaObject",
                 "description": "",
-                "dateModified": "2002-04-04"
+                "dateModified": "2002-04-04",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd"
             }
         }
         """
@@ -162,6 +168,7 @@ class TestSuite(TestCommon):
             "encoding": {
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2004-02-02"
             },
             "identifier": {
@@ -195,6 +202,7 @@ class TestSuite(TestCommon):
             "encoding": {
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "description": ""
             }
         }
@@ -229,6 +237,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-02"
             }
         }
@@ -257,6 +266,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-02T01:02:03"
             }
         }
@@ -285,6 +295,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-02T01:02:03.123Z"
             }
         }
@@ -313,6 +324,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-00-08"
             }
         }
@@ -343,6 +355,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-19-08"
             }
         }
@@ -373,6 +386,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-20-08"
             }
         }
@@ -403,6 +417,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-0A"
             }
         }
@@ -433,6 +448,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-32"
             }
         }
@@ -463,6 +479,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T29:59:59"
             }
         }
@@ -493,6 +510,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T31:59:59"
             }
         }
@@ -523,6 +541,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T23:69:59"
             }
         }
@@ -553,6 +572,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T23:59:70"
             }
         }
@@ -583,6 +603,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "-2019-08-08T23:59:59+14:00"
             }
         }
@@ -613,6 +634,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T23:59:59+14:00"
             }
         }
@@ -642,6 +664,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T23:59:59+14:00"
             }
         }
@@ -672,6 +695,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T23:59:59+14:01"
             }
         }
@@ -702,6 +726,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T23:59:59+25"
             }
         }
@@ -732,6 +757,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T23:59:59Z"
             }
         }
@@ -761,6 +787,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T23:59:59A"
             }
         }
@@ -790,6 +817,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://somewhere.out.there.com/",
                 "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-08-08T23:59:59"
             }
         }
@@ -803,7 +831,7 @@ class TestSuite(TestCommon):
             expected = 'A dataset must have an identifier.'
             self.assertErrorLogMessage(cm.output, expected)
 
-    def test__encoding__dateModified_is_datetime_with_fractional_seconds_arm(self):
+    def test__encoding__dateModified_is_datetime_with_fractional_seconds_arm(self):  # noqa: E501
         """
         SCENARIO:  The JSON-LD has the 'dateModified' keyword in the datetime
         format.  There are fractional seconds.
@@ -827,6 +855,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://www.archive.arm.gov/metadata.xml",
                 "description": "ISO TC211 XML rendering of metadata.",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-06-24T09:04:28.886943"
             }
         }
@@ -862,6 +891,7 @@ class TestSuite(TestCommon):
                 "@type": "MediaObject",
                 "contentUrl": "https://www.archive.arm.gov/metadata.xml",
                 "description": "ISO TC211 XML rendering of metadata.",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
                 "dateModified": "2019-06-24T09:04:28.886943"
             }
         }
@@ -871,3 +901,40 @@ class TestSuite(TestCommon):
         v = JSONLD_Validator(logger=self.logger)
         with self.assertRaises(InvalidContextError):
             v.check(j)
+
+    def test__encoding__unsupported_encoding_format(self):
+        """
+        SCENARIO:  The encodingFormat term in the encoding map should be a
+        supported format.  "eml://ecoinformatics.org/eml-1.0.0" is not such
+        a format.
+
+        EXPECTED RESULT.  A RuntimeError is issued.  The error is logged.
+        """
+        s = """
+        {
+            "@type": "Dataset",
+            "@context": { "@vocab": "http://schema.org/" },
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": {
+                "@type": [
+                    "PropertyValue",
+                    "datacite:ResourceIdentifier"
+                ]
+            },
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://www.archive.arm.gov/metadata.xml",
+                "description": "ISO TC211 XML rendering of metadata.",
+                "dateModified": "2019-06-24T09:04:28.886943",
+                "encodingFormat": "eml://ecoinformatics.org/eml-1.0.0"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+
+            self.assertErrorLogMessage(cm.output, ENCODING_FORMAT_MSG)
