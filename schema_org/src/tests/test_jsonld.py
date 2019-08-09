@@ -6,6 +6,8 @@ Tests for validity of schema.org JSON-LD.
 import importlib.resources as ir
 import json
 import logging
+import unittest
+
 # 3rd party library imports
 
 # Local imports
@@ -839,8 +841,6 @@ class TestSuite(TestCommon):
         format.  There are fractional seconds.
 
         EXPECTED RESULT.  No errors or warnings are logged.
-
-        The context is wacky.
         """
         s = """
         {
@@ -869,7 +869,8 @@ class TestSuite(TestCommon):
             v.check(j)
             self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
 
-    def test_bad_arm_context(self):
+    @unittest.skip('not sure about context right now')
+    def test_bad_context_http(self):
         """
         SCENARIO:  The context can optionally be specified inline, but if so,
         it is supposed to reference a context document.  ARM's examples try
@@ -881,7 +882,7 @@ class TestSuite(TestCommon):
         s = """
         {
             "@type": "Dataset",
-            "@context": "https://schema.org",
+            "@context": "http://schema.org",
             "@id": "http://dx.doi.org/10.5439/1027372",
             "identifier": {
                 "@type": [
