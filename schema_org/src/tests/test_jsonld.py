@@ -17,8 +17,8 @@ XSD_DATE_MSG = (
     "xsd:datetime patterns."
 )
 ENCODING_FORMAT_MSG = (
-    "The encoding format drawn from the list of DataONE formatIds should be "
-    "provided to avoid ambiguity."
+    "The encodingFormat should be provided in the encoding map and must drawn "
+    "from the list of DataONE formatIds to avoid ambiguity."
 )
 
 
