@@ -51,14 +51,13 @@ class JSONLD_Validator(object):
             msg = 'JSON-LD missing top-level "@context" key.'
             raise RuntimeError(msg)
 
-        if j['@context'] == "https://schema.org":
-            msg = (
-                "The context cannot be \"https://schema.org\", as that URL "
-                "does not point to a context document.  A minimally valid "
-                "@context entry might be '\"@context\": {\"@vocab\": "
-                "\"http://schema.org/\"}'."
-            )
-            raise InvalidContextError(msg)
+        # Inline contexts are currently problematic with regards to
+        # certain date keys such as "dateModified".  Suppress this by
+        # swapping out the inline context with something else.
+        bad_contexts = ["http://schema.org", "http://schema.org/",
+                        "https://schema.org", "https://schema.org/"]
+        if j['@context'] in bad_contexts:
+            j['@context'] = {"@vocab": "http://schema.org/"}
 
         if '@type' not in j:
             msg = 'JSON-LD missing top-level "@type" key.'
@@ -150,7 +149,7 @@ class JSONLD_Validator(object):
         Parameters
         ----------
         report_text : str
-            A part of the report text provided by pyshacl.  
+            A part of the report text provided by pyshacl.
 
             Constraint Violation in MinCountConstraintComponent ... :
                 Severity: sh:Violation
@@ -158,7 +157,7 @@ class JSONLD_Validator(object):
                 Value Node: ...
                 Result Path: ...
                 Message: ...
-            
+
         Return Value
         ------------
         dictionary of the individual items
@@ -191,27 +190,28 @@ class JSONLD_Validator(object):
                 d['Value Node'] = ''
             else:
                 d['Value Node'] = value_node
-    
+
             message = [
                 line.strip() for line in item.splitlines()
                 if 'Message:' in line
             ][0]
             message = ' '.join(message.split(' ')[1:])
             d['Message'] = message
-    
+
             severity = [
-                line.strip() for line in item.splitlines() if 'Severity:' in line
+                line.strip() for line in item.splitlines()
+                if 'Severity:' in line
             ]
             severity = ' '.join(severity[0].split(' ')[1:])
             d['Severity'] = severity
-    
+
             result_path = [
                 line.strip() for line in item.splitlines()
                 if 'Result Path:' in line
             ]
             result_path = ' '.join(result_path[0].split(' ')[2:])
             d['Result Path'] = result_path
-    
+
             # The Message field will be an amalgamation.
             if d['Value Node'] != '':
                 d['Message'] += f"  The value found was {d['Value Node']}"
@@ -262,5 +262,3 @@ class D1CheckHtmlFile(object):
         formatter = logging.Formatter(format)
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
-
-

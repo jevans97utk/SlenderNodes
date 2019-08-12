@@ -6,12 +6,11 @@ Tests for validity of schema.org JSON-LD.
 import importlib.resources as ir
 import json
 import logging
-import unittest
 
 # 3rd party library imports
 
 # Local imports
-from schema_org.jsonld_validator import JSONLD_Validator, InvalidContextError
+from schema_org.jsonld_validator import JSONLD_Validator
 from .test_common import TestCommon
 
 XSD_DATE_MSG = (
@@ -869,15 +868,13 @@ class TestSuite(TestCommon):
             v.check(j)
             self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
 
-    @unittest.skip('not sure about context right now')
-    def test_bad_context_http(self):
+    def test_inline_context(self):
         """
-        SCENARIO:  The context can optionally be specified inline, but if so,
-        it is supposed to reference a context document.  ARM's examples try
-        to just reference "https://schema.org", which is not the URL of a
-        reference document.
+        SCENARIO:  The context references an inline document.  This is
+        currently problematic for us and will cause errors with the
+        dateModified keys.  We want to suppress this.
 
-        EXPECTED RESULT.  An InvalidContextError is issued.
+        EXPECTED RESULT.  No errors.
         """
         s = """
         {
@@ -902,8 +899,9 @@ class TestSuite(TestCommon):
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertRaises(InvalidContextError):
-            v.check(j)
+        v.check(j)
+
+        self.assertNotEqual(j['@context'], "http://schema.org")
 
     def test__encoding__unsupported_encoding_format(self):
         """
