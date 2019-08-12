@@ -102,12 +102,18 @@ def d1_check_site():
     )
     parser.add_argument('--num-workers', type=int, default=1, help=help)
 
+    help = (
+        "Limit number of errors to this number."
+    )
+    parser.add_argument('--max-num-errors', type=int, default=1, help=help)
+
     args = parser.parse_args()
 
     obj = D1TestToolAsync(sitemap_url=args.sitemap,
                           num_workers=args.num_workers,
                           verbosity=args.verbose,
-                          num_documents=args.num_documents)
+                          num_documents=args.num_documents,
+                          max_num_errors=args.max_num_errors)
     asyncio.run(obj.run())
 
 

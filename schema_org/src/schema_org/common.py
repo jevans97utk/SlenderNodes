@@ -62,6 +62,8 @@ class CommonHarvester(object):
         Run conformance checks on the JSON-LD extracted from a site page.
     logger : logging.Logger
         All events are recorded by this object.
+    max_num_errors : int
+        Abort if this threshold is reached.
     mn_base_url : str
         URL for contacting the dataONE host.
     num_documents : int
@@ -81,7 +83,7 @@ class CommonHarvester(object):
 
     def __init__(self, host=None, port=None, certificate=None,
                  private_key=None, verbosity='INFO', regex=None, id='none',
-                 num_documents=-1, num_workers=1):
+                 num_documents=-1, num_workers=1, max_num_errors=3):
         """
         Parameters
         ----------
@@ -91,6 +93,8 @@ class CommonHarvester(object):
         certificate, key : str or path or None
             Paths to client side certificates.  None if no verification is
             desired.
+        max_num_errors : int
+            Abort if this threshold is reached.
         num_documents : int
             Limit the number of documents to this number.  Less than zero
             means retrieve them all.
@@ -140,6 +144,8 @@ class CommonHarvester(object):
         self.num_workers = num_workers
 
         self.async_session = None
+
+        self.max_num_errors = max_num_errors
 
         requests.packages.urllib3.disable_warnings()
 
@@ -360,6 +366,21 @@ class CommonHarvester(object):
         self.logger.info(f'Skipped {self.skipped_exists_count} records.')
         self.logger.info(f'Rejected {self.rejected_count} records.')
         self.logger.info(f'Failed to update/create {self.failed_count} records.')  # noqa: E501
+
+    async def shutdown(self):
+        """
+        Clean up tasks tied to the service's shutdown.
+        """
+        msg = 'Shutting down...'
+        self.logger.info(msg)
+
+        tasks = [
+            t for t in asyncio.all_tasks() if t is not asyncio.current_task()
+        ]
+        msg = f"Cancelling {len(tasks)} outstanding tasks."
+        self.logger.info(msg)
+        [task.cancel() for task in tasks]
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     async def harvest_document(self, doi, doc, record_date):
         """
@@ -794,6 +815,11 @@ class CommonHarvester(object):
             try:
                 identifier, doc = await self.retrieve_record(url)
                 await self.process_record(identifier, doc, lastmod_time)
+
+            except asyncio.CancelledError:
+                self.logger.debug('CancelledError')
+                break
+
             except Exception as e:
                 self.failed_count += 1
                 msg = (
@@ -802,6 +828,11 @@ class CommonHarvester(object):
                 )
                 self.logger.debug(msg)
                 self.logger.error(e)
+
+                if self.failed_count == self.max_num_errors:
+                    self.logger.warning("Error threshold reached.")
+                    await self.shutdown()
+
             else:
                 # Use the last part of the URL to identify the record that was
                 # successfully processed.
