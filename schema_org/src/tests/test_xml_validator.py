@@ -209,22 +209,6 @@ class TestSuite(TestCommon):
             for item in expected:
                 self.assertLogMessage(cm.output, expected, level='INFO')
 
-    @unittest.skip('Does not validate')
-    def test_local_fgdc_std_001_1998(self):
-        """
-        SCENARIO:   Run the validator against a local FGDC STD 001 1998 file.
-        The UUID is 173e8d55-947d-4f73-8552-9eebc32020f2
-
-        EXPECTED RESULT: The format ID is FGDC-STD-001-1998.
-        """
-        content = ir.read_binary('tests.data.fgdc_std_001_1998', 'example.xml')
-        file = io.BytesIO(content)
-
-        validator = XMLValidator()
-        actual = validator.validate(file)
-        expected = 'FGDC-STD-001-1998'
-        self.assertEqual(actual, expected)
-
     def test_local_eml_v2p1p0(self):
         """
         SCENARIO:   Run the validator against a local EML v2.0.1 file.
@@ -258,40 +242,6 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=validator.logger, level='INFO') as cm:
             validator.validate(file)
             self.assertLogMessage(cm.output, expected, level='INFO')
-
-    @unittest.skip('Does not work, file was not retrieved from dataone')
-    def test_local_ncml_v2p2(self):
-        """
-        SCENARIO:   Run the validator against a local NCML v2.2 file.
-
-        EXPECTED RESULT: The format ID is
-        http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2
-        """
-        content = ir.read_binary('tests.data.netcdf.ncmlv2p2', 'example.xml')
-        file = io.BytesIO(content)
-
-        validator = XMLValidator()
-        actual = validator.validate(file)
-        expected = 'http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2'
-        self.assertEqual(actual, expected)
-
-    @unittest.skip('Does not work, file was not retrieved from dataone')
-    def test_local_esriprof80_dtd(self):
-        """
-        SCENARIO:   Run the validator against a local file with ESRI
-        Profile of the Content Standard for Digital Geospatial Metadata,
-        March 2003.
-
-        EXPECTED RESULT: The format ID is
-        http://www.esri.com/metadata/esriprof80.dtd
-        """
-        content = ir.read_binary('tests.data.esriprof80_dtd', 'example.xml')
-        file = io.BytesIO(content)
-
-        validator = XMLValidator()
-        actual = validator.validate(file)
-        expected = 'http://www.esri.com/metadata/esriprof80.dtd'
-        self.assertEqual(actual, expected)
 
     @unittest.skip('Could not acquire such a document')
     def test_local_fgdc_std_001_1_1999(self):
@@ -335,19 +285,6 @@ class TestSuite(TestCommon):
         """
         pass
 
-    @unittest.skip('Could not find such a document')
-    def test_local_incits_453_2009(self):
-        """
-        SCENARIO:   Run the validator against a local file with North
-        American Profile of ISO 19115: 2003 Geographic Information.
-
-        Could not find such a document.  None are listed in dataone.
-
-        EXPECTED RESULT: The format ID is
-        INCITS-453-2009
-        """
-        pass
-
     def test_local_oai_2p0_oai_dc(self):
         """
         SCENARIO:   Run the validator against a local OAI-PMH Dublin
@@ -365,20 +302,3 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=validator.logger, level='INFO') as cm:
             validator.validate(file)
             self.assertLogMessage(cm.output, expected, level='INFO')
-
-    @unittest.skip('Does not work, file was not retrieved from dataone')
-    def test_local_waterml_v1p1(self):
-        """
-        SCENARIO:   Run the validator against a local file with Water
-        Markup Language, version 1.0.
-
-        EXPECTED RESULT: The format ID is
-        http://www.cuahsi.org/waterML/1.1/
-        """
-        content = ir.read_binary('tests.data.waterML.v1p1', 'example.xml')
-        file = io.BytesIO(content)
-
-        validator = XMLValidator()
-        actual = validator.validate(file)
-        expected = 'http://www.cuahsi.org/waterML/1.1/'
-        self.assertEqual(actual, expected)
