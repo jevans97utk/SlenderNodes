@@ -10,7 +10,9 @@ import logging
 # 3rd party library imports
 
 # Local imports
-from schema_org.jsonld_validator import JSONLD_Validator
+from schema_org.jsonld_validator import (
+    JSONLD_Validator, InvalidIRIError
+)
 from .test_common import TestCommon
 
 XSD_DATE_MSG = (
@@ -69,6 +71,65 @@ class TestSuite(TestCommon):
 
         v = JSONLD_Validator(logger=self.logger)
         with self.assertRaises(RuntimeError):
+            v.check(j)
+
+    def test__top_level_id_is_not_iri(self):
+        """
+        SCENARIO:  The JSON-LD top level @id key is not a valid URI.  Sec 1.7
+        of the JSON-LD spec seems to indicate that if it is not a "blank node"
+        (that's RDF-speak), then it should be an IRI.
+
+        EXPECTED RESULT.  A RuntimeError is issued.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "@id": "dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
+                "dateModified": "2019-08-08T23:59:59"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertRaises(InvalidIRIError):
+            v.check(j)
+
+    def test__top_level_id_is_not_iri__has_leading_space(self):
+        """
+        SCENARIO:  The JSON-LD top level @id key is not a valid URI.  Sec 1.7
+        of the JSON-LD spec seems to indicate that if it is not a "blank node"
+        (that's RDF-speak), then it should be an IRI.  Here is a case where
+        IEDA put a blank into the id and didn't have a scheme.
+
+        EXPECTED RESULT.  An InvalidIRIError is issued.
+        """
+        s = """
+        {
+            "@context": { "@vocab": "http://schema.org/" },
+            "@type": "Dataset",
+            "@id": " dx.doi.org/10.5439/1027372",
+            "identifier": "thing",
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://somewhere.out.there.com/",
+                "description": "",
+                "encodingFormat": "http://www.isotc211.org/2005/gmd",
+                "dateModified": "2019-08-08T23:59:59"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertRaises(InvalidIRIError):
             v.check(j)
 
     def test_missing_top_level_type_dataset_keypair(self):

@@ -3,6 +3,7 @@ import importlib.resources as ir
 import json
 import logging
 import sys
+import urllib.parse
 
 # 3rd party library imports
 import lxml.etree
@@ -16,6 +17,12 @@ class InvalidContextError(RuntimeError):
     Raise this exception if the @context key is invalid.
     """
     pass
+
+
+class InvalidIRIError(RuntimeError):
+    """
+    Raise this exception if the top-level @id key is invalid.
+    """
 
 
 class JSONLD_Validator(object):
@@ -73,6 +80,18 @@ class JSONLD_Validator(object):
         if '@id' not in j:
             msg = 'JSON-LD missing top-level "@id" key.'
             raise RuntimeError(msg)
+
+        p = urllib.parse.urlparse(j['@id'])
+        if (
+            len(p.scheme) == 0
+            or len(p.netloc) == 0
+            or len(p.path) == 0
+        ):
+            msg = (
+                f"JSON-LD top-level '@id' key \"{j['@id']}\" does not look "
+                f"like an IRI."
+            )
+            raise InvalidIRIError(msg)
 
     def check(self, j):
         """

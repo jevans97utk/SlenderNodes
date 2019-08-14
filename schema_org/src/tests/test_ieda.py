@@ -13,7 +13,6 @@ import io
 import json
 import re
 from unittest.mock import patch
-import unittest
 
 # 3rd party library imports
 import aiohttp
