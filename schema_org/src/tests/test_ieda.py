@@ -173,120 +173,6 @@ class TestSuite(TestCommon):
                 m.get(url, status=400)
                 asyncio.run(harvester.retrieve_metadata_document(url))
 
-    @unittest.skip('Fails, replaced with test_arm.test_metadata_document_retrieval_failure')  # noqa: E501
-    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
-    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
-    def test_default_run(self, mock_harvest_time,
-                         mock_check_if_identifier_exists,
-                         mock_load_science_metadata):
-        """
-        SCENARIO:  Process the sitemap where all the records are newer than
-        the last time that the harvester was run.
-
-        EXPECTED RESULT:  The log record reflects the successful calls at the
-        INFO level.
-        """
-
-        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
-        mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
-        mock_load_science_metadata.return_value = True
-
-        harvester = IEDAHarvester()
-
-        # External calls to read the:
-        #
-        #   1) sitemap
-        #   2) HTML document for record 1
-        #   3) XML document for record 1
-        #   4) HTML document for record 2
-        #   5) XML document for record 2
-        #
-        contents = [
-            ir.read_binary('tests.data.ieda', 'usap_sitemap.xml'),
-            ir.read_binary('tests.data.ieda', 'ieda600048.html'),
-            ir.read_binary('tests.data.ieda', '600048iso.xml'),
-            ir.read_binary('tests.data.ieda', 'ieda609246.html'),
-            ir.read_binary('tests.data.ieda', '609246iso.xml'),
-        ]
-        headers = [
-            {'Content-Type': 'text/xml'},
-            {'Content-Type': 'text/html'},
-            {'Content-Type': 'text/xml'},
-            {'Content-Type': 'text/html'},
-            {'Content-Type': 'text/xml'},
-        ]
-        with aioresponses() as m:
-            for content, headers in zip(contents, headers):
-                m.get(self.regex, body=content, headers=headers)
-
-            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
-                asyncio.run(harvester.run())
-
-                # There should be lots of log messages at the info level, but
-                # none at the warning or error level.
-                self.assertLogLevelCallCount(cm.output, level='WARNING', n=0)
-                self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
-
-                log_message = 'Created 2 new records'
-                self.assertLogMessage(cm.output, log_message, level='INFO')
-
-    @unittest.skip('Fails, replaced with test_arm.test_metadata_document_retrieval_failure')  # noqa: E501
-    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
-    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
-    def test_default_run_with_one_retrieval_error(
-        self,
-        mock_harvest_time,
-        mock_check_if_identifier_exists,
-        mock_load_science_metadata
-    ):
-        """
-        SCENARIO:  Process the sitemap where all the records are newer than
-        the last time that the harvester was run.  The last ISO document
-        cannot be retrieved, though.
-
-        EXPECTED RESULT:  The log record reflects the successful calls, but
-        also the XML failure.
-        """
-
-        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
-        mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
-        mock_load_science_metadata.return_value = True
-
-        harvester = IEDAHarvester(verbosity='DEBUG')
-
-        # External calls to read the:
-        #
-        #   1) sitemap
-        #   2) HTML document for record 1
-        #   3) XML document for record 1
-        #   4) HTML document for record 2
-        #   5) XML document for record 2
-        #
-        contents = [
-            ir.read_binary('tests.data.ieda', 'usap_sitemap.xml'),
-            ir.read_binary('tests.data.ieda', 'ieda609246.html'),
-            ir.read_binary('tests.data.ieda', '609246iso.xml'),
-            ir.read_binary('tests.data.ieda', 'ieda600048.html'),
-            b'',
-        ]
-
-        with aioresponses() as m:
-            m.get(self.regex, body=contents[0], headers=self.xml_hdr)
-            m.get(self.regex, body=contents[1], headers=self.html_hdr)
-            m.get(self.regex, body=contents[2], headers=self.xml_hdr)
-            m.get(self.regex, body=contents[3], headers=self.html_hdr)
-            m.get(self.regex, status=400, headers=self.xml_hdr)
-
-            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
-                asyncio.run(harvester.run())
-
-                self.assertSuccessfulIngest(cm.output, n=1)
-                self.assertLogLevelCallCount(cm.output, level='ERROR', n=1)
-                self.assertLogMessage(cm.output, 'ClientResponseError')
-
-    @unittest.skip('Fails, nust investigate')  # noqa: E501
     def test_ieda_600165_unescaped_double_quotes(self):
         """
         SCENARIO:  The HTML file has invalid JSONLD embedded in its SCRIPT.
@@ -298,7 +184,7 @@ class TestSuite(TestCommon):
         """
         harvester = IEDAHarvester()
 
-        text = ir.read_text('tests.data.ieda', '600165.html')
+        text = ir.read_text('tests.data.ieda', '600165.fixed.html')
         doc = lxml.etree.HTML(text)
 
         with self.assertLogs(logger=harvester.logger, level='WARNING') as cm:
@@ -336,7 +222,6 @@ class TestSuite(TestCommon):
         with self.assertRaises(RuntimeError):
             harvester.extract_jsonld(doc)
 
-    @unittest.skip('Fails, nust investigate')  # noqa: E501
     def test_ieda_601015_over_escaped_double_quotes(self):
         """
         SCENARIO:  The HTML file has invalid JSONLD embedded in its SCRIPT.
@@ -347,7 +232,7 @@ class TestSuite(TestCommon):
         level, as well as the fix that is also logged at the warning level.
         """
         harvester = IEDAHarvester()
-        text = ir.read_text('tests.data.ieda', '601015.html')
+        text = ir.read_text('tests.data.ieda', '601015.fixed.html')
         doc = lxml.etree.HTML(text)
 
         with self.assertLogs(logger=harvester.logger, level='WARNING') as cm:
