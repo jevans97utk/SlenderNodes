@@ -243,48 +243,6 @@ class TestSuite(TestCommon):
             validator.validate(file)
             self.assertLogMessage(cm.output, expected, level='INFO')
 
-    @unittest.skip('Could not acquire such a document')
-    def test_local_fgdc_std_001_1_1999(self):
-        """
-        SCENARIO:   Run the validator against a local file with Content
-        Standard for Digital Geospatial Metadata, Biological Data Profile,
-        version 001.1-1999
-
-        Could not acquire such a document.  There are such files listed in
-        dataone, but no system metadata can be found for the IDs.
-
-        EXPECTED RESULT: The format ID is
-        FGDC-STD-001.1-1999
-        """
-        pass
-
-    @unittest.skip('Could not find such a document')
-    def test_local_fgdc_std_001_2_1999(self):
-        """
-        SCENARIO:   Run the validator against a local file with Content
-        Standard for Digital Geospatial Metadata, Biological Data Profile,
-        version 001.2-1999
-
-        Could not find such a document.  None are listed in dataone.
-
-        EXPECTED RESULT: The format ID is
-        FGDC-STD-001.2-1999
-        """
-        pass
-
-    @unittest.skip('Could not find such a document')
-    def test_local_fgdc_std_001_1_1998(self):
-        """
-        SCENARIO:   Run the validator against a local file with Content
-        Standard for Digital Geospatial Metadata, version 001.1-1998
-
-        Could not find such a document.  None are listed in dataone.
-
-        EXPECTED RESULT: The format ID is
-        FGDC-STD-001.1-1998
-        """
-        pass
-
     def test_local_oai_2p0_oai_dc(self):
         """
         SCENARIO:   Run the validator against a local OAI-PMH Dublin
