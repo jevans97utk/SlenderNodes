@@ -39,10 +39,26 @@ class TestSuite(TestCommon):
 
         self.assertEqual(mock_arm.call_count, 1)
 
+    @patch.object(sys, 'argv', [
+        '', 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
+    ])
+    @patch('schema_org.commandline.D1TestToolAsync.run')
+    @patch('schema_org.commandline.asyncio')
+    def test_sitemap_validator(self, mock_asyncio, mock_validator):
+        """
+        SCENARIO:  Run the sitemap validator with a single URL for a positional
+        argument.
+
+        EXPECTED RESULT:  The validator method was called.
+        """
+        commandline.d1_check_site()
+
+        self.assertEqual(mock_validator.call_count, 1)
+
     @patch.object(sys, 'argv', ['', 'tests/data/ieda/600121iso.xml'])
     @patch('schema_org.commandline.XMLValidator.validate')
     @patch('schema_org.commandline.asyncio')
-    def test_validator(self, mock_asyncio, mock_validator):
+    def test_xml_validator(self, mock_asyncio, mock_validator):
         """
         SCENARIO:  Run the XML Validator with a single file for a positional
         argument.

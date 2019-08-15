@@ -6,6 +6,7 @@ Tests for validity of schema.org JSON-LD.
 import importlib.resources as ir
 import json
 import logging
+from unittest.mock import patch
 
 # 3rd party library imports
 
@@ -1000,6 +1001,45 @@ class TestSuite(TestCommon):
                 v.check(j)
 
             self.assertErrorLogMessage(cm.output, ENCODING_FORMAT_MSG)
+
+    @patch('schema_org.jsonld_validator.Validator.run')
+    def test_unexpected_pyshacl_error(self, mock_pyshacl):
+        """
+        SCENARIO:  pyshacl issues an exception when asked to validate some
+        JSON.
+
+        EXPECTED RESULT:  A log message detailing the error is issued at the
+        WARNING level.  A RuntimeError is raised.
+        """
+        mock_pyshacl.side_effect = ZeroDivisionError('boom')
+
+        s = """
+        {
+            "@type": "Dataset",
+            "@context": { "@vocab": "http://schema.org/" },
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "identifier": {
+                "@type": [
+                    "PropertyValue",
+                    "datacite:ResourceIdentifier"
+                ]
+            },
+            "encoding": {
+                "@type": "MediaObject",
+                "contentUrl": "https://www.archive.arm.gov/metadata.xml",
+                "description": "ISO TC211 XML rendering of metadata.",
+                "dateModified": "2019-06-24T09:04:61"
+            }
+        }
+        """
+        j = json.loads(s)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertLogs(logger=v.logger, level='INFO') as cm:
+            with self.assertRaises(RuntimeError):
+                v.check(j)
+
+            self.assertWarningLogMessage(cm.output, 'ZeroDivisionError')
 
     def test__two_errors(self):
         """

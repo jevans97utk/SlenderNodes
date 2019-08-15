@@ -136,8 +136,8 @@ class JSONLD_Validator(object):
 
         except Exception as e:
             conforms = False
-            report_text = f"Validation Failure - {repr(e)}"
-            self.logger.debug(report_text)
+            report_text = f"Unexpected validation failure - {repr(e)}"
+            self.logger.warning(report_text)
             raise RuntimeError("JSON-LD does not conform.")
 
         if conforms:

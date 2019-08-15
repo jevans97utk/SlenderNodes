@@ -10,10 +10,7 @@ import io
 import pathlib
 
 # 3rd party library imports
-# Standard library imports
-
-# 3rd party library imports
-import requests_mock
+import lxml.etree
 
 # Local imports
 from schema_org.xml_validator import XMLValidator
@@ -39,6 +36,28 @@ class TestSuite(TestCommon):
 
             gmd = 'http://www.isotc211.org/2005/gmd'
             self.assertLogMessage(cm.output, gmd, level='INFO')
+
+    def test_element_tree(self):
+        """
+        SCENARIO:   An ElementTree is passed into the validator.  The document
+        is valid ISO 19115 metadata.
+
+        SCENARIO:  Validates.
+        """
+        validator = XMLValidator()
+
+        content = ir.read_binary('tests.data.arm',
+                                 'nsanimfraod1michC2.c1.fixed.xml')
+        doc = lxml.etree.parse(io.BytesIO(content))
+
+        gmd = 'http://www.isotc211.org/2005/gmd'
+        gmd_noaa = 'http://www.isotc211.org/2005/gmd-noaa'
+
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(doc)
+
+            self.assertLogMessage(cm.output, gmd, level='INFO')
+            self.assertLogMessage(cm.output, gmd_noaa, level='INFO')
 
     def test_path(self):
         """
@@ -66,15 +85,36 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  no errors
         """
-        content = ir.read_binary('tests.data.ieda', '600121iso.xml')
-        url = 'http://www.acme.org/600121iso.xml'
+        content = ir.read_binary('tests.data.arm',
+                                 'nsanimfraod1michC2.c1.fixed.xml')
+        url = 'https://www.acme.org/nsanimfraod1michC2.c1.fixed.xml'
 
-        with requests_mock.Mocker() as m:
-            m.get(url, content=content)
+        validator = XMLValidator()
 
-            validator = XMLValidator()
-            with self.assertLogs(logger=validator.logger, level='INFO'):
-                validator.validate(url)
+        contents = [content]
+        self.setUpRequestsMocking(validator, contents=contents)
+
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(url)
+
+            self.assertErrorLogCallCount(cm.output, n=0)
+
+    def test_invalid_url(self):
+        """
+        SCENARIO:   An invalid URL is provided.  A HTTP code 400 results.
+
+        EXPECTED RESULT:  The HTTP error is logged.  No exception is
+        propagated, though.
+        """
+        validator = XMLValidator()
+
+        self.setUpRequestsMocking(validator, status_codes=[400])
+
+        with self.assertLogs(logger=validator.logger, level='DEBUG') as cm:
+            validator.validate('https://www.acme.org/a.xml')
+
+            self.assertDebugLogMessage(cm.output, 'HTTPError')
+            self.assertErrorLogMessage(cm.output, '400 Client Error')
 
     def test_file_like_object_but_invalid_xml(self):
         """
@@ -258,4 +298,23 @@ class TestSuite(TestCommon):
         validator = XMLValidator()
         with self.assertLogs(logger=validator.logger, level='INFO') as cm:
             validator.validate(file)
+            self.assertLogMessage(cm.output, expected, level='INFO')
+
+    def test__local_oai_2p0_oai_dc__specific_id(self):
+        """
+        SCENARIO:   Run the validator against a local OAI-PMH Dublin
+        Core v2.0, with online related resource file.  We specify the format
+        ID.
+
+        EXPECTED RESULT: The format ID is
+        http://www.openarchives.org/OAI/2.0/oai_dc/
+        """
+        content = ir.read_binary('tests.data.oai.2p0.oai_dc', 'example.xml')
+        file = io.BytesIO(content)
+
+        expected = 'http://www.openarchives.org/OAI/2.0/oai_dc/'
+
+        validator = XMLValidator()
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file, format_id=expected)
             self.assertLogMessage(cm.output, expected, level='INFO')

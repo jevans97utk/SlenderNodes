@@ -74,15 +74,12 @@ class CommonHarvester(object):
     num_workers : int
         Limit number of workers operating asynchronously to this number.  If
         1, then it is essentially synchronous.
-    regex : re.Pattern or None
-        If not None, restrict processing to just the sitemap URL matching this
-        regular expression.
     session : requests.sessions.Session
         Makes all URL requests.
     """
 
     def __init__(self, host=None, port=None, certificate=None,
-                 private_key=None, verbosity='INFO', regex=None, id='none',
+                 private_key=None, verbosity='INFO', id='none',
                  num_documents=-1, num_workers=1, max_num_errors=3):
         """
         Parameters
@@ -104,8 +101,6 @@ class CommonHarvester(object):
         self.setup_session(certificate, private_key)
 
         self.setup_logging(id, verbosity)
-
-        self.regex = None if regex is None else re.compile(regex)
 
         self.mn_base_url = f'https://{host}:{port}/mn'
         sys_meta_dict = {
@@ -543,23 +538,6 @@ class CommonHarvester(object):
             self.logger.warning(msg)
             return False
 
-    def url_is_cleared(self, url, lastmod, last_harvest_time):
-        """
-        If the user supplied a regex, then we want to only attempt those
-        landing page URLs that match the regex.  Otherwise, look at the last
-        harvest time to determine if the URL is cleared.
-        """
-        if self.regex is not None:
-            if self.regex.search(url):
-                return True
-            else:
-                return False
-        else:
-            if lastmod >= last_harvest_time:
-                return True
-            else:
-                return False
-
     def is_sitemap_index_file(self, doc):
         """
         Answer the question as to whether the document found at the other end
@@ -599,10 +577,13 @@ class CommonHarvester(object):
         self.logger.info(msg)
 
         records = [
-            (url, lastmod)
-            for url, lastmod in z
-            if self.url_is_cleared(url, lastmod, last_harvest_time)
+            (url, lastmod) for url, lastmod in z if lastmod > last_harvest_time
         ]
+
+        msg = (
+            f"{len(urls) - len(records)} records skipped due to lastmod time."
+        )
+        self.logger.info(msg)
 
         self.num_records_processed += len(records)
         if (
@@ -663,55 +644,6 @@ class CommonHarvester(object):
             return m.group('doi_id_arm')
         else:
             return m.group('other_id')
-
-    def extract_metadata_url(self, jsonld):
-        """
-        In ARM, the JSON-LD is structured as follows
-
-        {
-           .
-           .
-           .
-           "encoding" : {
-               "@type": "MediaObject",
-               "contentUrl": "https://www.acme.org/path/to/doc.xml",
-               "encodingFormat": "http://www.isotc211.org/2005/gmd",
-               "description": "ISO TC211 XML rendering of metadata.",
-               "dateModified": "2019-06-17T10:34:57.260047"
-           }
-        }
-
-        Parameters
-        ----------
-        jsonld : dict
-            JSON-LD as retrieved from a <SCRIPT> element in the landing page
-            URL.
-
-        Returns
-        -------
-        The URL for the metadata document.
-        """
-        try:
-            return jsonld['encoding']['contentUrl']
-        except KeyError as e:
-            # If this happens, maybe we have IEDA?
-            msg = (
-                f"Could not find the metadata URL in "
-                f"JSON-LD['encoding']['contentUrl'] "
-                f"due to {repr(e)}, so trying to find in "
-                f"JSON-LD['distribution'] hierarchy."
-            )
-            self.logger.warning(msg)
-            items = [
-                item for item in jsonld['distribution']
-                if item['name'] == 'ISO Metadata Document'
-            ]
-            metadata_url = items[0]['url']
-            msg = (
-                "Found the metadata URL in the distribution hierarchy."
-            )
-            self.logger.info(msg)
-            return metadata_url
 
     async def retrieve_url(self, url, headers=None, check_xml_headers=False):
         """
@@ -868,7 +800,8 @@ class CommonHarvester(object):
         identifier = self.extract_identifier(jsonld)
         self.logger.info(f"{DOI_IDENTIFIER_MSG}  {identifier}...")
 
-        metadata_url = self.extract_metadata_url(jsonld)
+        # The SHACL checks should have verified that this is present and ok.
+        metadata_url = jsonld['encoding']['contentUrl']
 
         doc = await self.retrieve_metadata_document(metadata_url)
         return identifier, doc

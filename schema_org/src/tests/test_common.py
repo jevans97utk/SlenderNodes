@@ -118,7 +118,7 @@ class TestCommon(unittest.TestCase):
         """
         self.assertLogMessage(cm_output, expected_messages, level='ERROR')
 
-    def assertErrorLogCallCount(self, cm_output, n=1, tokens=None):
+    def assertErrorLogCallCount(self, cm_output, n=1):
         """
         Verify we see this many log messages at the ERROR level.
 
@@ -131,8 +131,7 @@ class TestCommon(unittest.TestCase):
         tokens : str or list
             Verify that these strings appear in the messages.
         """
-        self.assertLogLevelCallCount(cm_output, level='ERROR', n=n,
-                                     tokens=tokens)
+        self.assertLogLevelCallCount(cm_output, level='ERROR', n=n)
 
     def assertDebugLogCallCount(self, cm_output, n=1, tokens=None):
         """
@@ -147,11 +146,9 @@ class TestCommon(unittest.TestCase):
         tokens : str or list
             Verify that these strings appear in the messages.
         """
-        self.assertLogLevelCallCount(cm_output, level='DEBUG', n=n,
-                                     tokens=tokens)
+        self.assertLogLevelCallCount(cm_output, level='DEBUG', n=n)
 
-    def assertLogLevelCallCount(self, cm_output, level='ERROR', n=1,
-                                tokens=None):
+    def assertLogLevelCallCount(self, cm_output, level='ERROR', n=1):
         """
         Verify we see this many log messages with the specified level.
 
@@ -161,8 +158,6 @@ class TestCommon(unittest.TestCase):
             Log messages provided by assertLogs
         n : int
             How many log calls at the given level to verify.
-        tokens : str or list
-            Verify that these strings appear in the messages.
         """
         msgs = [msg for msg in cm_output if msg.startswith(level)]
         actual_count = len(msgs)
@@ -176,20 +171,10 @@ class TestCommon(unittest.TestCase):
             )
         else:
             msg = ''
+
         self.assertEqual(actual_count, n, msg)
 
-        # Check the tokens
-        if tokens is None:
-            return
-
-        if isinstance(tokens, str):
-            tokens = [tokens]
-
-        for token in tokens:
-            count = sum(msg.find(token) > -1 for msg in msgs)
-            self.assertTrue(count >= 1, f"Failed to verify token {token}")
-
-    def setUpRequestsMocking(self, harvester, contents=None, status_codes=None,
+    def setUpRequestsMocking(self, obj, contents=None, status_codes=None,
                              headers=None, protocol='https'):
         """
         """
@@ -208,7 +193,7 @@ class TestCommon(unittest.TestCase):
             headers = [{'Content-Type': 'text/html'} for item in contents]
 
         adapter = requests_mock.Adapter()
-        harvester.session.mount(f'{self.protocol}://', adapter)
+        obj.session.mount(f'{protocol}://', adapter)
 
         z = zip(contents, status_codes, headers)
         response_list = [

@@ -46,13 +46,6 @@ def setup_parser(id):
     help = 'Path to dataone host private key.'
     parser.add_argument('--key', default=None, help=help)
 
-    help = (
-        'Supply a pattern to restrict records to just those that match.  This '
-        'option disables the check against the last modification time in the '
-        'site map.'
-    )
-    parser.add_argument('--regex', default=None, help=help)
-
     help = "Limit number of documents retrieved to this number."
     parser.add_argument('--num-documents', type=int, default=-1, help=help)
 
@@ -128,8 +121,7 @@ def arm():
     arm_harvester = ARMHarvester(host=args.host, port=args.port,
                                  verbosity=args.verbose,
                                  certificate=args.certificate,
-                                 private_key=args.key,
-                                 regex=args.regex)
+                                 private_key=args.key)
     asyncio.run(arm_harvester.run())
 
 
@@ -141,7 +133,6 @@ def ieda():
                                    verbosity=args.verbose,
                                    certificate=args.certificate,
                                    private_key=args.key,
-                                   regex=args.regex,
                                    num_documents=args.num_documents,
                                    num_workers=args.num_workers)
     asyncio.run(ieda_harvester.run())

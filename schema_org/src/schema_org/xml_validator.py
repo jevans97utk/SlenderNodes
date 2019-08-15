@@ -1,6 +1,7 @@
 # Standard library imports ...
 import io
 import logging
+import urllib.parse
 
 # Third party library imports ...
 import lxml.etree
@@ -18,6 +19,7 @@ class XMLValidator(object):
         Load the 19115-2 schema so that every XML file produced is validated.
         """
         self.setup_logging(verbosity)
+        self.session = requests.Session()
 
     def setup_logging(self, verbosity):
         """
@@ -95,6 +97,22 @@ class XMLValidator(object):
         ----------
         src : file or file-like or URL or path or lxml.etree
         """
+        # Is it a URL?
+        try:
+            urllib.parse.urlparse(src)
+        except AttributeError:
+            pass
+        else:
+            # Yes, a URL.
+            try:
+                r = self.session.get(src)
+                r.raise_for_status()
+            except Exception:
+                raise
+            else:
+                doc = lxml.etree.parse(io.BytesIO(r.content))
+                return doc
+
         # Is it file or file-like, but not a path.
         try:
             doc = lxml.etree.parse(src)
@@ -102,21 +120,7 @@ class XMLValidator(object):
             # OSError:  if a string that doesn't exist on filesystem
             # TypeError:  if the item is already an ElementTree
             pass
-        except lxml.etree.XMLSyntaxError:
-            # It WAS a file or file-like, but we just could not parse it.
-            raise
         else:
-            return doc
-
-        # Is it a URL?
-        try:
-            r = requests.get(src)
-            r.raise_for_status()
-        except Exception:
-            # Not a valid URL
-            pass
-        else:
-            doc = lxml.etree.parse(io.BytesIO(r.content))
             return doc
 
         # Is it a pathlib object?
