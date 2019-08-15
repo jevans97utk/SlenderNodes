@@ -4,7 +4,7 @@ DATAONE adapter for IEDA
 # Standard library imports
 
 # Local imports
-from .common import CommonHarvester
+from .core import CommonHarvester
 
 
 class IEDAHarvester(CommonHarvester):

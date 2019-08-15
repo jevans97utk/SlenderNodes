@@ -6,7 +6,7 @@ DATAONE adapter for ARM
 import re
 
 # Local imports
-from .common import CommonHarvester
+from .core import CommonHarvester
 
 SITE_NSMAP = {'sitemap': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
 

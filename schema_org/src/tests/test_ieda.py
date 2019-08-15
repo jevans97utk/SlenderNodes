@@ -23,7 +23,7 @@ import requests_mock
 
 # local imports
 from schema_org.ieda import IEDAHarvester
-from schema_org.common import (
+from schema_org.core import (
     UNESCAPED_DOUBLE_QUOTES_MSG, OVER_ESCAPED_DOUBLE_QUOTES_MSG,
     SITEMAP_RETRIEVAL_FAILURE_MESSAGE
 )
@@ -82,7 +82,7 @@ class TestSuite(TestCommon):
                 identifier = harvester.extract_identifier(jsonld)
                 self.assertEqual(identifier, expected)
 
-    @patch('schema_org.common.logging.getLogger')
+    @patch('schema_org.core.logging.getLogger')
     def test_identifier_parsing_error(self, mock_logger):
         """
         SCENARIO:  The JSON-LD @id field has an invalid identifier.
@@ -94,7 +94,7 @@ class TestSuite(TestCommon):
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier({'@id': 'djlfsdljfasl;'})
 
-    @patch('schema_org.common.logging.getLogger')
+    @patch('schema_org.core.logging.getLogger')
     def test_restrict_to_2_items_from_sitemap(self, mock_logger):
         """
         SCENARIO:  The sitemap lists 3 documents, but we have specified that
@@ -112,7 +112,7 @@ class TestSuite(TestCommon):
         records = harvester.extract_records_from_sitemap(doc, last_harvest)
         self.assertEqual(len(records), 2)
 
-    @patch('schema_org.common.logging.getLogger')
+    @patch('schema_org.core.logging.getLogger')
     def test_sitemap_num_docs_restriction_does_not_apply(self, mock_logger):
         """
         SCENARIO:  The sitemap lists 3 documents, but we have specified that
@@ -155,7 +155,7 @@ class TestSuite(TestCommon):
         doc2 = lxml.etree.parse(io.BytesIO(content))
         self.assertEqual(lxml.etree.tostring(doc1), lxml.etree.tostring(doc2))
 
-    @patch('schema_org.common.logging.getLogger')
+    @patch('schema_org.core.logging.getLogger')
     def test_metadata_document_retrieval_httperror(self, log_mocker):
         """
         SCENARIO:  an IEDA metadata document URL retrieval results in a
@@ -206,7 +206,7 @@ class TestSuite(TestCommon):
         self.assertIsNotNone(j)
         json.dumps(j)
 
-    @patch('schema_org.common.logging.getLogger')
+    @patch('schema_org.core.logging.getLogger')
     def test_truncated(self, mock_logger):
         """
         SCENARIO:  The HTML file has invalid JSONLD embedded in its SCRIPT.
@@ -374,7 +374,7 @@ class TestSuite(TestCommon):
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.common.logging.getLogger')
+    @patch('schema_org.core.logging.getLogger')
     def test_document_already_harvested__followup_record_is_complete(
         self,
         mock_logger,
@@ -513,7 +513,7 @@ class TestSuite(TestCommon):
         self.assertEqual(harvester.skipped_exists_count, skipped_count + 1)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.common.logging.getLogger')
+    @patch('schema_org.core.logging.getLogger')
     def test_document_check_fails(
         self,
         mock_logger,
@@ -541,7 +541,7 @@ class TestSuite(TestCommon):
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.common.logging.getLogger')
+    @patch('schema_org.core.logging.getLogger')
     def test_document_is_unrecognized_but_successfully_harvested(
         self,
         mock_logger,
@@ -571,7 +571,7 @@ class TestSuite(TestCommon):
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.common.logging.getLogger')
+    @patch('schema_org.core.logging.getLogger')
     def test_document_is_unrecognized_but_cannot_be_harvested(
         self,
         mock_logger,

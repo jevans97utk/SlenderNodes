@@ -8,7 +8,7 @@ import d1_scimeta.util
 # Local imports
 from .arm import ARMHarvester
 from .ieda import IEDAHarvester
-from .testtool import D1TestToolAsync
+from .check_sitemap import D1CheckSitemap
 from .html import D1CheckHtmlFile
 from .xml_validator import XMLValidator
 
@@ -106,11 +106,11 @@ def d1_check_site():
 
     args = parser.parse_args()
 
-    obj = D1TestToolAsync(sitemap_url=args.sitemap,
-                          num_workers=args.num_workers,
-                          verbosity=args.verbose,
-                          num_documents=args.num_documents,
-                          max_num_errors=args.max_num_errors)
+    obj = D1CheckSitemap(sitemap_url=args.sitemap,
+                         num_workers=args.num_workers,
+                         verbosity=args.verbose,
+                         num_documents=args.num_documents,
+                         max_num_errors=args.max_num_errors)
     asyncio.run(obj.run())
 
 

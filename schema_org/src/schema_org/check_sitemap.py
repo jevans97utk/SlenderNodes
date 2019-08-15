@@ -3,10 +3,13 @@
 # 3rd party library imports
 
 # local imports
-from .common import CommonHarvester
+from .core import CommonHarvester
 
 
-class D1TestToolAsync(CommonHarvester):
+class D1CheckSitemap(CommonHarvester):
+    """
+    Front end to validate a remote sitemap.
+    """
 
     def __init__(self, sitemap_url=None, **kwargs):
         super().__init__(id='d1checksite', **kwargs)

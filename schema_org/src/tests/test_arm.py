@@ -15,7 +15,7 @@ from schema_org.arm import ARMHarvester
 from .test_common import TestCommon
 
 
-@patch('schema_org.common.logging.getLogger')
+@patch('schema_org.core.logging.getLogger')
 class TestSuite(TestCommon):
 
     def test_identifier_parsing(self, mock_logger):

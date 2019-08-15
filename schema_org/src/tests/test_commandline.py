@@ -42,7 +42,7 @@ class TestSuite(TestCommon):
     @patch.object(sys, 'argv', [
         '', 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
     ])
-    @patch('schema_org.commandline.D1TestToolAsync.run')
+    @patch('schema_org.commandline.D1CheckSitemap.run')
     @patch('schema_org.commandline.asyncio')
     def test_sitemap_validator(self, mock_asyncio, mock_validator):
         """

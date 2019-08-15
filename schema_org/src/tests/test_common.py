@@ -26,7 +26,7 @@ class TestCommon(unittest.TestCase):
         self.assertTrue(len(info_msgs) > 1)
 
         successful_ingest = [
-            msg.find(schema_org.common.SUCCESSFUL_INGEST_MESSAGE) > -1
+            msg.find(schema_org.core.SUCCESSFUL_INGEST_MESSAGE) > -1
             for msg in info_msgs
         ]
         self.assertEqual(sum(successful_ingest), n,

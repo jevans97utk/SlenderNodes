@@ -10,8 +10,8 @@ from aioresponses import aioresponses
 
 # local imports
 import schema_org
-from schema_org import D1TestToolAsync
-from schema_org.common import (
+from schema_org import D1CheckSitemap
+from schema_org.core import (
     SITEMAP_RETRIEVAL_FAILURE_MESSAGE, SITEMAP_NOT_XML_MESSAGE,
     NO_JSON_LD_SCRIPT_ELEMENTS, INVALID_JSONLD_MESSAGE
 )
@@ -35,7 +35,7 @@ class TestSuite(TestCommon):
         aioresp_mocker.get(self.pattern, status=400)
 
         sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.txt'
-        obj = D1TestToolAsync(sitemap_url=sitemap, verbosity='DEBUG')
+        obj = D1CheckSitemap(sitemap_url=sitemap, verbosity='DEBUG')
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
 
@@ -71,7 +71,7 @@ class TestSuite(TestCommon):
         aioresp_mocker.get(self.pattern, body=contents[3])
 
         sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap_not.xml'
-        obj = D1TestToolAsync(sitemap_url=sitemap)
+        obj = D1CheckSitemap(sitemap_url=sitemap)
 
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
@@ -109,7 +109,7 @@ class TestSuite(TestCommon):
         aioresp_mocker.get(self.pattern, body=contents[3])
 
         sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap_not.xml'
-        obj = D1TestToolAsync(sitemap_url=sitemap)
+        obj = D1CheckSitemap(sitemap_url=sitemap)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
@@ -145,7 +145,7 @@ class TestSuite(TestCommon):
             aioresp_mocker.get(self.pattern, body=content)
 
         sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
-        obj = D1TestToolAsync(sitemap_url=sitemap)
+        obj = D1CheckSitemap(sitemap_url=sitemap)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
@@ -181,7 +181,7 @@ class TestSuite(TestCommon):
             aioresp_mocker.get(self.pattern, body=content)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
-        obj = D1TestToolAsync(sitemap_url=url)
+        obj = D1CheckSitemap(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
@@ -231,7 +231,7 @@ class TestSuite(TestCommon):
                                headers=headers)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
-        obj = D1TestToolAsync(sitemap_url=url)
+        obj = D1CheckSitemap(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
@@ -270,7 +270,7 @@ class TestSuite(TestCommon):
             aioresp_mocker.get(self.pattern, body=content)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
-        obj = D1TestToolAsync(sitemap_url=url)
+        obj = D1CheckSitemap(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
@@ -309,7 +309,7 @@ class TestSuite(TestCommon):
             aioresp_mocker.get(self.pattern, body=content)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
-        obj = D1TestToolAsync(sitemap_url=url)
+        obj = D1CheckSitemap(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
@@ -348,7 +348,7 @@ class TestSuite(TestCommon):
             aioresp_mocker.get(self.pattern, body=content)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
-        obj = D1TestToolAsync(sitemap_url=url)
+        obj = D1CheckSitemap(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
@@ -397,7 +397,7 @@ class TestSuite(TestCommon):
             aioresp_mocker.get(self.pattern, body=content)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap_index_file.xml'
-        obj = D1TestToolAsync(sitemap_url=url)
+        obj = D1CheckSitemap(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
@@ -417,7 +417,7 @@ class TestSuite(TestCommon):
         aioresp_mocker.get(self.pattern, body=content, headers=headers)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.txt'
-        obj = D1TestToolAsync(sitemap_url=url)
+        obj = D1CheckSitemap(sitemap_url=url)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
@@ -467,7 +467,7 @@ class TestSuite(TestCommon):
             aioresp_mocker.get(self.pattern, body=content, headers=headers)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
-        obj = D1TestToolAsync(sitemap_url=url, num_documents=2)
+        obj = D1CheckSitemap(sitemap_url=url, num_documents=2)
 
         with self.assertLogs(logger=obj.logger, level='INFO') as cm:
             asyncio.run(obj.run())
@@ -478,7 +478,7 @@ class TestSuite(TestCommon):
         # And just to show, there are 3 URLs in the sitemap.
         doc = lxml.etree.parse(io.BytesIO(contents[0]))
         urls = doc.xpath('.//sm:loc/text()',
-                         namespaces=schema_org.common.SITEMAP_NS)
+                         namespaces=schema_org.core.SITEMAP_NS)
         self.assertEqual(len(urls), 3)
 
     @aioresponses()
@@ -514,7 +514,7 @@ class TestSuite(TestCommon):
             aioresp_mocker.get(self.pattern, body=content)
 
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap2.xml'
-        obj = D1TestToolAsync(sitemap_url=url, num_workers=2)
+        obj = D1CheckSitemap(sitemap_url=url, num_workers=2)
 
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
@@ -566,7 +566,7 @@ class TestSuite(TestCommon):
             "https://www.archive.arm.gov"
             "/metadata/adc/xml/test__max_num_errors.xml"
         )
-        obj = D1TestToolAsync(sitemap_url=url, num_workers=1, max_num_errors=1)
+        obj = D1CheckSitemap(sitemap_url=url, num_workers=1, max_num_errors=1)
 
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
@@ -636,7 +636,7 @@ class TestSuite(TestCommon):
                                body=content, status=status, headers=headers)
 
         url = "https://www.archive.arm.gov/metadata/adc/xml/doesnotmatter.xml"
-        obj = D1TestToolAsync(sitemap_url=url, num_workers=3, max_num_errors=1)
+        obj = D1CheckSitemap(sitemap_url=url, num_workers=3, max_num_errors=1)
 
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
