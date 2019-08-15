@@ -39,15 +39,31 @@ class TestSuite(TestCommon):
 
         self.assertEqual(mock_arm.call_count, 1)
 
-    @patch.object(sys, 'argv', ['', 'tests/ieda/600121iso.xml'])
+    @patch.object(sys, 'argv', ['', 'tests/data/ieda/600121iso.xml'])
     @patch('schema_org.commandline.XMLValidator.validate')
     @patch('schema_org.commandline.asyncio')
     def test_validator(self, mock_asyncio, mock_validator):
         """
-        SCENARIO:  Run with no command line arguments.
+        SCENARIO:  Run the XML Validator with a single file for a positional
+        argument.
 
-        EXPECTED RESULT:  The run method was called.
+        EXPECTED RESULT:  The validator method was called.
         """
         commandline.validate()
 
         self.assertEqual(mock_validator.call_count, 1)
+
+    @patch('schema_org.html.logging.getLogger')
+    @patch.object(sys, 'argv', [
+        '', 'tests/data/arm/nsanimfraod1michC2.c1.html'
+    ])
+    def test_local_html_validator(self, mock_logger):
+        """
+        SCENARIO:  Run the local HTML validator with a single file for a
+        positional argument.  That HTML file has an incorrect @type key in the
+        JSON-LD.
+
+        EXPECTED RESULT:  A RuntimeError is issued.
+        """
+        with self.assertRaises(RuntimeError):
+            commandline.d1_check_html()

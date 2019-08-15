@@ -9,7 +9,7 @@ import d1_scimeta.util
 from .arm import ARMHarvester
 from .ieda import IEDAHarvester
 from .testtool import D1TestToolAsync
-from .jsonld_validator import D1CheckHtmlFile
+from .html import D1CheckHtmlFile
 from .xml_validator import XMLValidator
 
 
@@ -66,7 +66,11 @@ def setup_parser(id):
 
 def d1_check_html():
 
-    parser = argparse.ArgumentParser()
+    description = (
+        "Check a single landing page for validity.  This will validate only "
+        "the JSON-LD, it will not look at the referenced XML metadata file."
+    )
+    parser = argparse.ArgumentParser(description=description)
 
     help = "path to local HTML file"
     parser.add_argument('htmlfile', type=str, help=help)
