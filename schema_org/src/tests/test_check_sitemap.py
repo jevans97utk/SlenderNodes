@@ -489,7 +489,8 @@ class TestSuite(TestCommon):
         brittle.
 
         EXPECTED RESULT:  The successful ingest of both documents is logged.
-        Tasks can be seen as being created for both workers.
+        Tasks can be seen as being created for both workers.  There should be
+        a log message stating that two records were successfully processed.
         """
 
         # External calls to read the:
@@ -527,6 +528,9 @@ class TestSuite(TestCommon):
                 for idx in range(2)
             ]
             self.assertLogMessage(cm.output, expected_msgs, level='DEBUG')
+
+            expected = 'Successfully processed 2 records'
+            self.assertInfoLogMessage(cm.output, expected)
 
     @aioresponses()
     def test__max_num_errors(self, aioresp_mocker):
