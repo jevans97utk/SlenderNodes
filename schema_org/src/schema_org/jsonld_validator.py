@@ -61,7 +61,14 @@ class JSONLD_Validator(object):
         bad_contexts = ["http://schema.org", "http://schema.org/",
                         "https://schema.org", "https://schema.org/"]
         if j['@context'] in bad_contexts:
-            j['@context'] = {"@vocab": "http://schema.org/"}
+            j['@context'] = {
+                'identifier': 'https://schema.org/identifier',
+                'encoding': 'https://schema.org/encoding',
+                'contentUrl': 'https://schema.org/contentUrl',
+                'description': 'https://schema.org/description',
+                'dateModified': 'https://schema.org/dateModified',
+                'encodingFormat': 'https://schema.org/encodingFormat',
+            }
 
         if '@type' not in j:
             msg = 'JSON-LD missing top-level "@type" key.'
