@@ -78,7 +78,7 @@ class TestSuite(TestCommon):
 
             self.assertDebugLogMessage(cm.output, 'ClientResponseError')
             self.assertErrorLogMessage(cm.output, 'Bad Request')
-            self.assertSuccessfulIngest(cm.output)
+            self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
     def test_landing_page_is_missing_jsonld(self, aioresp_mocker):
@@ -111,11 +111,11 @@ class TestSuite(TestCommon):
         sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap_not.xml'
         obj = D1CheckSitemap(sitemap_url=sitemap)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
             self.assertLogMessage(cm.output, NO_JSON_LD_SCRIPT_ELEMENTS)
-            self.assertSuccessfulIngest(cm.output)
+            self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
     def test_jsonld_script_elemement_is_not_valid_json(self, aioresp_mocker):
@@ -147,11 +147,11 @@ class TestSuite(TestCommon):
         sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         obj = D1CheckSitemap(sitemap_url=sitemap)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
             self.assertLogMessage(cm.output, INVALID_JSONLD_MESSAGE)
-            self.assertSuccessfulIngest(cm.output)
+            self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
     def test_jsonld_script_elemement_is_missing_the_id(self, aioresp_mocker):
@@ -183,11 +183,11 @@ class TestSuite(TestCommon):
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         obj = D1CheckSitemap(sitemap_url=url)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
             self.assertErrorLogMessage(cm.output, '@id')
-            self.assertSuccessfulIngest(cm.output)
+            self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
     def test_xml_metadata_document_is_missing(self, aioresp_mocker):
@@ -238,7 +238,7 @@ class TestSuite(TestCommon):
 
             self.assertDebugLogMessage(cm.output, 'ClientResponseError')
             self.assertErrorLogMessage(cm.output, 'Bad Request')
-            self.assertSuccessfulIngest(cm.output)
+            self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
     def test_metadata_document_is_invalid_xml(self, aioresp_mocker):
@@ -276,7 +276,7 @@ class TestSuite(TestCommon):
             asyncio.run(obj.run())
 
             self.assertLogMessage(cm.output, 'XMLSyntaxError')
-            self.assertSuccessfulIngest(cm.output)
+            self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
     def test_metadata_document_does_not_validate(self, aioresp_mocker):
@@ -311,14 +311,14 @@ class TestSuite(TestCommon):
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         obj = D1CheckSitemap(sitemap_url=url)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
             expected_msgs = [
                 'XML document does not validate', 'CI_ResponsibleParty'
             ]
             self.assertLogMessage(cm.output, expected_msgs)
-            self.assertSuccessfulIngest(cm.output)
+            self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
     def test_sitemap_is_gzipped(self, aioresp_mocker):
@@ -350,9 +350,9 @@ class TestSuite(TestCommon):
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         obj = D1CheckSitemap(sitemap_url=url)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
-            self.assertSuccessfulIngest(cm.output, n=2)
+            self.assertSuccessfulDebugIngest(cm.output, n=2)
 
     @aioresponses()
     def test_sitemap_url_is_sitemap_index_file(self, aioresp_mocker):
@@ -399,10 +399,10 @@ class TestSuite(TestCommon):
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap_index_file.xml'
         obj = D1CheckSitemap(sitemap_url=url)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertSuccessfulIngest(cm.output, n=4)
+            self.assertSuccessfulDebugIngest(cm.output, n=4)
 
     @aioresponses()
     def test_site_map_is_not_xml(self, aioresp_mocker):
@@ -419,7 +419,7 @@ class TestSuite(TestCommon):
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.txt'
         obj = D1CheckSitemap(sitemap_url=url)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
             # Verify the warning about the sitemap possibly not being XML.
@@ -469,11 +469,11 @@ class TestSuite(TestCommon):
         url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         obj = D1CheckSitemap(sitemap_url=url, num_documents=2)
 
-        with self.assertLogs(logger=obj.logger, level='INFO') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
             # Only two records processed.
-            self.assertSuccessfulIngest(cm.output, n=2)
+            self.assertSuccessfulDebugIngest(cm.output, n=2)
 
         # And just to show, there are 3 URLs in the sitemap.
         doc = lxml.etree.parse(io.BytesIO(contents[0]))
@@ -519,7 +519,7 @@ class TestSuite(TestCommon):
 
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
-            self.assertSuccessfulIngest(cm.output, n=2)
+            self.assertSuccessfulDebugIngest(cm.output, n=2)
 
             # If there was more than one worker, then there should be messages
             # logged that have the strings "consume(0)" and "consume(1)".
@@ -575,7 +575,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertSuccessfulIngest(cm.output, n=1)
+            self.assertSuccessfulDebugIngest(cm.output, n=1)
             self.assertInfoLogMessage(cm.output, 'Shutting down')
 
     @aioresponses()

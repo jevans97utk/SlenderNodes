@@ -27,5 +27,5 @@ class D1CheckSitemap(CommonHarvester):
         """
         We don't harvest, so summarization is much simpler.
         """
-        msg = f'Successfully processed {self.num_records_processed} records.'
+        msg = f'Successfully processed {self.processed_count} records.'
         self.logger.info(msg)

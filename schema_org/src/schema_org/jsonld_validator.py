@@ -148,7 +148,7 @@ class JSONLD_Validator(object):
             raise RuntimeError("JSON-LD does not conform.")
 
         if conforms:
-            self.logger.info("JSON-LD conforms.")
+            self.logger.debug("JSON-LD conforms.")
             return
 
         # So the JSON-LD did not conform.  Parse the report text and log

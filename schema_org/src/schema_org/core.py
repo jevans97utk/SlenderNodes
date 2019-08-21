@@ -132,6 +132,7 @@ class CommonHarvester(object):
         self.rejected_count = 0
         self.skipped_exists_count = 0
         self.updated_count = 0
+        self.processed_count = 0
 
         self.num_documents = num_documents
         self.num_records_processed = 0
@@ -774,7 +775,11 @@ class CommonHarvester(object):
                     f"sitemap_consumer[{idx}]:  "
                     f"{SUCCESSFUL_INGEST_MESSAGE}: {basename}"
                 )
+                self.logger.debug(msg)
+
+                msg = f"{SUCCESSFUL_INGEST_MESSAGE}: {basename}"
                 self.logger.info(msg)
+                self.processed_count += 1
 
             sitemap_queue.task_done()
 
@@ -798,7 +803,7 @@ class CommonHarvester(object):
         # Sometimes there is a space in the @id field.  Can't be having any of
         # that...
         identifier = self.extract_identifier(jsonld)
-        self.logger.info(f"{DOI_IDENTIFIER_MSG}  {identifier}...")
+        self.logger.debug(f"{DOI_IDENTIFIER_MSG}  {identifier}...")
 
         # The SHACL checks should have verified that this is present and ok.
         metadata_url = jsonld['encoding']['contentUrl']
@@ -842,7 +847,7 @@ class CommonHarvester(object):
             document.
         """
         msg = f"process_sitemap: {sitemap_url}, {last_harvest}"
-        self.logger.info(msg)
+        self.logger.debug(msg)
 
         doc = await self.get_sitemap_document(sitemap_url)
         if self.is_sitemap_index_file(doc):

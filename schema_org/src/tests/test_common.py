@@ -10,19 +10,33 @@ import schema_org
 
 class TestCommon(unittest.TestCase):
 
-    def assertSuccessfulIngest(self, cm_output, n=1):
+    def assertSuccessfulDebugIngest(self, cm_output, n=1):
         """
         Verify the successful ingest.  There will be messages logged at the
-        INFO level, and one of them must be the successful ingest message.
+        DEBUG level, and one of them must be the successful ingest message.
 
         Parameters
         ----------
         n : int
             Number of successful ingests.
         """
+        self.assertSuccessfulIngest(cm_output, n=n, level='DEBUG')
+
+    def assertSuccessfulIngest(self, cm_output, n=1, level='INFO'):
+        """
+        Verify the successful ingest.  There will be messages logged at the
+        specified level, and one of them must be the successful ingest message.
+
+        Parameters
+        ----------
+        n : int
+            Number of successful ingests.
+        level : string
+            Loggng level
+        """
         # print('\n'.join(cm_output))
 
-        info_msgs = [msg for msg in cm_output if msg.startswith('INFO')]
+        info_msgs = [msg for msg in cm_output if msg.startswith(level)]
         self.assertTrue(len(info_msgs) > 1)
 
         successful_ingest = [
