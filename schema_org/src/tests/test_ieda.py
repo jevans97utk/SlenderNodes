@@ -23,10 +23,7 @@ import requests_mock
 
 # local imports
 from schema_org.ieda import IEDAHarvester
-from schema_org.core import (
-    UNESCAPED_DOUBLE_QUOTES_MSG, OVER_ESCAPED_DOUBLE_QUOTES_MSG,
-    SITEMAP_RETRIEVAL_FAILURE_MESSAGE
-)
+from schema_org.core import SITEMAP_RETRIEVAL_FAILURE_MESSAGE
 from .test_common import TestCommon
 
 
@@ -177,34 +174,15 @@ class TestSuite(TestCommon):
         SCENARIO:  The HTML file has invalid JSONLD embedded in its SCRIPT.
         Two description fields have unescaped double-quotes.
 
-        EXPECTED RESULT:  A valid JSON document is returned, but the original
-        json.decoder.JSONDecodeError is logged at the warning level.  The
-        JSONLD fix is also logged at the warning level.
+        EXPECTED RESULT:  An exception is issued.
         """
         harvester = IEDAHarvester()
 
         text = ir.read_text('tests.data.ieda', '600165.fixed.html')
         doc = lxml.etree.HTML(text)
 
-        with self.assertLogs(logger=harvester.logger, level='WARNING') as cm:
-            j = harvester.extract_jsonld(doc)
-
-            # Two log messages, both of them warnings.
-            self.assertEqual(len(cm.output), 3)
-            self.assertTrue(cm.output[0].startswith('WARNING'))
-            self.assertTrue(cm.output[1].startswith('WARNING'))
-            self.assertTrue(cm.output[2].startswith('WARNING'))
-
-            # The first message is the initial failure to decode the JSON.
-            self.assertIn('JSONDecodeError', cm.output[0])
-
-            # The second and 3rd messages are notices of the fix.
-            self.assertIn(UNESCAPED_DOUBLE_QUOTES_MSG, cm.output[1])
-            self.assertIn(UNESCAPED_DOUBLE_QUOTES_MSG, cm.output[2])
-
-        # The document is only None if there was an exception.
-        self.assertIsNotNone(j)
-        json.dumps(j)
+        with self.assertRaises(json.decoder.JSONDecodeError):
+            harvester.extract_jsonld(doc)
 
     @patch('schema_org.core.logging.getLogger')
     def test_truncated(self, mock_logger):
@@ -218,7 +196,7 @@ class TestSuite(TestCommon):
         text = ir.read_text('tests.data.ieda', '601015-truncated.html')
         doc = lxml.etree.HTML(text)
 
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(json.decoder.JSONDecodeError):
             harvester.extract_jsonld(doc)
 
     def test_ieda_601015_over_escaped_double_quotes(self):
@@ -226,31 +204,14 @@ class TestSuite(TestCommon):
         SCENARIO:  The HTML file has invalid JSONLD embedded in its SCRIPT.
         Two different description field have over-escaped double quotes.
 
-        EXPECTED RESULT:  A valid JSON document is returned, but the
-        original json.decoder.JSONDecodeError message is logged at the warning
-        level, as well as the fix that is also logged at the warning level.
+        EXPECTED RESULT:  An exception is issued.
         """
         harvester = IEDAHarvester()
         text = ir.read_text('tests.data.ieda', '601015.fixed.html')
         doc = lxml.etree.HTML(text)
 
-        with self.assertLogs(logger=harvester.logger, level='WARNING') as cm:
-            j = harvester.extract_jsonld(doc)
-
-            # Two log messages, both of them warnings.
-            self.assertEqual(len(cm.output), 2)
-            self.assertTrue(cm.output[0].startswith('WARNING'))
-            self.assertTrue(cm.output[1].startswith('WARNING'))
-
-            # The first message is the initial failure to decode the JSON.
-            self.assertIn('JSONDecodeError', cm.output[0])
-
-            # The second message is notice of the fix.
-            self.assertIn(OVER_ESCAPED_DOUBLE_QUOTES_MSG, cm.output[1])
-
-        # The document is valid JSON
-        self.assertIsNotNone(j)
-        json.dumps(j)
+        with self.assertRaises(json.decoder.JSONDecodeError):
+            harvester.extract_jsonld(doc)
 
     @aioresponses()
     def test_site_map_retrieval_failure(self, aioresp_mocker):

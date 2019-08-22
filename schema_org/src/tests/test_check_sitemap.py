@@ -13,7 +13,7 @@ import schema_org
 from schema_org import D1CheckSitemap
 from schema_org.core import (
     SITEMAP_RETRIEVAL_FAILURE_MESSAGE, SITEMAP_NOT_XML_MESSAGE,
-    NO_JSON_LD_SCRIPT_ELEMENTS, INVALID_JSONLD_MESSAGE
+    NO_JSON_LD_SCRIPT_ELEMENTS
 )
 from .test_common import TestCommon
 
@@ -76,8 +76,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertDebugLogMessage(cm.output, 'ClientResponseError')
-            self.assertErrorLogMessage(cm.output, 'Bad Request')
+            self.assertErrorLogMessage(cm.output, 'ClientResponseError')
             self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
@@ -150,7 +149,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertLogMessage(cm.output, INVALID_JSONLD_MESSAGE)
+            self.assertErrorLogMessage(cm.output, 'JSONDecodeError')
             self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
@@ -236,8 +235,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertDebugLogMessage(cm.output, 'ClientResponseError')
-            self.assertErrorLogMessage(cm.output, 'Bad Request')
+            self.assertErrorLogMessage(cm.output, 'ClientResponseError')
             self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()

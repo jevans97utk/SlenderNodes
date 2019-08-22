@@ -30,7 +30,6 @@ OVER_ESCAPED_DOUBLE_QUOTES_MSG = (
 SITEMAP_RETRIEVAL_FAILURE_MESSAGE = 'Failed to retrieve the site map.'
 NO_JSON_LD_SCRIPT_ELEMENTS = "No JSON-LD <SCRIPT> elements were located."
 DOI_IDENTIFIER_MSG = "Have extracted the identifier:  "
-INVALID_JSONLD_MESSAGE = "Unable to fix embedded JSON-LD due to"
 SITEMAP_NOT_XML_MESSAGE = "The sitemap may not be XML."
 SUCCESSFUL_INGEST_MESSAGE = "Successfully processed record"
 
@@ -189,102 +188,6 @@ class CommonHarvester(object):
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
-    def fix_jsonld_text(self, text):
-        """
-        """
-        text = self.fix_over_escaped_double_quotes(text)
-        text = self.fix_unescaped_double_quotes(text)
-        return text
-
-    def fix_over_escaped_double_quotes(self, text):
-        """
-        The JSON-LD string may have a top-level description field that has
-        incorrectly escaped double-quotes, i.e.
-
-            description":
-                "Abstract:
-                ...
-                Antarctic climate, as well as the interhemispheric
-                phasing of the \\"bipolar seesaw\\". We present the
-                WD2014 chronology for the upper part (0-2850 m; 31.2
-                ..."
-
-        We have double quotes preceded by two backslashes, but there really
-        should only be a single backslash.  Making this more complicated is
-        the unfortunate fact that the python interpreter makes changes to
-        strings before we can get at them.  Specifically, any backslash '/'
-        must be represented by '//' in a string literal.  So in the example
-        given, the substring is seen from Python as
-
-            '\\\\"bipolar seesaw\\\\"'
-
-        When using the raw-string form of string literals, however, the example
-        string can be represented as
-
-            r'\\"bipolar seesaw\\"'
-
-        """
-        regex = re.compile(r'\\\\"')
-        if regex.search(text):
-            self.logger.warning(OVER_ESCAPED_DOUBLE_QUOTES_MSG)
-            text = regex.sub(r'\\"', text)
-        return text
-
-    def fix_unescaped_double_quotes(self, text):
-        """
-        The JSON-LD string has a field that looks something like
-
-        "contributor": {
-            ...
-            "description":"stuff with "quoted stuff" inside",
-            ...
-        }
-
-        The correct representation would be
-
-        "contributor": {
-            ...
-            "description":"stuff with \"quoted stuff\" inside",
-            ...
-        }
-        """
-        pattern = r'''
-            "description":
-            # possible white space
-            \s*
-            # the leading double quote of the description key value
-            "
-            # the description text, which may or may not include an unescaped
-            # double quote
-            (?P<desc>.*?)
-            # look-ahead for either the end of the description field followed
-            # by another key-value pair, or the end of the enclosing record.
-            (?=( (",\s*") | ("}) ) )
-        '''
-        regex = re.compile(pattern, re.VERBOSE)
-
-        # Look for a double quote that is NOT preceeded by a backslash.
-        unescaped_dbl_quote_regex = re.compile(r'(?<!\\)"')
-
-        for m in regex.finditer(text):
-
-            desc_text = m.group('desc')
-
-            m_unescaped = unescaped_dbl_quote_regex.search(desc_text)
-            if m_unescaped is None:
-                # No unescaped double quote in this description field.
-                continue
-
-            new_desc_text = re.sub(r'"', r'\\"', desc_text)
-
-            # Insert the modified text back into the presumed JSON-LD text.
-            self.logger.warning(UNESCAPED_DOUBLE_QUOTES_MSG)
-
-            idx = text.find(desc_text)
-            text = text[:idx] + new_desc_text + text[idx + len(desc_text):]
-
-        return text
-
     def extract_jsonld(self, doc):
         """
         Extract JSON-LD from HTML document.
@@ -308,15 +211,7 @@ class CommonHarvester(object):
         jsonld = None
         for script in scripts:
 
-            # Is it valid JSON?
-            try:
-                j = json.loads(script.text)
-            except json.decoder.JSONDecodeError as e:
-                # Log the error as a warning because we are going to try to fix
-                # it.
-                self.logger.warning(repr(e))
-                j = self.attempt_json_fix(script.text)
-
+            j = json.loads(script.text)
             if '@type' in j and j['@type'] == 'Dataset':
                 jsonld = j
 
@@ -329,31 +224,6 @@ class CommonHarvester(object):
 
         self.jsonld_validator.check(jsonld)
         return jsonld
-
-    def attempt_json_fix(self, text):
-        """
-        We have text that the JSON module cannot load.  Attempt to fix certain
-        possible issues.
-        """
-        # May have to make two passes at this.
-        count = 0
-        while True:
-            text = self.fix_jsonld_text(text)
-
-            # Try again.
-            try:
-                jsonld = json.loads(text)
-            except json.decoder.JSONDecodeError as e:
-                msg = repr(e)
-                count += 1
-            else:
-                return jsonld
-
-            if count == 2:
-                # We cannot fix this.  We tried with the original string,
-                # and we tried to find some common fixable issues.  No luck.
-                msg = f"{INVALID_JSONLD_MESSAGE}: \"{msg}\"."
-                raise RuntimeError(msg)
 
     def get_last_harvest_time(self):
 
@@ -767,12 +637,8 @@ class CommonHarvester(object):
 
             except Exception as e:
                 self.failed_count += 1
-                msg = (
-                    f"sitemap_consumer[{idx}]:  Unable to process {url} due "
-                    f"to {repr(e)}."
-                )
-                self.logger.debug(msg)
-                self.logger.error(e)
+                msg = f"Unable to process {url} due to \"{repr(e)}\"."
+                self.logger.error(msg)
 
                 if self.failed_count == self.max_num_errors:
                     self.logger.warning("Error threshold reached.")
