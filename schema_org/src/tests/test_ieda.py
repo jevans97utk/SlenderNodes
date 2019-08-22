@@ -57,27 +57,17 @@ class TestSuite(TestCommon):
         self.xml_hdr = {'Content-Type': 'text/xml'}
         self.html_hdr = {'Content-Type': 'text/html'}
 
-    def test_identifier_parsing(self):
+    def test_identifier_parsing_error__space(self):
         """
-        SCENARIO:  The @id field from the JSON-LD must be parsed, we are
-        presented with various forms out in the wild.
+        SCENARIO:  The @id field from the JSON-LD must be parsed, there is a
+        space in the @id entry.
 
-        EXPECTED RESULT:  the 2nd column
+        EXPECTED RESULT:  RuntimeError
         """
-        test_cases = [
-            ("doi:10.15784/601015", "10.15784/601015"),
-            (" doi:10.15784/601015", "10.15784/601015"),
-            ("doi:10.15784/601015 ", "10.15784/601015"),
-            ("doi:10.7265/N55D8PS0", "10.7265/N55D8PS0"),
-            ("urn:usap-dc:metadata:609582", "urn:usap-dc:metadata:609582"),
-        ]
-
         harvester = IEDAHarvester()
-        for str_input, expected in test_cases:
-            with self.subTest(name=expected):
-                jsonld = {'@id': str_input}
-                identifier = harvester.extract_identifier(jsonld)
-                self.assertEqual(identifier, expected)
+        jsonld = {'@id': " doi:10.15784/601015"}
+        with self.assertRaises(RuntimeError):
+            harvester.extract_identifier(jsonld)
 
     @patch('schema_org.core.logging.getLogger')
     def test_identifier_parsing_error(self, mock_logger):
@@ -90,6 +80,7 @@ class TestSuite(TestCommon):
 
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier({'@id': 'djlfsdljfasl;'})
+            "urn:usap-dc:metadata:609582",
 
     @patch('schema_org.core.logging.getLogger')
     def test_restrict_to_2_items_from_sitemap(self, mock_logger):

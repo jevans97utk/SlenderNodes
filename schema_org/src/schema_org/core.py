@@ -482,12 +482,12 @@ class CommonHarvester(object):
 
     def extract_identifier(self, jsonld):
         """
-        Parse the DOI from the json['@id'] value.  IEDA identifiers
+        Parse the DOI from the json['@id'] value.  The identifiers should
         look something like
 
-            'doi:10.15784/601015'
+            'https://dx.doi.org/10.5439/1025173
 
-        The DOI in this case would be '10.15784/601015'.  This will be used as
+        The DOI in this case would be '10.5439/1025173'.  This will be used as
         the series identifier.
 
         Parameters
@@ -499,19 +499,9 @@ class CommonHarvester(object):
         The identifier substring.
         """
         pattern = r'''
-            # possible leading white space (not supposed to be there)
-            \s*
-            # DOI:prefix/suffix - IEDA style
-            (https?://dx.doi.org/(?P<doi_id_ieda>10\.\w+/\w+))
-                |
-            # ARM-style
-            (doi:(?P<doi_id_arm>10.\w+/\w+))
-                |
-            # other ARM-style
-            (?P<other_id>urn:usap-dc:metadata:\w+)
-            # possible trailing white space (not supposed to be there)
-            \s*
-        '''
+                  # DOI:prefix/suffix - ARM style
+                  (https?://dx.doi.org/(?P<doi>10\.\w+/\w+))
+                  '''
         regex = re.compile(pattern, re.VERBOSE)
         m = regex.search(jsonld['@id'])
         if m is None:
@@ -521,12 +511,7 @@ class CommonHarvester(object):
             )
             raise RuntimeError(msg)
 
-        if m.group('doi_id_ieda') is not None:
-            return m.group('doi_id_ieda')
-        elif m.group('doi_id_arm') is not None:
-            return m.group('doi_id_arm')
-        else:
-            return m.group('other_id')
+        return m.group('doi')
 
     async def retrieve_url(self, url, headers=None, check_xml_headers=False):
         """

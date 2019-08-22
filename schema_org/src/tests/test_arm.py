@@ -75,15 +75,13 @@ class TestSuite(TestCommon):
         SCENARIO:  The @id field from the JSON-LD must be parsed, but the given
         field is bad.
 
-        EXPECTED RESULT:  RuntimeError and a warning is logged.
+        EXPECTED RESULT:  A RuntimeError is raised.
         """
         jsonld = {'@id': 'http://dx.doi.orggg/10.5439/1027257'}
         harvester = ARMHarvester()
 
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier(jsonld)
-
-        self.assertEqual(harvester.logger.error.call_count, 1)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
