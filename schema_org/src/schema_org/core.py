@@ -305,15 +305,27 @@ class CommonHarvester(object):
         if len(scripts) == 0:
             raise RuntimeError(NO_JSON_LD_SCRIPT_ELEMENTS)
 
-        text = scripts[0].text
+        jsonld = None
+        for script in scripts:
 
-        # Is it valid JSON?
-        try:
-            jsonld = json.loads(text)
-        except json.decoder.JSONDecodeError as e:
-            # Log the error as a warning because we are going to try to fix it.
-            self.logger.warning(repr(e))
-            jsonld = self.attempt_json_fix(text)
+            # Is it valid JSON?
+            try:
+                j = json.loads(script.text)
+            except json.decoder.JSONDecodeError as e:
+                # Log the error as a warning because we are going to try to fix
+                # it.
+                self.logger.warning(repr(e))
+                j = self.attempt_json_fix(script.text)
+
+            if '@type' in j and j['@type'] == 'Dataset':
+                jsonld = j
+
+        if jsonld is None:
+            msg = (
+                "Could not locate a JSON-LD <SCRIPT> element with @type "
+                "\"Dataset\"."
+            )
+            raise RuntimeError(msg)
 
         self.jsonld_validator.check(jsonld)
         return jsonld

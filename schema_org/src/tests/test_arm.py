@@ -9,15 +9,53 @@ from unittest.mock import patch
 
 # 3rd party library imports
 from aioresponses import aioresponses
+import lxml.etree
 
 # local imports
 from schema_org.arm import ARMHarvester
 from .test_common import TestCommon
 
 
-@patch('schema_org.core.logging.getLogger')
 class TestSuite(TestCommon):
 
+    def setUp(self):
+        # aioresponses can use a regex as a way of catching any URL request
+        # with this base.
+        self.regex = re.compile('https://www.archive.arm.gov/metadata/adc')
+
+    def test_jsonld_script_element_is_first(self):
+        """
+        SCENARIO:  In ARM, there are usually two <SCRIPT> elements with
+        JSON-LD, but the first one is the one we want.  In this test case,
+        the first <SCRIPT> element has the JSON-LD.
+
+        EXPECTED RESULT:  The JSON-LD with @type Dataset is parsed.
+        """
+        text = ir.read_binary('tests.data.arm',
+                              'nsaqcrad1longC2.c2.fixed.html')
+        doc = lxml.etree.HTML(text)
+
+        harvester = ARMHarvester()
+        j = harvester.extract_jsonld(doc)
+        self.assertEqual(j['@type'], 'Dataset')
+
+    def test_jsonld_script_element_is_second(self):
+        """
+        SCENARIO:  In ARM, there are usually two <SCRIPT> elements with
+        JSON-LD, but the first one is the one we want.  In this test case,
+        the second  <SCRIPT> element has the JSON-LD.
+
+        EXPECTED RESULT:  The JSON-LD with @type Dataset is parsed.
+        """
+        text = ir.read_binary('tests.data.arm',
+                              'nsaqcrad1longC2.c2.swapped_scripts.html')
+        doc = lxml.etree.HTML(text)
+
+        harvester = ARMHarvester()
+        j = harvester.extract_jsonld(doc)
+        self.assertEqual(j['@type'], 'Dataset')
+
+    @patch('schema_org.core.logging.getLogger')
     def test_identifier_parsing(self, mock_logger):
         """
         SCENARIO:  The @id field from the JSON-LD must be parsed, we are
@@ -31,6 +69,7 @@ class TestSuite(TestCommon):
 
         self.assertEqual(identifier, '10.5439/1027257')
 
+    @patch('schema_org.core.logging.getLogger')
     def test_identifier_parsing_error(self, mock_logger):
         """
         SCENARIO:  The @id field from the JSON-LD must be parsed, but the given
@@ -45,24 +84,6 @@ class TestSuite(TestCommon):
             harvester.extract_identifier(jsonld)
 
         self.assertEqual(harvester.logger.error.call_count, 1)
-
-    def test_bad_verbosity(self, mock_logger):
-        """
-        SCENARIO:  the harvester is called with a bad verbosity value.  This
-        should be precluded by the command line entry point, but you never
-        know.
-
-        EXPECTED RESULT:  a TypeError is raised
-        """
-
-        with self.assertRaises(TypeError):
-            ARMHarvester(verbose='WARNING2')
-
-
-class TestSuite2(TestCommon):
-
-    def setUp(self):
-        self.regex = re.compile('https://www.archive.arm.gov/metadata/adc')
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501

@@ -3,6 +3,8 @@ Test suite for command line tools.
 """
 
 # Standard library imports
+import contextlib
+import io
 import sys
 from unittest.mock import patch
 
@@ -12,6 +14,23 @@ from .test_common import TestCommon
 
 
 class TestSuite(TestCommon):
+
+    @patch.object(sys, 'argv', ['--verbosity', 'WARNING2'])
+    @patch('sys.exit')
+    @patch('schema_org.commandline.ARMHarvester.run')
+    @patch('schema_org.commandline.asyncio')
+    def test_bad_verbosity(self, mock_asyncio, mock_arm, mock_sys_exit):
+        """
+        SCENARIO:  the harvester is called with a bad verbosity value.
+
+        EXPECTED RESULT:  The command line utility will error out and try to
+        exit.
+        """
+        with contextlib.redirect_stderr(io.StringIO()):
+            # Don't mess up the terminal screen with stderr from argparse.
+            commandline.arm()
+
+        self.assertEqual(mock_sys_exit.call_count, 1)
 
     @patch.object(sys, 'argv', [''])
     @patch('schema_org.commandline.IEDAHarvester.run')
