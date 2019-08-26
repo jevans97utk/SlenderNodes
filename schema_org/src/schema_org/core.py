@@ -202,7 +202,8 @@ class CommonHarvester(object):
             <SCRIPT> element embedded in the <HEAD> element.
         """
         self.logger.debug('extract_jsonld:')
-        scripts = doc.xpath('head/script[@type="application/ld+json"]')
+        path = './/script[@type="application/ld+json"]'
+        scripts = doc.xpath(path)
         if len(scripts) == 0:
             raise RuntimeError(NO_JSON_LD_SCRIPT_ELEMENTS)
 
@@ -220,7 +221,6 @@ class CommonHarvester(object):
             )
             raise RuntimeError(msg)
 
-        self.jsonld_validator.check(jsonld)
         return jsonld
 
     def get_last_harvest_time(self):
@@ -669,6 +669,7 @@ class CommonHarvester(object):
         doc = lxml.etree.HTML(content)
 
         jsonld = self.extract_jsonld(doc)
+        self.jsonld_validator.check(jsonld)
 
         # Sometimes there is a space in the @id field.  Can't be having any of
         # that...
