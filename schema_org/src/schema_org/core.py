@@ -138,8 +138,6 @@ class CommonHarvester(object):
 
         self.num_workers = num_workers
 
-        self.async_session = None
-
         self.max_num_errors = max_num_errors
 
         requests.packages.urllib3.disable_warnings()
@@ -528,7 +526,10 @@ class CommonHarvester(object):
             'User-Agent': 'DataONE adapter for schema.org harvest',
             'From': 'jevans97@utk.edu'
         }
-        async with aiohttp.ClientSession(headers=headers) as session:
+        connector = aiohttp.TCPConnector(verify_ssl=False)
+
+        async with aiohttp.ClientSession(headers=headers,
+                                         connector=connector) as session:
 
             async with session.get(url) as response:
 
