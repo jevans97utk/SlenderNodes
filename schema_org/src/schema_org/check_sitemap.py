@@ -15,7 +15,6 @@ class D1CheckSitemap(CommonHarvester):
         super().__init__(id='d1checksite', **kwargs)
 
         self.site_map = sitemap_url
-        self.logger.debug(f'num_workers = {self.num_workers}')
 
     async def harvest_document(self, doi, doc, record_date):
         """

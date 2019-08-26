@@ -173,18 +173,25 @@ class CommonHarvester(object):
             Level of logging verbosity.
         """
         level = getattr(logging, verbosity)
-        logging.basicConfig(filename=f'{logid}.log',
-                            format='%(asctime)s %(levelname)-8s %(message)s',
-                            level=level)
-        self.logger = logging.getLogger('datatone')
 
-        # Also log to stdout.
-        handler = logging.StreamHandler(sys.stdout)
-        handler.setLevel(level)
+        self.logger = logging.getLogger('datatone')
+        self.logger.setLevel(level)
+
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         formatter = logging.Formatter(format)
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+
+        # Log to file
+        #
+        # I admit that the use of "delay" is only to prevent warnings being
+        # issued during testing.
+        fh = logging.FileHandler(f'{logid}.log', delay=True)
+        fh.setFormatter(formatter)
+        self.logger.addHandler(fh)
+
+        # Also log to stdout.
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(formatter)
+        self.logger.addHandler(sh)
 
     def extract_jsonld(self, doc):
         """
@@ -559,7 +566,7 @@ class CommonHarvester(object):
 
     async def run(self):
 
-        self.logger.debug(f'run')
+        self.logger.debug(f'run:  num_workers = {self.num_workers}')
         last_harvest_time = self.get_last_harvest_time()
 
         try:
