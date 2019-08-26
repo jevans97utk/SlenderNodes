@@ -54,6 +54,11 @@ def setup_parser(id):
     )
     parser.add_argument('--num-workers', type=int, default=1, help=help)
 
+    help = (
+        "Limit number of errors to this number."
+    )
+    parser.add_argument('--max-num-errors', type=int, default=1, help=help)
+
     return parser
 
 
@@ -102,7 +107,7 @@ def d1_check_site():
     help = (
         "Limit number of errors to this number."
     )
-    parser.add_argument('--max-num-errors', type=int, default=1, help=help)
+    parser.add_argument('--max-num-errors', type=int, default=3, help=help)
 
     args = parser.parse_args()
 
@@ -121,7 +126,8 @@ def arm():
     arm_harvester = ARMHarvester(host=args.host, port=args.port,
                                  verbosity=args.verbose,
                                  certificate=args.certificate,
-                                 private_key=args.key)
+                                 private_key=args.key,
+                                 max_num_errors=args.max_num_errors)
     asyncio.run(arm_harvester.run())
 
 
