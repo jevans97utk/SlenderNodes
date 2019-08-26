@@ -532,7 +532,7 @@ class CommonHarvester(object):
             'User-Agent': 'DataONE adapter for schema.org harvest',
             'From': 'jevans97@utk.edu'
         }
-        connector = aiohttp.TCPConnector(verify_ssl=False)
+        connector = aiohttp.TCPConnector(ssl=False)
 
         async with aiohttp.ClientSession(headers=headers,
                                          connector=connector) as session:
