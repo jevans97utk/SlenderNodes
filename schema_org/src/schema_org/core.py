@@ -441,16 +441,22 @@ class CommonHarvester(object):
 
         lastmods = doc.xpath('.//sm:lastmod/text()',
                              namespaces=SITEMAP_NS)
-
-        # Parse the last modification times.  It is possible that the dates
-        # have no timezone information in them, so we will assume that it is
-        # UTC.
-        lastmods = [dateutil.parser.parse(item) for item in lastmods]
-        UTC = dateutil.tz.gettz("UTC")
-        lastmods = [
-            dateitem.replace(tzinfo=dateitem.tzinfo or UTC)
-            for dateitem in lastmods
-        ]
+        if len(lastmods) == 0:
+            # Sometimes a sitemap has no <lastmod> items at all.  That's ok.
+            lastmods = [
+                dateutil.parser.parse('1950-01-01T00:00:00Z')
+                for url in urls
+            ]
+        else:
+            # Parse the last modification times.  It is possible that the dates
+            # have no timezone information in them, so we will assume that it
+            # is UTC.
+            lastmods = [dateutil.parser.parse(item) for item in lastmods]
+            UTC = dateutil.tz.gettz("UTC")
+            lastmods = [
+                dateitem.replace(tzinfo=dateitem.tzinfo or UTC)
+                for dateitem in lastmods
+            ]
 
         z = zip(urls, lastmods)
 
