@@ -75,6 +75,8 @@ class CommonHarvester(object):
         1, then it is essentially synchronous.
     session : requests.sessions.Session
         Makes all URL requests.
+    site_map : str
+        URL for XML site map.  This must be overridden for each custom client.
     """
 
     def __init__(self, host=None, port=None, certificate=None,
@@ -139,6 +141,8 @@ class CommonHarvester(object):
         self.num_workers = num_workers
 
         self.max_num_errors = max_num_errors
+
+        self.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
 
         requests.packages.urllib3.disable_warnings()
 

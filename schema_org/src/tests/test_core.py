@@ -1,7 +1,3 @@
-"""
-Test suite for IEDA
-"""
-
 # Standard library imports
 import asyncio
 import datetime as dt
@@ -19,43 +15,220 @@ import aiohttp
 from aioresponses import aioresponses
 import dateutil.parser
 import lxml.etree
-import requests_mock
 
 # local imports
-from schema_org.ieda import IEDAHarvester
+from schema_org.core import CommonHarvester
 from schema_org.core import SITEMAP_RETRIEVAL_FAILURE_MESSAGE
 from .test_common import TestCommon
 
 
 class TestSuite(TestCommon):
-    """
-    Attributes
-    ----------
-    adapter : obj
-        This intercepts all the outgoing HTTP requests
-    pattern : str
-        Match any URLs going to that site, we will catch them with
-        aioresponses.
-    """
 
     def setUp(self):
+        # aioresponses can use a regex as a way of catching any URL request
+        # with this base.
+        self.pattern = 'https://www.archive.arm.gov/metadata/adc'
+        self.regex = re.compile(self.pattern)
+
+    def test_jsonld_script_element_is_first(self):
         """
-        Attributes
-        ----------
-        regex : obj
-            Any URL that matches this should have its request intercepted
-            by the mocking layer.
-        xml_hdr, html_hdr : dicts
-            Headers that the requests/aiohttp layer should send back.
+        SCENARIO:  In ARM, there are usually two <SCRIPT> elements with
+        JSON-LD, but the first one is the one we want.  In this test case,
+        the first <SCRIPT> element has the JSON-LD.
+
+        EXPECTED RESULT:  The JSON-LD with @type Dataset is parsed.
+        """
+        text = ir.read_binary('tests.data.arm',
+                              'nsaqcrad1longC2.c2.fixed.html')
+        doc = lxml.etree.HTML(text)
+
+        harvester = CommonHarvester()
+        j = harvester.extract_jsonld(doc)
+        self.assertEqual(j['@type'], 'Dataset')
+
+    def test_jsonld_script_element_is_second(self):
+        """
+        SCENARIO:  In ARM, there are usually two <SCRIPT> elements with
+        JSON-LD, but the first one is the one we want.  In this test case,
+        the second  <SCRIPT> element has the JSON-LD.
+
+        EXPECTED RESULT:  The JSON-LD with @type Dataset is parsed.
+        """
+        text = ir.read_binary('tests.data.arm',
+                              'nsaqcrad1longC2.c2.swapped_scripts.html')
+        doc = lxml.etree.HTML(text)
+
+        harvester = CommonHarvester()
+        j = harvester.extract_jsonld(doc)
+        self.assertEqual(j['@type'], 'Dataset')
+
+    @patch('schema_org.core.logging.getLogger')
+    def test_identifier_parsing(self, mock_logger):
+        """
+        SCENARIO:  The @id field from the JSON-LD must be parsed, we are
+        presented with http://dx.doi.org/10.5439/1027257.
+
+        EXPECTED RESULT:  The ID "10.5439/1027257" is returned.
+        """
+        jsonld = {'@id': 'http://dx.doi.org/10.5439/1027257'}
+        harvester = CommonHarvester()
+        identifier = harvester.extract_identifier(jsonld)
+
+        self.assertEqual(identifier, '10.5439/1027257')
+
+    @patch('schema_org.core.logging.getLogger')
+    def test_identifier_parsing_error(self, mock_logger):
+        """
+        SCENARIO:  The @id field from the JSON-LD must be parsed, but the given
+        field is bad.
+
+        EXPECTED RESULT:  A RuntimeError is raised.
+        """
+        jsonld = {'@id': 'http://dx.doi.orggg/10.5439/1027257'}
+        harvester = CommonHarvester()
+
+        with self.assertRaises(RuntimeError):
+            harvester.extract_identifier(jsonld)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_default_run(self,
+                         mock_harvest_time,
+                         mock_check_if_identifier_exists,
+                         mock_load_science_metadata):
+        """
+        SCENARIO:  We have a valid sitemap and valid documents.
+
+        EXPECTED RESULT:  No errors are logged.  One record is successfully
+        harvested, according to the logs.
         """
 
-        self.adapter = requests_mock.Adapter()
-        self.protocol = 'http'
+        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+        mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
+        mock_load_science_metadata.return_value = True
 
-        self.regex = re.compile('http://get.iedadata.org/.*')
+        harvester = CommonHarvester()
 
-        self.xml_hdr = {'Content-Type': 'text/xml'}
-        self.html_hdr = {'Content-Type': 'text/html'}
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) HTML document for record 1
+        #   3) XML document for record 1
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
+            ir.read_binary('tests.data.arm',
+                           'nsanimfraod1michC2.c1.fixed.html'),
+            ir.read_binary('tests.data.arm',
+                           'nsanimfraod1michC2.c1.fixed.xml'),
+        ]
+        status_codes = [200, 200, 200]
+
+        with aioresponses() as m:
+            for content, status_code in zip(contents, status_codes):
+                m.get(self.regex, body=content, status=status_code)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                asyncio.run(harvester.run())
+
+                self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+                self.assertInfoLogMessage(cm.output, 'Created 1 new record')
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test__last_harvest_time_gt_lastmod(self,
+                                           mock_harvest_time,
+                                           mock_check_if_identifier_exists,
+                                           mock_load_science_metadata):
+        """
+        SCENARIO:  We have a valid sitemap and valid documents.  One of the
+        documents, though, was harvested since it was last modified.
+
+        EXPECTED RESULT:  No errors are logged.  A message is logged that the
+        one record was skipped.
+        """
+
+        # Set the harvest time ahead of the lastmod time.  If we're still
+        # running this code in the 23rd century, well dang...
+        mock_harvest_time.return_value = '2200-01-01T00:00:00Z'
+        mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
+        mock_load_science_metadata.return_value = True
+
+        harvester = CommonHarvester(host='test.arm.gov')
+
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) HTML document for record 1
+        #   3) XML document for record 1
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
+            ir.read_binary('tests.data.arm',
+                           'nsanimfraod1michC2.c1.fixed.html'),
+            ir.read_binary('tests.data.arm',
+                           'nsanimfraod1michC2.c1.fixed.xml'),
+        ]
+        status_codes = [200, 200, 200]
+        headers = [
+            {'Content-Type': 'application/xml'},
+            {'Content-Type': 'application/html'},
+            {'Content-Type': 'application/xml'},
+        ]
+
+        z = zip(contents, status_codes, headers)
+        with aioresponses() as m:
+            for content, status_code, headers in z:
+                m.get(self.regex,
+                      body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                asyncio.run(harvester.run())
+
+                self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+                self.assertInfoLogMessage(cm.output, 'Created 0 new record')
+
+                expected = '1 records skipped due to lastmod time'
+                self.assertInfoLogMessage(cm.output, expected)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_metadata_document_retrieval_failure(self, mock_harvest_time):
+        """
+        SCENARIO:  The XML metadata document is invalid.
+
+        EXPECTED RESULT:  The failure count goes up by one.
+        """
+
+        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+
+        harvester = CommonHarvester()
+        failed_count = harvester.failed_count
+
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) HTML document for record 1
+        #   3) XML document for record 1
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
+            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.html'),  # noqa: E501
+            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.xml'),
+        ]
+        status_codes = [200, 200, 400]
+
+        with aioresponses() as m:
+            for content, status_code in zip(contents, status_codes):
+                m.get(self.regex, body=content, status=status_code)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                asyncio.run(harvester.run())
+
+                self.assertErrorLogMessage(cm.output, 'ClientResponseError')
+
+        self.assertEqual(harvester.failed_count, failed_count + 1)
 
     def test_identifier_parsing_error__space(self):
         """
@@ -64,7 +237,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  RuntimeError
         """
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
         jsonld = {'@id': " doi:10.15784/601015"}
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier(jsonld)
@@ -76,7 +249,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  A RuntimeError is raised.
         """
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
 
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier({'@id': 'djlfsdljfasl;'})
@@ -91,7 +264,7 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  The list of documents retrieve has length 2.
         """
 
-        harvester = IEDAHarvester(num_documents=2)
+        harvester = CommonHarvester(num_documents=2)
 
         content = ir.read_binary('tests.data.ieda', 'sitemap3.xml')
         doc = lxml.etree.parse(io.BytesIO(content))
@@ -110,7 +283,7 @@ class TestSuite(TestCommon):
         setting of 4 has no effect.
         """
 
-        harvester = IEDAHarvester(num_documents=4)
+        harvester = CommonHarvester(num_documents=4)
 
         content = ir.read_binary('tests.data.ieda', 'sitemap3.xml')
         doc = lxml.etree.parse(io.BytesIO(content))
@@ -128,8 +301,8 @@ class TestSuite(TestCommon):
         are no ERROR or WARNING messages logged.
         """
 
-        url = 'http://get.iedadata.org/600121iso.xml'
-        harvester = IEDAHarvester()
+        url = self.pattern + '/600121iso.xml'
+        harvester = CommonHarvester()
 
         content = ir.read_binary('tests.data.ieda', '600121iso.xml')
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
@@ -151,7 +324,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  An HTTPError is raised.
         """
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
 
         url = 'http://get.iedadata.org/600121iso.xml'
 
@@ -167,7 +340,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  An exception is issued.
         """
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
 
         text = ir.read_text('tests.data.ieda', '600165.fixed.html')
         doc = lxml.etree.HTML(text)
@@ -183,7 +356,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  An exception is raised.
         """
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
         text = ir.read_text('tests.data.ieda', '601015-truncated.html')
         doc = lxml.etree.HTML(text)
 
@@ -197,7 +370,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  An exception is issued.
         """
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
         text = ir.read_text('tests.data.ieda', '601015.fixed.html')
         doc = lxml.etree.HTML(text)
 
@@ -212,7 +385,7 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  A requests HTTPError is raised and the exception is
         logged.
         """
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
 
         aioresp_mocker.get(self.regex, status=500)
 
@@ -237,7 +410,7 @@ class TestSuite(TestCommon):
         count increases by one.
         """
         host, port = 'ieda.mn.org', 443
-        harvester = IEDAHarvester(host=host, port=port)
+        harvester = CommonHarvester(host=host, port=port)
 
         # This is the existing document in the MN.  It is marked as complete.
         existing_content = ir.read_binary('tests.data.ieda', '600121iso.xml')
@@ -250,7 +423,7 @@ class TestSuite(TestCommon):
         }
         mock_update_science_metadata.return_value = True
 
-        harvester = IEDAHarvester(host=host, port=port)
+        harvester = CommonHarvester(host=host, port=port)
         update_count = harvester.updated_count
 
         # This is the "update" document, same as the existing document.  It is
@@ -288,7 +461,7 @@ class TestSuite(TestCommon):
         logged at the warning level.
         """
         host, port = 'ieda.mn.org', 443
-        harvester = IEDAHarvester(host=host, port=port)
+        harvester = CommonHarvester(host=host, port=port)
 
         # This is the existing document in the MN.  It is requested by the
         # update check, and it is marked as complete.
@@ -302,7 +475,7 @@ class TestSuite(TestCommon):
         }
         mock_update_science_metadata.return_value = False
 
-        harvester = IEDAHarvester(host=host, port=port)
+        harvester = CommonHarvester(host=host, port=port)
         initial_failed_count = harvester.failed_count
 
         # Read a document that is the same except it has a later metadata
@@ -361,7 +534,7 @@ class TestSuite(TestCommon):
         mock_update_science_metadata.return_value = True
 
         host, port = 'ieda.mn.org', 443
-        harvester = IEDAHarvester(host=host, port=port)
+        harvester = CommonHarvester(host=host, port=port)
         initial_updated_count = harvester.updated_count
 
         doi = 'doi.10000/abcde'
@@ -405,7 +578,7 @@ class TestSuite(TestCommon):
         mock_update_science_metadata.return_value = False
 
         host, port = 'ieda.mn.org', 443
-        harvester = IEDAHarvester(host=host, port=port)
+        harvester = CommonHarvester(host=host, port=port)
 
         initial_rejected_count = harvester.rejected_count
 
@@ -449,7 +622,7 @@ class TestSuite(TestCommon):
         }
         mock_update_science_metadata.return_value = False
 
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
         skipped_count = harvester.skipped_exists_count
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
@@ -480,7 +653,7 @@ class TestSuite(TestCommon):
             'outcome': 'failed',
         }
 
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
@@ -510,7 +683,7 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = True
 
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
@@ -539,7 +712,7 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = False
 
-        harvester = IEDAHarvester()
+        harvester = CommonHarvester()
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
@@ -548,3 +721,50 @@ class TestSuite(TestCommon):
                                                dt.datetime.now()))
 
         harvester.logger.error.assert_called_once()
+
+    def test_no_lastmod_time_in_sitemap_leaf(self):
+        """
+        SCENARIO:  A sitemap leaf XML file has <loc> entries, but no <lastmod>
+        entries.  In this case, we should look to the lastModified field in the
+        JSON-LD for guidance.
+
+        CUAHSI has no <lastmod> entries in their sitemap.
+
+        EXPECTED RESULT:  The entries in the sitemap are NOT skipped.
+        """
+        content = ir.read_binary('tests.data.cuahsi', 'sitemap-pages.xml')
+        doc = lxml.etree.parse(io.BytesIO(content))
+
+        last_harvest_time_str = '1900-01-01T00:00:00Z'
+        last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
+
+        obj = CommonHarvester()
+
+        with self.assertLogs(logger=obj.logger, level='DEBUG'):
+            records = obj.extract_records_from_sitemap(doc, last_harvest_time)
+        self.assertEqual(len(records), 3)
+
+    def test_jsonld_script_found_in_body_rather_than_head(self):
+        """
+        SCENARIO:  The JSON-LD <SCRIPT> element is located in the <body> of the
+        landing page element rather than the <head>.
+
+        CUAHSI puts the <SCRIPT> element in the body, while ARM puts it in the
+        <HEAD>.
+
+        EXPECTED RESULT:  The JSON-LD is successfully extracted from the
+        landing page document.
+        """
+        parts = ['tests', 'data', 'cuahsi', 'aadd7dd60f31498590de32c9b14446c3']
+        package = '.'.join(parts)
+        text = ir.read_text(package, 'landing_page.html')
+        doc = lxml.etree.HTML(text)
+
+        obj = CommonHarvester()
+
+        with self.assertLogs(logger=obj.logger, level='DEBUG'):
+            j = obj.extract_jsonld(doc)
+
+        json.dumps(j)
+
+        self.assertTrue(True)
