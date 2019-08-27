@@ -704,10 +704,7 @@ class CommonHarvester(object):
         """
         self.logger.debug(f'process_record:  starting')
 
-        # Validate the document.  We do NOT want this to be subsumed into
-        # the harvest operation.
         d1_scimeta.validate.assert_valid(self.format_id, doc)
-
         await self.harvest_document(identifier, doc, last_mod_time)
 
         self.logger.debug(f'process_record:  finished')

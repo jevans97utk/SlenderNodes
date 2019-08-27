@@ -59,6 +59,26 @@ class TestSuite(TestCommon):
             self.assertLogMessage(cm.output, gmd, level='INFO')
             self.assertLogMessage(cm.output, gmd_noaa, level='INFO')
 
+    def test_file(self):
+        """
+        SCENARIO:   A valid pathlib.Path object is passed into the
+        validator.  The file contains valid ISO 19115 metadata.
+
+        SCENARIO:  Validates to regular gmd.
+        """
+        validator = XMLValidator()
+
+        path = str(pathlib.Path('tests/data/ieda/600121iso.xml'))
+
+        gmd = 'http://www.isotc211.org/2005/gmd'
+        gmd_noaa = 'http://www.isotc211.org/2005/gmd-noaa'
+
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(path)
+
+            self.assertLogMessage(cm.output, gmd, level='INFO')
+            self.assertLogMessage(cm.output, gmd_noaa, level='INFO')
+
     def test_path(self):
         """
         SCENARIO:   A valid pathlib.Path object is passed into the

@@ -99,19 +99,26 @@ class XMLValidator(object):
         """
         # Is it a URL?
         try:
-            urllib.parse.urlparse(src)
+            p = urllib.parse.urlparse(src)
         except AttributeError:
+            # A file will not throw this exception, but a pathlib object
+            # will.
             pass
         else:
-            # Yes, a URL.
-            try:
-                r = self.session.get(src)
-                r.raise_for_status()
-            except Exception:
-                raise
-            else:
-                doc = lxml.etree.parse(io.BytesIO(r.content))
-                return doc
+            if (
+                len(p.scheme) > 0
+                and len(p.netloc) > 0
+                and len(p.path) > 0
+            ):
+                # Yes, a URL.
+                try:
+                    r = self.session.get(src)
+                    r.raise_for_status()
+                except Exception:
+                    raise
+                else:
+                    doc = lxml.etree.parse(io.BytesIO(r.content))
+                    return doc
 
         # Is it file or file-like, but not a path.
         try:
