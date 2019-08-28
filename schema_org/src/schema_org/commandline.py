@@ -7,6 +7,7 @@ import d1_scimeta.util
 
 # Local imports
 from .arm import ARMHarvester
+from .cuahsi import CUAHSIHarvester
 from .ieda import IEDAHarvester
 from .check_sitemap import D1CheckSitemap
 from .html import D1CheckHtmlFile
@@ -131,6 +132,19 @@ def arm():
                                  num_workers=args.num_workers,
                                  max_num_errors=args.max_num_errors)
     asyncio.run(arm_harvester.run())
+
+
+def cuahsi():
+    parser = setup_parser("cuahsi")
+    args = parser.parse_args()
+
+    harvester = CUAHSIHarvester(host=args.host, port=args.port,
+                                verbosity=args.verbose,
+                                certificate=args.certificate,
+                                private_key=args.key,
+                                num_documents=args.num_documents,
+                                num_workers=args.num_workers)
+    asyncio.run(harvester.run())
 
 
 def ieda():
