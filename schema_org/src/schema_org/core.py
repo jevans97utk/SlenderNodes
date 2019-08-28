@@ -1,5 +1,5 @@
 """
-DATAONE adapter for ARM
+DATAONE SO core for multiple adaptors.
 """
 
 # Standard library imports
@@ -22,14 +22,10 @@ import d1_scimeta.validate
 # Local imports
 from .d1_client_manager import D1ClientManager
 from .jsonld_validator import JSONLD_Validator
+from .xml_validator import XMLValidator
 
-UNESCAPED_DOUBLE_QUOTES_MSG = 'Unescaped double-quotes have been corrected.'
-OVER_ESCAPED_DOUBLE_QUOTES_MSG = (
-    'Over-escaped double quotes have been corrected.'
-)
 SITEMAP_RETRIEVAL_FAILURE_MESSAGE = 'Failed to retrieve the site map.'
 NO_JSON_LD_SCRIPT_ELEMENTS = "No JSON-LD <SCRIPT> elements were located."
-DOI_IDENTIFIER_MSG = "Have extracted the identifier:  "
 SITEMAP_NOT_XML_MESSAGE = "The sitemap may not be XML."
 SUCCESSFUL_INGEST_MESSAGE = "Successfully processed record"
 
@@ -77,6 +73,9 @@ class CommonHarvester(object):
         Makes all URL requests.
     site_map : str
         URL for XML site map.  This must be overridden for each custom client.
+    sys_meta_dict : dict
+        A dict containing node-specific system metadata properties that
+        will apply to all science metadata documents loaded into GMN.
     """
 
     def __init__(self, host=None, port=None, certificate=None,
@@ -104,7 +103,7 @@ class CommonHarvester(object):
         self.setup_logging(id, verbosity)
 
         self.mn_base_url = f'https://{host}:{port}/mn'
-        sys_meta_dict = {
+        self.sys_meta_dict = {
             'submitter': f'urn:node:{id.upper()}',
             'rightsholder': f'urn:node:{id.upper()}',
 
@@ -120,9 +119,8 @@ class CommonHarvester(object):
 
         self.client_mgr = D1ClientManager(self.mn_base_url,
                                           certificate, private_key,
-                                          sys_meta_dict,
+                                          self.sys_meta_dict,
                                           self.logger)
-        self.format_id = 'http://www.isotc211.org/2005/gmd'
 
         self.jsonld_validator = JSONLD_Validator(logger=self.logger)
 
@@ -625,14 +623,13 @@ class CommonHarvester(object):
         sitemap_queue : asyncio.Queue
             Holds URLs and modification times retrieved from the sitemap.
         """
-        self.logger.debug(f'sitemap_consumer[{idx}]:')
         while True:
-            url, lastmod_time = await sitemap_queue.get()
-            msg = f'sitemap_consumer[{idx}] ==>  {url}, {lastmod_time}'
-            self.logger.debug(msg)
             try:
-                identifier, doc = await self.retrieve_record(url)
-                await self.process_record(identifier, doc, lastmod_time)
+                url, lastmod_time = await sitemap_queue.get()
+                msg = f'sitemap_consumer[{idx}] ==>  {url}, {lastmod_time}'
+                self.logger.debug(msg)
+
+                await self.process_record(url, lastmod_time)
 
             except asyncio.CancelledError:
                 self.logger.debug('CancelledError')
@@ -664,6 +661,51 @@ class CommonHarvester(object):
 
             sitemap_queue.task_done()
 
+    async def process_record(self, url, lastmod_time):
+        """
+        Now that we have the record, validate and harvest it.
+
+        Parameters
+        ----------
+        url : str
+            Landing page URL.
+        last_mod_time : datetime.datetime
+            Last document modification time according to the site map.
+        """
+        self.logger.debug(f'process_record:  starting')
+
+        identifier, doc = await self.retrieve_record(url)
+        self.validate_document(doc)
+        await self.harvest_document(identifier, doc, lastmod_time)
+
+        self.logger.debug(f'process_record:  finished')
+
+    def validate_document(self, doc):
+        """
+        Verify that the format ID we have for the document is correct.
+
+        Parameters
+        ----------
+        doc : bytes
+            serialized version of XML metadata document
+        """
+        format_id = self.sys_meta_dict['formatId_custom']
+        try:
+            d1_scimeta.validate.assert_valid(format_id, doc)
+        except Exception:
+            # Ok, so it did not validate against the default id.  Try to
+            # figure out another format id that works.
+            msg = f"Default validation failed with format ID {format_id}."
+            self.logger.info(msg)
+
+            validator = XMLValidator(logger=self.logger)
+            format_id = validator.validate(doc)
+            if format_id is None:
+                raise RuntimeError('Validation failed.')
+            else:
+                # Reset the format ID to the one that worked.
+                self.sys_meta_dict['formatId_custom'] = format_id
+
     async def retrieve_record(self, landing_page_url):
         """
         Read the remote document, extract the JSON-LD, and load it into the
@@ -685,33 +727,13 @@ class CommonHarvester(object):
         # Sometimes there is a space in the @id field.  Can't be having any of
         # that...
         identifier = self.extract_identifier(jsonld)
-        self.logger.debug(f"{DOI_IDENTIFIER_MSG}  {identifier}...")
+        self.logger.debug(f"Have extracted the identifier {identifier}...")
 
         # The SHACL checks should have verified that this is present and ok.
         metadata_url = jsonld['encoding']['contentUrl']
 
         doc = await self.retrieve_metadata_document(metadata_url)
         return identifier, doc
-
-    async def process_record(self, identifier, doc, last_mod_time):
-        """
-        Now that we have the record, validate and harvest it.
-
-        Parameters
-        ----------
-        identifier : str
-            Handle used to identify objects uniquely.
-        doc : bytes
-            serialized version of XML metadata document
-        last_mod_time : datetime.datetime
-            Last document modification time according to the site map.
-        """
-        self.logger.debug(f'process_record:  starting')
-
-        d1_scimeta.validate.assert_valid(self.format_id, doc)
-        await self.harvest_document(identifier, doc, last_mod_time)
-
-        self.logger.debug(f'process_record:  finished')
 
     async def process_sitemap(self, sitemap_url, last_harvest):
         """

@@ -190,6 +190,7 @@ class TestSuite(TestCommon):
 
             expected = "eml://ecoinformatics.org/eml-2.0.0"
             self.assertLogMessage(cm.output, expected, level='INFO')
+            self.assertErrorLogCallCount(cm.output, n=0)
 
     def test_local_eml_file(self):
         """
@@ -206,6 +207,7 @@ class TestSuite(TestCommon):
 
             expected = "eml://ecoinformatics.org/eml-2.1.1"
             self.assertLogMessage(cm.output, expected, level='INFO')
+            self.assertErrorLogCallCount(cm.output, n=0)
 
     def test_local_pangaea_file(self):
         """
@@ -224,6 +226,7 @@ class TestSuite(TestCommon):
             validator.validate(file)
 
             self.assertLogMessage(cm.output, expected, level='INFO')
+            self.assertErrorLogCallCount(cm.output, n=0)
 
     def test_local_dryad_v3p1(self):
         """
@@ -245,6 +248,7 @@ class TestSuite(TestCommon):
                 'http://purl.org/dryad/terms/'
             ]:
                 self.assertLogMessage(cm.output, expected, level='INFO')
+            self.assertErrorLogCallCount(cm.output, n=0)
 
     def test_local_gmd_noaa(self):
         """
@@ -267,6 +271,7 @@ class TestSuite(TestCommon):
 
             for item in expected:
                 self.assertLogMessage(cm.output, expected, level='INFO')
+            self.assertErrorLogCallCount(cm.output, n=0)
 
     def test_local_eml_v2p1p0(self):
         """
@@ -283,6 +288,7 @@ class TestSuite(TestCommon):
 
             expected = 'eml://ecoinformatics.org/eml-2.0.1'
             self.assertLogMessage(cm.output, expected, level='INFO')
+            self.assertErrorLogCallCount(cm.output, n=0)
 
     def test_local_onedcx_v1p0(self):
         """
@@ -301,6 +307,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=validator.logger, level='INFO') as cm:
             validator.validate(file)
             self.assertLogMessage(cm.output, expected, level='INFO')
+            self.assertErrorLogCallCount(cm.output, n=0)
 
     def test_local_oai_2p0_oai_dc(self):
         """
@@ -319,6 +326,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=validator.logger, level='INFO') as cm:
             validator.validate(file)
             self.assertLogMessage(cm.output, expected, level='INFO')
+            self.assertErrorLogCallCount(cm.output, n=0)
 
     def test__local_oai_2p0_oai_dc__specific_id(self):
         """
@@ -338,3 +346,4 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=validator.logger, level='INFO') as cm:
             validator.validate(file, format_id=expected)
             self.assertLogMessage(cm.output, expected, level='INFO')
+            self.assertErrorLogCallCount(cm.output, n=0)

@@ -243,19 +243,6 @@ class TestSuite(TestCommon):
             harvester.extract_identifier(jsonld)
 
     @patch('schema_org.core.logging.getLogger')
-    def test_identifier_parsing_error(self, mock_logger):
-        """
-        SCENARIO:  The JSON-LD @id field has an invalid identifier.
-
-        EXPECTED RESULT:  A RuntimeError is raised.
-        """
-        harvester = CommonHarvester()
-
-        with self.assertRaises(RuntimeError):
-            harvester.extract_identifier({'@id': 'djlfsdljfasl;'})
-            "urn:usap-dc:metadata:609582",
-
-    @patch('schema_org.core.logging.getLogger')
     def test_restrict_to_2_items_from_sitemap(self, mock_logger):
         """
         SCENARIO:  The sitemap lists 3 documents, but we have specified that
@@ -768,3 +755,35 @@ class TestSuite(TestCommon):
         json.dumps(j)
 
         self.assertTrue(True)
+
+    def test_eml_v200(self):
+        """
+        SCENARIO:   Attempt to validate against a local EML v2.0.0 file.
+
+        EXPECTED RESULT:  After validation, the formatID_custom field of the
+        sys_metadict is correct for EML v2.0.
+        """
+        content = ir.read_binary('tests.data.eml.v2p0p0', 'example.xml')
+        doc = lxml.etree.parse(io.BytesIO(content))
+
+        obj = CommonHarvester()
+        with self.assertLogs(logger=obj.logger, level='DEBUG'):
+            obj.validate_document(doc)
+
+        expected = "eml://ecoinformatics.org/eml-2.0.0"
+        self.assertEqual(obj.sys_meta_dict['formatId_custom'], expected)
+
+    def test_validate_fails(self):
+        """
+        SCENARIO:   An attempt to validate an ARM document with invalid XML is
+        provided.
+
+        EXPECTED RESULT:  An exception is issued.
+        """
+        content = ir.read_binary('tests.data.arm', 'nsaqcrad1longC2.c2.xml')
+        doc = lxml.etree.parse(io.BytesIO(content))
+
+        obj = CommonHarvester()
+        with self.assertLogs(logger=obj.logger, level='DEBUG'):
+            with self.assertRaises(RuntimeError):
+                obj.validate_document(doc)

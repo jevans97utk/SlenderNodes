@@ -13,21 +13,30 @@ import d1_scimeta.util
 class XMLValidator(object):
     """
     Validates XML files according to 19115-2 schema.
+
+    Attributes
+    ----------
+    logger : logging.Logger
+        All events are recorded by this object.
     """
-    def __init__(self, verbosity='INFO'):
+    def __init__(self, logger=None, verbosity='INFO'):
         """
         Load the 19115-2 schema so that every XML file produced is validated.
         """
-        self.setup_logging(verbosity)
+        self.setup_logging(verbosity=verbosity, logger=logger)
         self.session = requests.Session()
 
-    def setup_logging(self, verbosity):
+    def setup_logging(self, verbosity='INFO', logger=None):
         """
         Parameters
         ----------
         verbosity : str
             Level of logging verbosity.
         """
+        if logger is not None:
+            self.logger = logger
+            return
+
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         level = getattr(logging, verbosity)
         logging.basicConfig(format=format, level=level)
@@ -70,6 +79,7 @@ class XMLValidator(object):
             self.logger.info(f'Running validation against all format IDs.')
             format_ids = d1_scimeta.util.get_supported_format_id_list()
 
+        working_format_id = None
         for format_id_item in format_ids:
             try:
                 d1_scimeta.validate.assert_valid(format_id_item, doc)
@@ -77,19 +87,21 @@ class XMLValidator(object):
                 pass
             else:
                 # Ok, the current format ID worked.  We're good.
+                working_format_id = format_id_item
                 msg = f"Validated against {format_id_item}"
                 self.logger.info(msg)
 
         # If we are here, then none of the IDs have worked.  We will try again
         # with the default ID and let that error message speak for itself.
-        if format_id is None:
-            format_id = 'http://www.isotc211.org/2005/gmd'
-        try:
-            d1_scimeta.validate.assert_valid(format_id, doc)
-        except Exception as e:
-            self.logger.debug(repr(e))
-            self.logger.error(e)
-            return
+        if working_format_id is None:
+            id = 'http://www.isotc211.org/2005/gmd'
+            try:
+                d1_scimeta.validate.assert_valid(id, doc)
+            except Exception as e:
+                self.logger.debug(repr(e))
+                self.logger.error(e)
+
+        return working_format_id
 
     def build_document_out_of_source(self, src):
         """
