@@ -724,12 +724,9 @@ class CommonHarvester(object):
         jsonld = self.extract_jsonld(doc)
         self.jsonld_validator.check(jsonld)
 
-        # Sometimes there is a space in the @id field.  Can't be having any of
-        # that...
         identifier = self.extract_identifier(jsonld)
         self.logger.debug(f"Have extracted the identifier {identifier}...")
 
-        # The SHACL checks should have verified that this is present and ok.
         metadata_url = jsonld['encoding']['contentUrl']
 
         doc = await self.retrieve_metadata_document(metadata_url)
