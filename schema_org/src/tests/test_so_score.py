@@ -17,7 +17,7 @@ import dateutil.parser
 import lxml.etree
 
 # local imports
-from schema_org.core import CommonHarvester
+from schema_org.so_core import SchemaDotOrgHarvester
 from schema_org.core import SITEMAP_RETRIEVAL_FAILURE_MESSAGE
 from .test_common import TestCommon
 
@@ -42,7 +42,7 @@ class TestSuite(TestCommon):
                               'nsaqcrad1longC2.c2.fixed.html')
         doc = lxml.etree.HTML(text)
 
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         j = harvester.extract_jsonld(doc)
         self.assertEqual(j['@type'], 'Dataset')
 
@@ -58,7 +58,7 @@ class TestSuite(TestCommon):
                               'nsaqcrad1longC2.c2.swapped_scripts.html')
         doc = lxml.etree.HTML(text)
 
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         j = harvester.extract_jsonld(doc)
         self.assertEqual(j['@type'], 'Dataset')
 
@@ -71,7 +71,7 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  The ID "10.5439/1027257" is returned.
         """
         jsonld = {'@id': 'http://dx.doi.org/10.5439/1027257'}
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         identifier = harvester.extract_identifier(jsonld)
 
         self.assertEqual(identifier, '10.5439/1027257')
@@ -85,7 +85,7 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  A RuntimeError is raised.
         """
         jsonld = {'@id': 'http://dx.doi.orggg/10.5439/1027257'}
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
 
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier(jsonld)
@@ -108,7 +108,7 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = True
 
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
 
         # External calls to read the:
         #
@@ -156,7 +156,7 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = True
 
-        harvester = CommonHarvester(host='test.arm.gov')
+        harvester = SchemaDotOrgHarvester(host='test.arm.gov')
 
         # External calls to read the:
         #
@@ -203,7 +203,7 @@ class TestSuite(TestCommon):
 
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
 
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         failed_count = harvester.failed_count
 
         # External calls to read the:
@@ -237,7 +237,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  RuntimeError
         """
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         jsonld = {'@id': " doi:10.15784/601015"}
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier(jsonld)
@@ -251,7 +251,7 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  The list of documents retrieve has length 2.
         """
 
-        harvester = CommonHarvester(num_documents=2)
+        harvester = SchemaDotOrgHarvester(num_documents=2)
 
         content = ir.read_binary('tests.data.ieda', 'sitemap3.xml')
         doc = lxml.etree.parse(io.BytesIO(content))
@@ -270,7 +270,7 @@ class TestSuite(TestCommon):
         setting of 4 has no effect.
         """
 
-        harvester = CommonHarvester(num_documents=4)
+        harvester = SchemaDotOrgHarvester(num_documents=4)
 
         content = ir.read_binary('tests.data.ieda', 'sitemap3.xml')
         doc = lxml.etree.parse(io.BytesIO(content))
@@ -289,7 +289,7 @@ class TestSuite(TestCommon):
         """
 
         url = self.pattern + '/600121iso.xml'
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
 
         content = ir.read_binary('tests.data.ieda', '600121iso.xml')
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
@@ -311,7 +311,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  An HTTPError is raised.
         """
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
 
         url = 'http://get.iedadata.org/600121iso.xml'
 
@@ -327,7 +327,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  An exception is issued.
         """
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
 
         text = ir.read_text('tests.data.ieda', '600165.fixed.html')
         doc = lxml.etree.HTML(text)
@@ -343,7 +343,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  An exception is raised.
         """
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         text = ir.read_text('tests.data.ieda', '601015-truncated.html')
         doc = lxml.etree.HTML(text)
 
@@ -357,7 +357,7 @@ class TestSuite(TestCommon):
 
         EXPECTED RESULT:  An exception is issued.
         """
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         text = ir.read_text('tests.data.ieda', '601015.fixed.html')
         doc = lxml.etree.HTML(text)
 
@@ -372,7 +372,7 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  A requests HTTPError is raised and the exception is
         logged.
         """
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
 
         aioresp_mocker.get(self.regex, status=500)
 
@@ -397,7 +397,7 @@ class TestSuite(TestCommon):
         count increases by one.
         """
         host, port = 'ieda.mn.org', 443
-        harvester = CommonHarvester(host=host, port=port)
+        harvester = SchemaDotOrgHarvester(host=host, port=port)
 
         # This is the existing document in the MN.  It is marked as complete.
         existing_content = ir.read_binary('tests.data.ieda', '600121iso.xml')
@@ -410,7 +410,7 @@ class TestSuite(TestCommon):
         }
         mock_update_science_metadata.return_value = True
 
-        harvester = CommonHarvester(host=host, port=port)
+        harvester = SchemaDotOrgHarvester(host=host, port=port)
         update_count = harvester.updated_count
 
         # This is the "update" document, same as the existing document.  It is
@@ -448,7 +448,7 @@ class TestSuite(TestCommon):
         logged at the warning level.
         """
         host, port = 'ieda.mn.org', 443
-        harvester = CommonHarvester(host=host, port=port)
+        harvester = SchemaDotOrgHarvester(host=host, port=port)
 
         # This is the existing document in the MN.  It is requested by the
         # update check, and it is marked as complete.
@@ -462,7 +462,7 @@ class TestSuite(TestCommon):
         }
         mock_update_science_metadata.return_value = False
 
-        harvester = CommonHarvester(host=host, port=port)
+        harvester = SchemaDotOrgHarvester(host=host, port=port)
         initial_failed_count = harvester.failed_count
 
         # Read a document that is the same except it has a later metadata
@@ -521,7 +521,7 @@ class TestSuite(TestCommon):
         mock_update_science_metadata.return_value = True
 
         host, port = 'ieda.mn.org', 443
-        harvester = CommonHarvester(host=host, port=port)
+        harvester = SchemaDotOrgHarvester(host=host, port=port)
         initial_updated_count = harvester.updated_count
 
         doi = 'doi.10000/abcde'
@@ -565,7 +565,7 @@ class TestSuite(TestCommon):
         mock_update_science_metadata.return_value = False
 
         host, port = 'ieda.mn.org', 443
-        harvester = CommonHarvester(host=host, port=port)
+        harvester = SchemaDotOrgHarvester(host=host, port=port)
 
         initial_rejected_count = harvester.rejected_count
 
@@ -609,7 +609,7 @@ class TestSuite(TestCommon):
         }
         mock_update_science_metadata.return_value = False
 
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         skipped_count = harvester.skipped_exists_count
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
@@ -640,7 +640,7 @@ class TestSuite(TestCommon):
             'outcome': 'failed',
         }
 
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
@@ -670,7 +670,7 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = True
 
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
@@ -699,7 +699,7 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = False
 
-        harvester = CommonHarvester()
+        harvester = SchemaDotOrgHarvester()
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
@@ -725,7 +725,7 @@ class TestSuite(TestCommon):
         last_harvest_time_str = '1900-01-01T00:00:00Z'
         last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
 
-        obj = CommonHarvester()
+        obj = SchemaDotOrgHarvester()
 
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
             records = obj.extract_records_from_sitemap(doc, last_harvest_time)
@@ -747,7 +747,7 @@ class TestSuite(TestCommon):
         text = ir.read_text(package, 'landing_page.html')
         doc = lxml.etree.HTML(text)
 
-        obj = CommonHarvester()
+        obj = SchemaDotOrgHarvester()
 
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
             j = obj.extract_jsonld(doc)
@@ -766,7 +766,7 @@ class TestSuite(TestCommon):
         content = ir.read_binary('tests.data.eml.v2p0p0', 'example.xml')
         doc = lxml.etree.parse(io.BytesIO(content))
 
-        obj = CommonHarvester()
+        obj = SchemaDotOrgHarvester()
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
             obj.validate_document(doc)
 
@@ -783,7 +783,7 @@ class TestSuite(TestCommon):
         content = ir.read_binary('tests.data.arm', 'nsaqcrad1longC2.c2.xml')
         doc = lxml.etree.parse(io.BytesIO(content))
 
-        obj = CommonHarvester()
+        obj = SchemaDotOrgHarvester()
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
             with self.assertRaises(RuntimeError):
                 obj.validate_document(doc)

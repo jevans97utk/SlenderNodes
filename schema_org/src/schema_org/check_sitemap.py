@@ -3,10 +3,10 @@
 # 3rd party library imports
 
 # local imports
-from .core import CommonHarvester
+from .so_core import SchemaDotOrgHarvester
 
 
-class D1CheckSitemap(CommonHarvester):
+class D1CheckSitemap(SchemaDotOrgHarvester):
     """
     Front end to validate a remote sitemap.
     """

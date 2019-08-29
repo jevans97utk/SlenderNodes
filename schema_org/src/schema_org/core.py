@@ -6,9 +6,7 @@ DATAONE SO core for multiple adaptors.
 import asyncio
 import gzip
 import io
-import json
 import logging
-import re
 import sys
 import urllib.parse
 
@@ -21,7 +19,6 @@ import d1_scimeta.validate
 
 # Local imports
 from .d1_client_manager import D1ClientManager
-from .jsonld_validator import JSONLD_Validator
 from .xml_validator import XMLValidator
 
 SITEMAP_RETRIEVAL_FAILURE_MESSAGE = 'Failed to retrieve the site map.'
@@ -41,7 +38,7 @@ ISO_NSMAP = {
 SITEMAP_NS = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
 
 
-class CommonHarvester(object):
+class CoreHarvester(object):
     """
     Attributes
     ----------
@@ -53,8 +50,6 @@ class CommonHarvester(object):
         Counters for the different ways that records are handled.  "failed" is
         different from "rejected" in the sense that this code knows why a
         rejection occurs.
-    jsonld_validator : obj
-        Run conformance checks on the JSON-LD extracted from a site page.
     logger : logging.Logger
         All events are recorded by this object.
     max_num_errors : int
@@ -71,8 +66,6 @@ class CommonHarvester(object):
         1, then it is essentially synchronous.
     session : requests.sessions.Session
         Makes all URL requests.
-    site_map : str
-        URL for XML site map.  This must be overridden for each custom client.
     sys_meta_dict : dict
         A dict containing node-specific system metadata properties that
         will apply to all science metadata documents loaded into GMN.
@@ -122,8 +115,6 @@ class CommonHarvester(object):
                                           self.sys_meta_dict,
                                           self.logger)
 
-        self.jsonld_validator = JSONLD_Validator(logger=self.logger)
-
         # Count the different ways that we update/create/skip records.  This
         # will be logged when we are finished.
         self.created_count = 0
@@ -139,8 +130,6 @@ class CommonHarvester(object):
         self.num_workers = num_workers
 
         self.max_num_errors = max_num_errors
-
-        self.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
 
         requests.packages.urllib3.disable_warnings()
 
@@ -194,43 +183,6 @@ class CommonHarvester(object):
         sh = logging.StreamHandler(sys.stdout)
         sh.setFormatter(formatter)
         self.logger.addHandler(sh)
-
-    def extract_jsonld(self, doc):
-        """
-        Extract JSON-LD from HTML document.
-
-        What we hope for is that:
-            1) jsonld['distribution'][0]['name'] = 'ISO Metadata Document'
-            2) jsonld['distribution'][0]['url'] is the XML url
-            3) jsonld['distribution'][1]['name'] = 'landing page'
-
-        Parameters
-        ----------
-        doc : ElementTree
-            The parsed HTML.  The JSON-LD should be embedded within a
-            <SCRIPT> element embedded in the <HEAD> element.
-        """
-        self.logger.debug('extract_jsonld:')
-        path = './/script[@type="application/ld+json"]'
-        scripts = doc.xpath(path)
-        if len(scripts) == 0:
-            raise RuntimeError(NO_JSON_LD_SCRIPT_ELEMENTS)
-
-        jsonld = None
-        for script in scripts:
-
-            j = json.loads(script.text)
-            if '@type' in j and j['@type'] == 'Dataset':
-                jsonld = j
-
-        if jsonld is None:
-            msg = (
-                "Could not locate a JSON-LD <SCRIPT> element with @type "
-                "\"Dataset\"."
-            )
-            raise RuntimeError(msg)
-
-        return jsonld
 
     def get_last_harvest_time(self):
 
@@ -493,39 +445,6 @@ class CommonHarvester(object):
         self.logger.info(msg)
         return records
 
-    def extract_identifier(self, jsonld):
-        """
-        Parse the DOI from the json['@id'] value.  The identifiers should
-        look something like
-
-            'https://dx.doi.org/10.5439/1025173
-
-        The DOI in this case would be '10.5439/1025173'.  This will be used as
-        the series identifier.
-
-        Parameters
-        ----------
-        JSON-LD obj
-
-        Returns
-        -------
-        The identifier substring.
-        """
-        pattern = r'''
-                  # DOI:prefix/suffix - ARM style
-                  (https?://dx.doi.org/(?P<doi>10\.\w+/\w+))
-                  '''
-        regex = re.compile(pattern, re.VERBOSE)
-        m = regex.search(jsonld['@id'])
-        if m is None:
-            msg = (
-                f"DOI ID parsing error, could not parse an ID out of "
-                f"JSON-LD '@id' element \"{jsonld['@id']}\""
-            )
-            raise RuntimeError(msg)
-
-        return m.group('doi')
-
     async def retrieve_url(self, url, headers=None, check_xml_headers=False):
         """
         Parameters
@@ -760,44 +679,6 @@ class CommonHarvester(object):
 
             self.logger.debug("It is a sitemap leaf.")
             await self.process_sitemap_leaf(doc, last_harvest)
-
-    async def process_sitemap_leaf(self, doc, last_harvest):
-        """
-        We are at a sitemap leaf, i.e. the sitemap does not reference other
-        sitemaps.  This is where we can retrieve landing pages instead of
-        other sitemaps.
-
-        Parameters
-        ----------
-        doc : ElementTree object
-            Describes the sitemap leaf.
-        last_harvest : datetime
-            According to the MN, this is the last time we, uh, harvested any
-            document.
-        """
-        self.logger.debug(f'process_sitemap_leaf:')
-
-        sitemap_queue = asyncio.Queue()
-
-        records = self.extract_records_from_sitemap(doc, last_harvest)
-        for url, lastmod_time in records:
-            sitemap_queue.put_nowait((url, lastmod_time))
-
-        # Create the worker tasks to consume the URLs
-        tasks = []
-        for j in range(self.num_workers):
-            msg = (
-                f'process_sitemap_leaf: create task for sitemap_consumer[{j}]'
-            )
-            self.logger.debug(msg)
-            task = asyncio.create_task(self.consume_sitemap(j, sitemap_queue))
-            tasks.append(task)
-        await sitemap_queue.join()
-
-        # Cancel any remaining tasks.
-        for task in tasks:
-            task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
 
     async def get_sitemap_document(self, sitemap_url):
         """

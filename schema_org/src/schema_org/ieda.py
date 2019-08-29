@@ -5,10 +5,10 @@ DATAONE adapter for IEDA
 import re
 
 # Local imports
-from .core import CommonHarvester
+from .so_core import SchemaDotOrgHarvester
 
 
-class IEDAHarvester(CommonHarvester):
+class IEDAHarvester(SchemaDotOrgHarvester):
 
     site_map = 'http://get.iedadata.org/sitemaps/usap_sitemap.xml'
 

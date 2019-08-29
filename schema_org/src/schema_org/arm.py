@@ -5,12 +5,12 @@ DATAONE adapter for ARM
 # Standard library imports
 
 # Local imports
-from .core import CommonHarvester
+from .so_core import SchemaDotOrgHarvester
 
 SITE_NSMAP = {'sitemap': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
 
 
-class ARMHarvester(CommonHarvester):
+class ARMHarvester(SchemaDotOrgHarvester):
 
     def __init__(self, **kwargs):
         super().__init__(id='arm', **kwargs)
