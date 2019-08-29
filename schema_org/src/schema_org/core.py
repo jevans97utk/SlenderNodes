@@ -561,11 +561,8 @@ class CoreHarvester(object):
             except SkipError as e:
                 # Don't count this as an error.  CUAHSI documents don't all
                 # have SO JSON-LD.
-                msg = (
-                    f"Skipping {url} due to \"{repr(e)}\" because that may "
-                    f"be ok."
-                )
-                self.logger.warn(msg)
+                msg = f"Skipping {url} due to \"{repr(e)}\"."
+                self.logger.warning(msg)
                 self.skipped_exists_count += 1
 
             except Exception as e:

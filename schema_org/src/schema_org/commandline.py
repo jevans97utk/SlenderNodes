@@ -143,7 +143,8 @@ def cuahsi():
                                 certificate=args.certificate,
                                 private_key=args.key,
                                 num_documents=args.num_documents,
-                                num_workers=args.num_workers)
+                                num_workers=args.num_workers,
+                                max_num_errors=args.max_num_errors)
     asyncio.run(harvester.run())
 
 
