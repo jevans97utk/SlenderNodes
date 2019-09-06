@@ -3,9 +3,10 @@ DATAONE adapter for CUAHSI
 """
 
 # Standard library imports
+import json
 
 # Local imports
-from .so_core import SchemaDotOrgHarvester
+from .so_core import SchemaDotOrgHarvester, NO_JSON_LD_SCRIPT_ELEMENTS
 from .core import SkipError
 
 SITE_NSMAP = {'sitemap': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
@@ -47,11 +48,6 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
     def extract_jsonld(self, doc):
         """
         Extract JSON-LD from HTML document.
-
-        What we hope for is that:
-            1) jsonld['distribution'][0]['name'] = 'ISO Metadata Document'
-            2) jsonld['distribution'][0]['url'] is the XML url
-            3) jsonld['distribution'][1]['name'] = 'landing page'
 
         Parameters
         ----------
