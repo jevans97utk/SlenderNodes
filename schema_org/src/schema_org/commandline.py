@@ -51,6 +51,12 @@ def setup_parser(id):
     parser.add_argument('--num-documents', type=int, default=-1, help=help)
 
     help = (
+        "Limit documents retrieved to those that match this regular "
+        "expression."
+    )
+    parser.add_argument('--regex', help=help)
+
+    help = (
         "Limit number of workers operating asynchronously to this number. "
     )
     parser.add_argument('--num-workers', type=int, default=1, help=help)
@@ -138,13 +144,16 @@ def cuahsi():
     parser = setup_parser("cuahsi")
     args = parser.parse_args()
 
-    harvester = CUAHSIHarvester(host=args.host, port=args.port,
-                                verbosity=args.verbose,
-                                certificate=args.certificate,
-                                private_key=args.key,
-                                num_documents=args.num_documents,
-                                num_workers=args.num_workers,
-                                max_num_errors=args.max_num_errors)
+    harvester = CUAHSIHarvester(
+        host=args.host, port=args.port,
+        verbosity=args.verbose,
+        certificate=args.certificate,
+        private_key=args.key,
+        num_documents=args.num_documents,
+        num_workers=args.num_workers,
+        max_num_errors=args.max_num_errors,
+        regex=args.regex
+    )
     asyncio.run(harvester.run())
 
 

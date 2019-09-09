@@ -7,6 +7,7 @@ import asyncio
 import gzip
 import io
 import logging
+import re
 import sys
 import urllib.parse
 
@@ -68,6 +69,9 @@ class CoreHarvester(object):
     num_workers : int
         Limit number of workers operating asynchronously to this number.  If
         1, then it is essentially synchronous.
+    regex : str
+        If not None, restrict documents to those that match this regular
+        expression.
     session : requests.sessions.Session
         Makes all URL requests.
     sys_meta_dict : dict
@@ -77,7 +81,8 @@ class CoreHarvester(object):
 
     def __init__(self, host=None, port=None, certificate=None,
                  private_key=None, verbosity='INFO', id='none',
-                 num_documents=-1, num_workers=1, max_num_errors=3):
+                 num_documents=-1, num_workers=1, max_num_errors=3,
+                 regex=None):
         """
         Parameters
         ----------
@@ -124,7 +129,9 @@ class CoreHarvester(object):
         self.created_count = 0
         self.failed_count = 0
         self.rejected_count = 0
+        self.skipped_count = 0
         self.skipped_exists_count = 0
+        self.asyncio_aiohttp_error = 0
         self.updated_count = 0
         self.processed_count = 0
 
@@ -134,6 +141,8 @@ class CoreHarvester(object):
         self.num_workers = num_workers
 
         self.max_num_errors = max_num_errors
+
+        self.regex = re.compile(regex) if regex is not None else None
 
         requests.packages.urllib3.disable_warnings()
 
@@ -204,7 +213,9 @@ class CoreHarvester(object):
 
         self.logger.info(f'Created {self.created_count} new records.')
         self.logger.info(f'Updated {self.updated_count} records.')
-        self.logger.info(f'Skipped {self.skipped_exists_count} records.')
+        self.logger.info(f'Skipped {self.skipped_exists_count} records without updating.')
+        self.logger.info(f'Skipped {self.skipped_count} records before trying to harvest.')
+        self.logger.info(f'Skipped {self.asyncio_aiohttp_error} records due to asyncio/aiohttp errors.')
         self.logger.info(f'Rejected {self.rejected_count} records.')
         self.logger.info(f'Failed to update/create {self.failed_count} records.')  # noqa: E501
 
@@ -437,6 +448,18 @@ class CoreHarvester(object):
         )
         self.logger.info(msg)
 
+        # Further restrict by regex if so specified.
+        if self.regex is not None:
+            nrecs = len(records)
+            records = [
+                (url, lastmod) for url, lastmod in records
+                if self.regex.search(url)
+            ]
+            num_skipped = nrecs - len(records)
+            msg = f"{num_skipped} records skipped due to regex restriction."
+            self.logger.info(msg)
+
+        # Check that we do not exceed the maximum number of documents.
         self.num_records_processed += len(records)
         if (
             self.num_records_processed > self.num_documents
@@ -563,7 +586,7 @@ class CoreHarvester(object):
                 # have SO JSON-LD.
                 msg = f"Skipping {url} due to \"{repr(e)}\"."
                 self.logger.warning(msg)
-                self.skipped_exists_count += 1
+                self.skipped_count += 1
 
             except Exception as e:
                 self.failed_count += 1

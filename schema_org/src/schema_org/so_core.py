@@ -9,13 +9,15 @@ import io
 import json
 import re
 import urllib.parse
+import zipfile
 
 # 3rd party library imports
+import aiohttp
 import dateutil.parser
 import lxml.etree
 
 # Local imports
-from .core import CoreHarvester
+from .core import CoreHarvester, SkipError
 from .jsonld_validator import JSONLD_Validator
 
 SITEMAP_RETRIEVAL_FAILURE_MESSAGE = 'Failed to retrieve the site map.'
@@ -134,6 +136,17 @@ class SchemaDotOrgHarvester(CoreHarvester):
         )
         self.logger.info(msg)
 
+        # Further restrict by regex if so specified.
+        if self.regex is not None:
+            nrecs = len(records)
+            records = [
+                (url, lastmod) for url, lastmod in records
+                if self.regex.search(url)
+            ]
+            num_skipped = nrecs - len(records)
+            msg = f"{num_skipped} records skipped due to regex restriction."
+            self.logger.info(msg)
+
         self.num_records_processed += len(records)
         if (
             self.num_records_processed > self.num_documents
@@ -202,6 +215,16 @@ class SchemaDotOrgHarvester(CoreHarvester):
             except asyncio.CancelledError:
                 self.logger.debug('CancelledError')
                 break
+
+            except (asyncio.TimeoutError, aiohttp.ClientPayloadError, aiohttp.ClientResponseError, zipfile.BadZipFile) as e:
+                msg =  f"Unable to process {url} due to \"{e}\"."
+                self.logger.warning(msg)
+                self.asyncio_aiohttp_error += 1
+
+            except SkipError as e:
+                msg =  f"Unable to process {url} due to \"{e}\"."
+                self.logger.warning(msg)
+                self.skipped_count += 1
 
             except Exception as e:
                 self.failed_count += 1
