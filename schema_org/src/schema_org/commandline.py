@@ -29,7 +29,7 @@ def setup_parser(id):
 
     help = f"Verbosity level of log file {id}.log"
     choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-    parser.add_argument('-v', '--verbose', choices=choices, default='INFO',
+    parser.add_argument('-v', '--verbosity', choices=choices, default='INFO',
                         help=help)
 
     help = (
@@ -45,7 +45,7 @@ def setup_parser(id):
     parser.add_argument('--certificate', default=None, help=help)
 
     help = 'Path to dataone host private key.'
-    parser.add_argument('--key', default=None, help=help)
+    parser.add_argument('--private-key', default=None, help=help)
 
     help = "Limit number of documents retrieved to this number."
     parser.add_argument('--num-documents', type=int, default=-1, help=help)
@@ -130,13 +130,7 @@ def arm():
     parser = setup_parser("arm")
     args = parser.parse_args()
 
-    arm_harvester = ARMHarvester(host=args.host, port=args.port,
-                                 verbosity=args.verbose,
-                                 certificate=args.certificate,
-                                 private_key=args.key,
-                                 num_documents=args.num_documents,
-                                 num_workers=args.num_workers,
-                                 max_num_errors=args.max_num_errors)
+    arm_harvester = ARMHarvester(**args.__dict__)
     asyncio.run(arm_harvester.run())
 
 
@@ -144,16 +138,7 @@ def cuahsi():
     parser = setup_parser("cuahsi")
     args = parser.parse_args()
 
-    harvester = CUAHSIHarvester(
-        host=args.host, port=args.port,
-        verbosity=args.verbose,
-        certificate=args.certificate,
-        private_key=args.key,
-        num_documents=args.num_documents,
-        num_workers=args.num_workers,
-        max_num_errors=args.max_num_errors,
-        regex=args.regex
-    )
+    harvester = CUAHSIHarvester(**args.__dict__)
     asyncio.run(harvester.run())
 
 
@@ -161,13 +146,7 @@ def ieda():
     parser = setup_parser("ieda")
     args = parser.parse_args()
 
-    ieda_harvester = IEDAHarvester(host=args.host, port=args.port,
-                                   verbosity=args.verbose,
-                                   certificate=args.certificate,
-                                   private_key=args.key,
-                                   num_documents=args.num_documents,
-                                   num_workers=args.num_workers,
-                                   max_num_errors=args.max_num_errors)
+    ieda_harvester = IEDAHarvester(**args.__dict__)
     asyncio.run(ieda_harvester.run())
 
 

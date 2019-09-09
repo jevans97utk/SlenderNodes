@@ -13,7 +13,6 @@ from unittest.mock import patch
 # 3rd party library imports
 import aiohttp
 from aioresponses import aioresponses
-import dateutil.parser
 import lxml.etree
 
 # local imports
@@ -109,6 +108,7 @@ class TestSuite(TestCommon):
         mock_load_science_metadata.return_value = True
 
         harvester = SchemaDotOrgHarvester()
+        harvester.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
 
         # External calls to read the:
         #
@@ -157,6 +157,7 @@ class TestSuite(TestCommon):
         mock_load_science_metadata.return_value = True
 
         harvester = SchemaDotOrgHarvester(host='test.arm.gov')
+        harvester.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
 
         # External calls to read the:
         #
@@ -204,7 +205,9 @@ class TestSuite(TestCommon):
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
 
         harvester = SchemaDotOrgHarvester()
-        asyncio_aiohttp_warning_count = harvester.asyncio_aiohttp_warning_count
+        harvester.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
+
+        failed_count = harvester.failed_count
 
         # External calls to read the:
         #
@@ -226,11 +229,10 @@ class TestSuite(TestCommon):
             with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
                 asyncio.run(harvester.run())
 
-                self.assertWarningLogMessage(cm.output,
-                                             "400, message='Bad Request'")
+                self.assertErrorLogMessage(cm.output,
+                                           "400, message='Bad Request'")
 
-        self.assertEqual(harvester.asyncio_aiohttp_warning_count,
-                         asyncio_aiohttp_warning_count + 1)
+        self.assertEqual(harvester.failed_count, failed_count + 1)
 
     def test_identifier_parsing_error__space(self):
         """
@@ -243,43 +245,6 @@ class TestSuite(TestCommon):
         jsonld = {'@id': " doi:10.15784/601015"}
         with self.assertRaises(RuntimeError):
             harvester.extract_identifier(jsonld)
-
-    @patch('schema_org.core.logging.getLogger')
-    def test_restrict_to_2_items_from_sitemap(self, mock_logger):
-        """
-        SCENARIO:  The sitemap lists 3 documents, but we have specified that
-        only 2 are to be processed.
-
-        EXPECTED RESULT:  The list of documents retrieve has length 2.
-        """
-
-        harvester = SchemaDotOrgHarvester(num_documents=2)
-
-        content = ir.read_binary('tests.data.ieda', 'sitemap3.xml')
-        doc = lxml.etree.parse(io.BytesIO(content))
-        last_harvest = dateutil.parser.parse('1900-01-01T00:00:00Z')
-
-        records = harvester.extract_records_from_sitemap(doc, last_harvest)
-        self.assertEqual(len(records), 2)
-
-    @patch('schema_org.core.logging.getLogger')
-    def test_sitemap_num_docs_restriction_does_not_apply(self, mock_logger):
-        """
-        SCENARIO:  The sitemap lists 3 documents, but we have specified that
-        4 are to be processed.
-
-        EXPECTED RESULT:  The list of documents retrieve has length 3.  The
-        setting of 4 has no effect.
-        """
-
-        harvester = SchemaDotOrgHarvester(num_documents=4)
-
-        content = ir.read_binary('tests.data.ieda', 'sitemap3.xml')
-        doc = lxml.etree.parse(io.BytesIO(content))
-        last_harvest = dateutil.parser.parse('1900-01-01T00:00:00Z')
-
-        records = harvester.extract_records_from_sitemap(doc, last_harvest)
-        self.assertEqual(len(records), 3)
 
     def test_metadata_document_retrieval(self):
         """
@@ -710,28 +675,6 @@ class TestSuite(TestCommon):
                                                dt.datetime.now()))
 
         harvester.logger.error.assert_called_once()
-
-    def test_no_lastmod_time_in_sitemap_leaf(self):
-        """
-        SCENARIO:  A sitemap leaf XML file has <loc> entries, but no <lastmod>
-        entries.  In this case, we should look to the lastModified field in the
-        JSON-LD for guidance.
-
-        CUAHSI has no <lastmod> entries in their sitemap.
-
-        EXPECTED RESULT:  The entries in the sitemap are NOT skipped.
-        """
-        content = ir.read_binary('tests.data.cuahsi', 'sitemap-pages.xml')
-        doc = lxml.etree.parse(io.BytesIO(content))
-
-        last_harvest_time_str = '1900-01-01T00:00:00Z'
-        last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
-
-        obj = SchemaDotOrgHarvester()
-
-        with self.assertLogs(logger=obj.logger, level='DEBUG'):
-            records = obj.extract_records_from_sitemap(doc, last_harvest_time)
-        self.assertEqual(len(records), 3)
 
     def test_jsonld_script_found_in_body_rather_than_head(self):
         """

@@ -1,5 +1,4 @@
 # standard library imports
-import asyncio
 import importlib.resources as ir
 import re
 
@@ -8,7 +7,7 @@ from aioresponses import aioresponses
 import lxml.etree
 
 # local imports
-from schema_org.core import NO_JSON_LD_SCRIPT_ELEMENTS, SkipError
+from schema_org.core import SkipError
 from schema_org.cuahsi import CUAHSIHarvester
 from .test_common import TestCommon
 
@@ -35,6 +34,6 @@ class TestSuite(TestCommon):
 
         obj = CUAHSIHarvester()
 
-        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
+        with self.assertLogs(logger=obj.logger, level='DEBUG'):
             with self.assertRaises(SkipError):
                 obj.extract_jsonld(doc)

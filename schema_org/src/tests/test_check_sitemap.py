@@ -77,8 +77,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertWarningLogMessage(cm.output,
-                                         'aiohttp.ClientResponseError')
+            self.assertErrorLogMessage(cm.output, "400, message='Bad Request'")
             self.assertSuccessfulDebugIngest(cm.output)
 
     @unittest.skip('Revisit skiperror')
@@ -238,8 +237,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertWarningLogMessage(cm.output,
-                                         "400, message='Bad Request'")
+            self.assertErrorLogMessage(cm.output, "400, message='Bad Request'")
             self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()

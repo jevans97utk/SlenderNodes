@@ -7,8 +7,6 @@ DATAONE adapter for ARM
 # Local imports
 from .so_core import SchemaDotOrgHarvester
 
-SITE_NSMAP = {'sitemap': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
-
 
 class ARMHarvester(SchemaDotOrgHarvester):
 

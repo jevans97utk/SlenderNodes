@@ -89,7 +89,7 @@ class CoreHarvester(object):
         host, port : str, int
             This fully identifies the DataONE host and port number where we
             will be sending metadata records.
-        certificate, key : str or path or None
+        certificate, private_key : str or path or None
             Paths to client side certificates.  None if no verification is
             desired.
         max_num_errors : int
@@ -131,7 +131,6 @@ class CoreHarvester(object):
         self.rejected_count = 0
         self.skipped_count = 0
         self.skipped_exists_count = 0
-        self.asyncio_aiohttp_warning_count = 0
         self.updated_count = 0
         self.processed_count = 0
 
@@ -213,9 +212,17 @@ class CoreHarvester(object):
 
         self.logger.info(f'Created {self.created_count} new records.')
         self.logger.info(f'Updated {self.updated_count} records.')
-        self.logger.info(f'Skipped {self.skipped_exists_count} records without updating.')
-        self.logger.info(f'Skipped {self.skipped_count} records before trying to harvest.')
-        self.logger.info(f'Skipped {self.asyncio_aiohttp_warning_count} records due to asyncio/aiohttp errors.')
+
+        msg = (
+            f'Skipped {self.skipped_exists_count} records without updating.'
+        )
+        self.logger.info(msg)
+
+        msg = (
+            f'Skipped {self.skipped_count} records before trying to harvest.'
+        )
+        self.logger.info(msg)
+
         self.logger.info(f'Rejected {self.rejected_count} records.')
         self.logger.info(f'Failed to update/create {self.failed_count} records.')  # noqa: E501
 
@@ -336,6 +343,9 @@ class CoreHarvester(object):
 
         This code MAY break in production.
         """
+        if self.sys_meta_dict['formatId_custom'] != 'http://www.isotc211.org/2005/gmd':  # noqa:  E501
+            return True
+
         new_doc = lxml.etree.parse(io.BytesIO(new_doc_bytes))
 
         url = f"{self.mn_base_url}/v2/object/{existing_sid}"
@@ -584,9 +594,18 @@ class CoreHarvester(object):
             except SkipError as e:
                 # Don't count this as an error.  CUAHSI documents don't all
                 # have SO JSON-LD.
-                msg = f"Skipping {url} due to \"{repr(e)}\"."
+                msg = f"Skipping {url}:  {repr(e)}."
                 self.logger.warning(msg)
                 self.skipped_count += 1
+
+            except RuntimeError as e:
+                self.failed_count += 1
+                msg = f"RuntimeError:  Unable to process {url} due to \"{e}\"."
+                self.logger.error(msg)
+
+                if self.failed_count == self.max_num_errors:
+                    self.logger.warning("Error threshold reached.")
+                    await self.shutdown()
 
             except Exception as e:
                 self.failed_count += 1
@@ -762,3 +781,41 @@ class CoreHarvester(object):
                 raise RuntimeError(msg)
 
         return doc
+
+    async def process_sitemap_leaf(self, doc, last_harvest):
+        """
+        We are at a sitemap leaf, i.e. the sitemap does not reference other
+        sitemaps.  This is where we can retrieve landing pages instead of
+        other sitemaps.
+
+        Parameters
+        ----------
+        doc : ElementTree object
+            Describes the sitemap leaf.
+        last_harvest : datetime
+            According to the MN, this is the last time we, uh, harvested any
+            document.
+        """
+        self.logger.debug(f'process_sitemap_leaf:')
+
+        sitemap_queue = asyncio.Queue()
+
+        records = self.extract_records_from_sitemap(doc, last_harvest)
+        for url, lastmod_time in records:
+            sitemap_queue.put_nowait((url, lastmod_time))
+
+        # Create the worker tasks to consume the URLs
+        tasks = []
+        for j in range(self.num_workers):
+            msg = (
+                f'process_sitemap_leaf: create task for sitemap_consumer[{j}]'
+            )
+            self.logger.debug(msg)
+            task = asyncio.create_task(self.consume_sitemap(j, sitemap_queue))
+            tasks.append(task)
+        await sitemap_queue.join()
+
+        # Cancel any remaining tasks.
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
