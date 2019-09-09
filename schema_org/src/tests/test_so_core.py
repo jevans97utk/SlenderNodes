@@ -196,7 +196,7 @@ class TestSuite(TestCommon):
     @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
     def test_metadata_document_retrieval_failure(self, mock_harvest_time):
         """
-        SCENARIO:  The XML metadata document is invalid.
+        SCENARIO:  The XML metadata document retrieval fails.
 
         EXPECTED RESULT:  The failure count goes up by one.
         """
@@ -204,7 +204,7 @@ class TestSuite(TestCommon):
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
 
         harvester = SchemaDotOrgHarvester()
-        failed_count = harvester.failed_count
+        asyncio_aiohttp_warning_count = harvester.asyncio_aiohttp_warning_count
 
         # External calls to read the:
         #
@@ -226,9 +226,11 @@ class TestSuite(TestCommon):
             with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
                 asyncio.run(harvester.run())
 
-                self.assertErrorLogMessage(cm.output, 'ClientResponseError')
+                self.assertWarningLogMessage(cm.output,
+                                             "400, message='Bad Request'")
 
-        self.assertEqual(harvester.failed_count, failed_count + 1)
+        self.assertEqual(harvester.asyncio_aiohttp_warning_count,
+                         asyncio_aiohttp_warning_count + 1)
 
     def test_identifier_parsing_error__space(self):
         """

@@ -131,7 +131,7 @@ class CoreHarvester(object):
         self.rejected_count = 0
         self.skipped_count = 0
         self.skipped_exists_count = 0
-        self.asyncio_aiohttp_error = 0
+        self.asyncio_aiohttp_warning_count = 0
         self.updated_count = 0
         self.processed_count = 0
 
@@ -215,7 +215,7 @@ class CoreHarvester(object):
         self.logger.info(f'Updated {self.updated_count} records.')
         self.logger.info(f'Skipped {self.skipped_exists_count} records without updating.')
         self.logger.info(f'Skipped {self.skipped_count} records before trying to harvest.')
-        self.logger.info(f'Skipped {self.asyncio_aiohttp_error} records due to asyncio/aiohttp errors.')
+        self.logger.info(f'Skipped {self.asyncio_aiohttp_warning_count} records due to asyncio/aiohttp errors.')
         self.logger.info(f'Rejected {self.rejected_count} records.')
         self.logger.info(f'Failed to update/create {self.failed_count} records.')  # noqa: E501
 

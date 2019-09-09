@@ -216,10 +216,18 @@ class SchemaDotOrgHarvester(CoreHarvester):
                 self.logger.debug('CancelledError')
                 break
 
-            except (asyncio.TimeoutError, aiohttp.ClientPayloadError, aiohttp.ClientResponseError, zipfile.BadZipFile) as e:
+            except aiohttp.ClientResponseError as e:
+                msg =  (
+                    f"aiohttp.ClientResponseError:  "
+                    f"Unable to process {url} due to \"{e}\"."
+                )
+                self.logger.warning(msg)
+                self.asyncio_aiohttp_warning_count += 1
+
+            except (asyncio.TimeoutError, aiohttp.ClientPayloadError, zipfile.BadZipFile) as e:
                 msg =  f"Unable to process {url} due to \"{e}\"."
                 self.logger.warning(msg)
-                self.asyncio_aiohttp_error += 1
+                self.asyncio_aiohttp_warning_count += 1
 
             except SkipError as e:
                 msg =  f"Unable to process {url} due to \"{e}\"."

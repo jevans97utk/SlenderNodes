@@ -77,7 +77,8 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertErrorLogMessage(cm.output, 'ClientResponseError')
+            self.assertWarningLogMessage(cm.output,
+                                         'aiohttp.ClientResponseError')
             self.assertSuccessfulDebugIngest(cm.output)
 
     @unittest.skip('Revisit skiperror')
@@ -237,7 +238,8 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertErrorLogMessage(cm.output, 'ClientResponseError')
+            self.assertWarningLogMessage(cm.output,
+                                         "400, message='Bad Request'")
             self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
@@ -535,112 +537,46 @@ class TestSuite(TestCommon):
     @aioresponses()
     def test__max_num_errors(self, aioresp_mocker):
         """
-        SCENARIO:  The sitemap references 3 documents, the second of which
-        has a 400 error code when we request it.  The max_num_errors setting
-        has been lowered to one.  The number of workers is set to 1.
-
-        EXPECTED RESULT:  We should stop processing as soon as that first
-        error is encountered.  With just a single worker, this should be
-        guaranteed.  There should be an INFO shutdown message.
-        """
-
-        contents = [
-            ir.read_text('tests.data.arm', 'test__max_num_errors.xml'),
-            ir.read_text('tests.data.arm', 'doc1.html'),
-            ir.read_text('tests.data.arm', 'doc1.xml'),
-            ir.read_text('tests.data.arm', 'doc2.html'),
-            ir.read_text('tests.data.arm', 'doc3.html'),
-            ir.read_text('tests.data.arm', 'doc3.xml'),
-        ]
-        status_codes = [200, 200, 200, 400, 200, 200]
-        all_headers = [
-            {'Content-Type': 'text/xml'},
-            {'Content-Type': 'text/html'},
-            {'Content-Type': 'text/xml'},
-            {'Content-Type': 'text/html'},
-            {'Content-Type': 'text/html'},
-            {'Content-Type': 'text/xml'},
-        ]
-        z = zip(contents, status_codes, all_headers)
-        for content, status, headers in z:
-            aioresp_mocker.get(self.pattern,
-                               body=content, status=status, headers=headers)
-
-        url = (
-            "https://www.archive.arm.gov"
-            "/metadata/adc/xml/test__max_num_errors.xml"
-        )
-        obj = D1CheckSitemap(sitemap_url=url, num_workers=1, max_num_errors=1)
-
-        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
-            asyncio.run(obj.run())
-
-            self.assertSuccessfulDebugIngest(cm.output, n=1)
-            self.assertInfoLogMessage(cm.output, 'Shutting down')
-
-    @aioresponses()
-    def test__max_num_errors__multiple_workers(self, aioresp_mocker):
-        """
-        SCENARIO:  The sitemap references several documents, the first of which
-        has a 400 error code when we request it.  The max_num_errors setting
-        has been lowered to one.  The number of workers is set to 3.
-
-        This test is a bit more intricate than the above test.
+        SCENARIO:  The sitemap references several documents, one of which
+        has invalid XML.  The max_num_errors setting has been lowered to one,
+        which should trigger a shutdown.
 
         EXPECTED RESULT:  We should stop processing as soon as that first
         error is encountered.  There should be an INFO shutdown message.
         """
 
-        num_items = 50
-
-        # Create the sitemap programmatically.
-        xmlns = "http://www.sitemaps.org/schemas/sitemap/0.9"
-        urlset = lxml.etree.Element('urlset', xmlns=xmlns)
-
-        for idx in range(1, num_items + 1):
-            url = lxml.etree.SubElement(urlset, 'url')
-            loc = lxml.etree.SubElement(url, 'loc')
-            loc.text = (
-                f'https://www.archive.arm.gov/metadata/adc/html/doc{idx}.html'
-            )
-            lastmod = lxml.etree.SubElement(url, 'lastmod')
-            lastmod.text = '2019-06-24'
-
-        sitemap_contents = lxml.etree.tostring(urlset, pretty_print=True)
-        sitemap_contents = sitemap_contents.decode('utf-8')
-
-        # The metadata document for the 1st landing page is never requested.
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) HTML document for record 1
+        #   3) XML document for record 1
+        #   3) HTML document for record 2
+        #   4) XML document for record 2
+        #
         contents = [
-            sitemap_contents,
-            ir.read_text('tests.data.arm', 'doc1.html')
+            ir.read_text('tests.data.arm', 'sitemap2.xml'),
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.fixed.html'),
+            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.invalid.xml'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
+            ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),  # noqa: E501
         ]
-        for idx in range(2, num_items + 1):
-            # We don't actually care about the content here, only that it is
-            # valid.
-            contents.append(ir.read_text('tests.data.arm', "doc2.html"))
-            contents.append(ir.read_text('tests.data.arm', "doc2.xml"))
-
-        # The status codes are 200 for the sitemap, 400 for that first failure,
-        # and 200 for the others.
-        status_codes = [200 for _ in range(2 * num_items + 1)]
-        status_codes[1] = 400
-
-        # The Content-Type is text/xml for the sitemap, text/html for each
-        # landing page document, and text/xml for each referenced metadata
-        # document.
-        all_headers = [{'Content-Type': 'text/xml'}]
-        all_headers.append({'Content-Type': 'text/html'})
-        for idx in range(num_items - 1):
-            all_headers.append({'Content-Type': 'text/xml'})
-            all_headers.append({'Content-Type': 'text/html'})
-
-        z = zip(contents, status_codes, all_headers)
-        for content, status, headers in z:
+        status_codes = [200, 200, 200, 200, 200]
+        headers = [
+            {'Content-Type': 'text/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'text/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'text/xml'},
+        ]
+        z = zip(contents, status_codes, headers)
+        for content, status_code, headers in z:
             aioresp_mocker.get(self.pattern,
-                               body=content, status=status, headers=headers)
+                               body=content,
+                               status=status_code,
+                               headers=headers)
 
-        url = "https://www.archive.arm.gov/metadata/adc/xml/doesnotmatter.xml"
-        obj = D1CheckSitemap(sitemap_url=url, num_workers=3, max_num_errors=1)
+        url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
+        obj = D1CheckSitemap(sitemap_url=url, max_num_errors=1)
 
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
