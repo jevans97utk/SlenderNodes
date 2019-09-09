@@ -234,6 +234,15 @@ class SchemaDotOrgHarvester(CoreHarvester):
                 self.logger.warning(msg)
                 self.skipped_count += 1
 
+            except RuntimeError as e:
+                self.failed_count += 1
+                msg = f"RuntimeError:  Unable to process {url} due to \"{e}\"."
+                self.logger.error(msg)
+
+                if self.failed_count == self.max_num_errors:
+                    self.logger.warning("Error threshold reached.")
+                    await self.shutdown()
+
             except Exception as e:
                 self.failed_count += 1
                 msg = f"Unable to process {url} due to \"{repr(e)}\"."

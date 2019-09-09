@@ -83,8 +83,11 @@ class XMLValidator(object):
         for format_id_item in format_ids:
             try:
                 d1_scimeta.validate.assert_valid(format_id_item, doc)
-            except Exception:
-                pass
+            except Exception as e:
+                if format_id is not None:
+                    msg = f"Validation error:  {e}"
+                    self.logger.error(e)
+                    return None
             else:
                 # Ok, the current format ID worked.  We're good.
                 working_format_id = format_id_item
