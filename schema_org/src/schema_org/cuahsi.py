@@ -293,14 +293,14 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         self.logger.info(msg)
 
         msg = (
-            f'Skipped {self.aiohttp_payload_error_count} records due to '
-            f'aiohttp payload errors.'
+            f'Skipped {self.aiohttp_client_payload_error_count} records due '
+            f'to aiohttp payload errors.'
         )
         self.logger.info(msg)
 
         msg = (
-            f'Skipped {self.aiohttp_payload_error_count} records due to '
-            f'aiohttp response errors.'
+            f'Skipped {self.aiohttp_client_response_error_count} records due '
+            f'to aiohttp response errors.'
         )
         self.logger.info(msg)
 

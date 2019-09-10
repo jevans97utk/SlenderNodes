@@ -36,11 +36,6 @@ class SchemaDotOrgHarvester(CoreHarvester):
         """
         Extract JSON-LD from HTML document.
 
-        What we hope for is that:
-            1) jsonld['distribution'][0]['name'] = 'ISO Metadata Document'
-            2) jsonld['distribution'][0]['url'] is the XML url
-            3) jsonld['distribution'][1]['name'] = 'landing page'
-
         Parameters
         ----------
         doc : ElementTree

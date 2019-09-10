@@ -29,6 +29,22 @@ class TestSuite(TestCommon):
         self.pattern = 'https://www.archive.arm.gov/metadata/adc'
         self.regex = re.compile(self.pattern)
 
+    def test_jsonld_script_element_is_missing(self):
+        """
+        SCENARIO:  In ARM, there are usually two <SCRIPT> elements with
+        JSON-LD, but the first one is the one we want.  In this test case,
+        it is not present.
+
+        EXPECTED RESULT:  RuntimeError
+        """
+        text = ir.read_binary('tests.data.arm',
+                              'nsaqcrad1longC2.c2.no_json_ld.html')
+        doc = lxml.etree.HTML(text)
+
+        harvester = SchemaDotOrgHarvester()
+        with self.assertRaises(RuntimeError):
+            harvester.extract_jsonld(doc)
+
     def test_jsonld_script_element_is_first(self):
         """
         SCENARIO:  In ARM, there are usually two <SCRIPT> elements with
