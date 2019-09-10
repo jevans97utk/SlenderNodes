@@ -66,6 +66,14 @@ def setup_parser(id):
     )
     parser.add_argument('--max-num-errors', type=int, default=1, help=help)
 
+    help = (
+        "Ignore the last harvest time.  Use this switch to attempt to "
+        "harvest records that may have failed for some reason on a recent "
+        "harvest attempt."
+    )
+    parser.add_argument('--ignore-harvest-time', action='store_true',
+                        help=help)
+
     return parser
 
 

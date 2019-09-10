@@ -82,7 +82,7 @@ class CoreHarvester(object):
     def __init__(self, host=None, port=None, certificate=None,
                  private_key=None, verbosity='INFO', id='none',
                  num_documents=-1, num_workers=1, max_num_errors=3,
-                 regex=None):
+                 regex=None, ignore_harvest_time=False):
         """
         Parameters
         ----------
@@ -142,6 +142,7 @@ class CoreHarvester(object):
         self.max_num_errors = max_num_errors
 
         self.regex = re.compile(regex) if regex is not None else None
+        self.ignore_harvest_time = ignore_harvest_time
 
         requests.packages.urllib3.disable_warnings()
 
@@ -341,7 +342,7 @@ class CoreHarvester(object):
             i)  the value of the MD_ProgressCode.
             ii) the value of the dateStamp.
 
-        This code MAY break in production.
+        We can currently only do this check when the format ID is the default.
         """
         if self.sys_meta_dict['formatId_custom'] != 'http://www.isotc211.org/2005/gmd':  # noqa:  E501
             return True
@@ -422,7 +423,6 @@ class CoreHarvester(object):
         """
         Extract all the URLs and lastmod times from an XML sitemap.
         """
-
         urls = doc.xpath('.//sm:loc/text()', namespaces=SITEMAP_NS)
 
         lastmods = doc.xpath('.//sm:lastmod/text()',
@@ -444,19 +444,20 @@ class CoreHarvester(object):
                 for dateitem in lastmods
             ]
 
-        z = zip(urls, lastmods)
+        records = [(url, lastmod) for url, lastmod in zip(urls, lastmods)]
 
         msg = f"Extracted {len(urls)} from the sitemap document."
         self.logger.info(msg)
 
-        records = [
-            (url, lastmod) for url, lastmod in z if lastmod > last_harvest_time
-        ]
+        if not self.ignore_harvest_time:
+            records = [
+                (url, lastmod) for url, lastmod in records
+                if lastmod > last_harvest_time
+            ]
 
-        msg = (
-            f"{len(urls) - len(records)} records skipped due to lastmod time."
-        )
-        self.logger.info(msg)
+            nskipped = len(urls) - len(records)
+            msg = f"{nskipped} records skipped due to lastmod time."
+            self.logger.info(msg)
 
         # Further restrict by regex if so specified.
         if self.regex is not None:
