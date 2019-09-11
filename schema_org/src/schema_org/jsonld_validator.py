@@ -8,18 +8,14 @@ from pyshacl import Validator
 import pyshacl.rdfutil
 import pyshacl.monkey
 
+# Local imports
 
-class InvalidContextError(RuntimeError):
+
+class JsonLdError(RuntimeError):
     """
-    Raise this exception if the @context key is invalid.
+    Raise this exception if there is a problem with JSON-LD
     """
     pass
-
-
-class InvalidIRIError(RuntimeError):
-    """
-    Raise this exception if the top-level @id key is invalid.
-    """
 
 
 class JSONLD_Validator(object):
@@ -53,7 +49,7 @@ class JSONLD_Validator(object):
         self.logger.debug(f'{__name__}:pre_shacl_checks')
         if '@context' not in j:
             msg = 'JSON-LD missing top-level "@context" key.'
-            raise RuntimeError(msg)
+            raise JsonLdError(msg)
 
         # Inline contexts are currently problematic with regards to
         # certain date keys such as "dateModified".  Suppress this by
@@ -72,18 +68,18 @@ class JSONLD_Validator(object):
 
         if '@type' not in j:
             msg = 'JSON-LD missing top-level "@type" key.'
-            raise RuntimeError(msg)
+            raise JsonLdError(msg)
 
         if j['@type'] != 'Dataset':
             msg = (
                 f"JSON-LD @type key expected to be 'Dataset', not "
                 f"'{j['@type']}'."
             )
-            raise RuntimeError(msg)
+            raise JsonLdError(msg)
 
         if '@id' not in j:
             msg = 'JSON-LD missing top-level "@id" key.'
-            raise RuntimeError(msg)
+            raise JsonLdError(msg)
 
         p = urllib.parse.urlparse(j['@id'])
         if (
@@ -95,7 +91,7 @@ class JSONLD_Validator(object):
                 f"JSON-LD top-level '@id' key \"{j['@id']}\" does not look "
                 f"like an IRI."
             )
-            raise InvalidIRIError(msg)
+            raise JsonLdError(msg)
 
     def check(self, j):
         """
@@ -145,7 +141,7 @@ class JSONLD_Validator(object):
             conforms = False
             report_text = f"Unexpected validation failure - {repr(e)}"
             self.logger.warning(report_text)
-            raise RuntimeError("JSON-LD does not conform.")
+            raise JsonLdError("JSON-LD does not conform.")
 
         if conforms:
             self.logger.debug("JSON-LD conforms.")
@@ -165,7 +161,7 @@ class JSONLD_Validator(object):
                 self.logger.error(report['Message'])
 
         if error_count > 0:
-            raise RuntimeError("JSON-LD does not conform.")
+            raise JsonLdError("JSON-LD does not conform.")
 
     def parse_reports(self, report_text):
         """

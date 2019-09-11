@@ -21,10 +21,3 @@ class D1CheckSitemap(SchemaDotOrgHarvester):
         We don't actually harvest.
         """
         pass
-
-    def summarize(self):
-        """
-        We don't harvest, so summarization is much simpler.
-        """
-        msg = f'Successfully processed {self.processed_count} records.'
-        self.logger.info(msg)

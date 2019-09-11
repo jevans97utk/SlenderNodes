@@ -147,21 +147,6 @@ class TestCommon(unittest.TestCase):
         """
         self.assertLogLevelCallCount(cm_output, level='ERROR', n=n)
 
-    def assertDebugLogCallCount(self, cm_output, n=1, tokens=None):
-        """
-        Verify we see this many log messages at the DEBUG level.
-
-        Parameters
-        ----------
-        cm_output : list of str
-            Log messages provided by assertLogs
-        n : int
-            How many log calls at the DEBUG level to verify.
-        tokens : str or list
-            Verify that these strings appear in the messages.
-        """
-        self.assertLogLevelCallCount(cm_output, level='DEBUG', n=n)
-
     def assertLogLevelCallCount(self, cm_output, level='ERROR', n=1):
         """
         Verify we see this many log messages with the specified level.
@@ -192,10 +177,6 @@ class TestCommon(unittest.TestCase):
                              headers=None, protocol='https'):
         """
         """
-        if contents is None and status_codes is None:
-            msg = 'not both contents and status_codes can be none.'
-            raise RuntimeError(msg)
-
         if status_codes is None:
             status_codes = [200 for item in contents]
 

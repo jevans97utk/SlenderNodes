@@ -46,6 +46,32 @@ class TestSuite(TestCommon):
         self.assertEqual(mock_ieda.call_count, 1)
 
     @patch.object(sys, 'argv', [''])
+    @patch('schema_org.commandline.AbdsIptHarvester.run')
+    @patch('schema_org.commandline.asyncio')
+    def test_abds_ipt(self, mock_asyncio, mock_abds):
+        """
+        SCENARIO:  Run with no command line arguments.
+
+        EXPECTED RESULT:  The run method was called.
+        """
+        commandline.abds_ipt()
+
+        self.assertEqual(mock_abds.call_count, 1)
+
+    @patch.object(sys, 'argv', [''])
+    @patch('schema_org.commandline.CUAHSIHarvester.run')
+    @patch('schema_org.commandline.asyncio')
+    def test_cuahsi(self, mock_asyncio, mock_cuahsi):
+        """
+        SCENARIO:  Run with no command line arguments.
+
+        EXPECTED RESULT:  The run method was called.
+        """
+        commandline.cuahsi()
+
+        self.assertEqual(mock_cuahsi.call_count, 1)
+
+    @patch.object(sys, 'argv', [''])
     @patch('schema_org.commandline.ARMHarvester.run')
     @patch('schema_org.commandline.asyncio')
     def test_arm(self, mock_asyncio, mock_arm):

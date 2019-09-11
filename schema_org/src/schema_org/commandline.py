@@ -75,6 +75,8 @@ def setup_parser(id):
     parser.add_argument('--ignore-harvest-time', action='store_true',
                         help=help)
 
+    help = "Retry a failed record this many times"
+    parser.add_argument('--retry', type=int, default=1, help=help)
     return parser
 
 

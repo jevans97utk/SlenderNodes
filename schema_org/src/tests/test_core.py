@@ -1,18 +1,23 @@
 # Standard library imports
+import asyncio
+import copy
+import datetime as dt
 try:
     import importlib.resources as ir
 except ImportError:  # pragma:  nocover
     import importlib_resources as ir
 import io
 import re
+import string
 from unittest.mock import patch
 
 # 3rd party library imports
 import dateutil.parser
 import lxml.etree
+import numpy as np
 
 # local imports
-from schema_org.core import CoreHarvester
+from schema_org.core import CoreHarvester, SlenderNodeJob, SkipError
 from .test_common import TestCommon
 
 
@@ -119,3 +124,216 @@ class TestSuite(TestCommon):
             records = obj.post_process_sitemap_records(records,
                                                        last_harvest_time)
         self.assertEqual(len(records), 1)
+
+    def test_summary_when_no_jobs_attempted(self):
+        """
+        SCENARIO:  No documents are suitable for harvesting.  This could happen
+        if, say, a sitemap is empty.
+
+        EXPECTED RESULT:  The summary is states that no jobs were processed.
+        """
+        harvester = CoreHarvester()
+        harvester.job_records = []
+
+        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
+            harvester.summarize_job_records()
+
+            messages = [
+                "Successfully processed 0 records.",
+            ]
+            self.assertInfoLogMessage(cm.output, messages)
+            self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
+
+    def _create_jobs(self, n=100, result=None):
+        """
+        Helper routine for construct a fake set of job records.
+        """
+
+        n = 100
+        urls = [
+            ''.join(np.random.choice(list(string.ascii_letters), 10))
+            for _ in range(n)
+        ]
+        identifiers = [
+            ''.join(np.random.choice(list(string.ascii_letters), 10))
+            for _ in range(n)
+        ]
+        lastmods = [dt.datetime(1900, 1, 1) for _ in range(n)]
+        num_failures = [0 for _ in range(n)]
+        results = [result for _ in range(n)]
+
+        jobs = [
+            SlenderNodeJob(url, identifier, time, num_failures, result)
+            for url, identifier, time, num_failures, result
+            in zip(urls, identifiers, lastmods, num_failures, results)
+        ]
+
+        return jobs
+
+    def test_summary_when_all_jobs_successful(self):
+        """
+        SCENARIO:  All jobs were successfully processed.
+
+        EXPECTED RESULT:  The summary states that all jobs were processed.
+        """
+        harvester = CoreHarvester()
+        jobs = self._create_jobs(n=100)
+        harvester.job_records = jobs
+
+        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
+            harvester.summarize_job_records()
+
+            messages = [
+                "Successfully processed 100 records.",
+            ]
+            self.assertInfoLogMessage(cm.output, messages)
+            self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
+
+    def test_summary_when_no_jobs_successful(self):
+        """
+        SCENARIO:  Jobs are attempted, but all fail.
+
+        EXPECTED RESULT:  The summary states that no jobs were successful and
+        there is a summary of the errors.
+        """
+        harvester = CoreHarvester()
+
+        result = ZeroDivisionError('this would never actually happen')
+        jobs = self._create_jobs(n=100, result=result)
+        harvester.job_records = jobs
+
+        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
+            harvester.summarize_job_records()
+
+            messages = [
+                "Successfully processed 0 records.",
+            ]
+            self.assertInfoLogMessage(cm.output, messages)
+
+            # The output here is a bit hard to construct, so just get the
+            # pieces right.
+            message = """
+            Error summary:
+
+                               count
+            error
+            ZeroDivisionError    100
+            """
+            messages = [m.strip() for m in message.split('\n')]
+            self.assertErrorLogMessage(cm.output, messages)
+
+    def test_summary_when_only_one_of_many_jobs_successful(self):
+        """
+        SCENARIO:  Jobs are attempted, but all but one fail.
+
+        EXPECTED RESULT:  The summary states that no jobs were successful and
+        there is a summary of the errors.
+        """
+        harvester = CoreHarvester()
+
+        result = ZeroDivisionError('this would never actually happen')
+        jobs = self._create_jobs(n=100, result=result)
+
+        # Pick one job and make it successful
+        jobs[55].result = None
+
+        harvester.job_records = jobs
+
+        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
+            harvester.summarize_job_records()
+
+            messages = [
+                "Successfully processed 1 records.",
+            ]
+            self.assertInfoLogMessage(cm.output, messages)
+
+            # The output here is a bit hard to construct, so just get the
+            # pieces right.
+            message = """
+            Error summary:
+
+                               count
+            error
+            ZeroDivisionError    99
+            """
+            messages = message.split()
+            self.assertErrorLogMessage(cm.output, messages)
+
+    def test_summary_when_one_job_succeeds_on_retry(self):
+        """
+        SCENARIO:  All jobs are eventually successful.  One fails on its
+        first try, but succeeds upon retry.
+
+        EXPECTED RESULT:  The summary states that all jobs were successful.
+        there is a summary of the errors.
+        """
+        harvester = CoreHarvester(retry=1)
+
+        jobs = self._create_jobs(n=100)
+
+        # Pick one job and make it fail.  Then add the job as a success at
+        # the end.
+        jobs[55].result = asyncio.TimeoutError('might happen')
+
+        job = copy.copy(jobs[55])
+        job.result = None
+        job.num_failures = 1
+        jobs.append(job)
+
+        harvester.job_records = jobs
+
+        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
+            harvester.summarize_job_records()
+
+            messages = [
+                "Successfully processed 100 records.",
+            ]
+            self.assertInfoLogMessage(cm.output, messages)
+
+            # The output here is a bit hard to construct, so just get the
+            # pieces right.
+            message = """
+            Error summary:
+
+                               count
+            error
+            TimeoutError    1
+            """
+            messages = message.split()
+            self.assertErrorLogMessage(cm.output, messages)
+
+    def test_summary_when_one_job_is_skipped(self):
+        """
+        SCENARIO:  One job is "skipped".  This could happen if one document
+        has not been updated.  If it is skipped, it is not retried.
+
+        EXPECTED RESULT:  The summary states that all but one job succeeded.
+        """
+        harvester = CoreHarvester(retry=1)
+
+        n = 100
+        jobs = self._create_jobs(n=n)
+
+        # Pick one job and mark it as being skipped.
+        jobs[55].result = SkipError
+        harvester.job_records = jobs
+
+        with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
+            harvester.summarize_job_records()
+
+            messages = [
+                f"Successfully processed {n-1} records.",
+            ]
+            self.assertInfoLogMessage(cm.output, messages)
+
+            # The output here is a bit hard to construct, so just get the
+            # pieces right.
+            message = """
+            Error summary:
+
+                               count
+            error
+            SkipError              1
+            """
+            messages = message.split()
+            self.assertErrorLogMessage(cm.output, messages)

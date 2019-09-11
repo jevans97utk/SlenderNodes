@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 # Local imports
 from schema_org.jsonld_validator import (
-    JSONLD_Validator, InvalidIRIError
+    JSONLD_Validator, JsonLdError
 )
 from .test_common import TestCommon
 
@@ -80,7 +80,7 @@ class TestSuite(TestCommon):
         of the JSON-LD spec seems to indicate that if it is not a "blank node"
         (that's RDF-speak), then it should be an IRI.
 
-        EXPECTED RESULT.  A RuntimeError is issued.
+        EXPECTED RESULT.  An exception is issued.
         """
         s = """
         {
@@ -100,7 +100,7 @@ class TestSuite(TestCommon):
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertRaises(InvalidIRIError):
+        with self.assertRaises(JsonLdError):
             v.check(j)
 
     def test__top_level_id_is_not_iri__has_leading_space(self):
@@ -110,7 +110,7 @@ class TestSuite(TestCommon):
         (that's RDF-speak), then it should be an IRI.  Here is a case where
         IEDA put a blank into the id and didn't have a scheme.
 
-        EXPECTED RESULT.  An InvalidIRIError is issued.
+        EXPECTED RESULT.  An exception is issued.
         """
         s = """
         {
@@ -130,7 +130,7 @@ class TestSuite(TestCommon):
         j = json.loads(s)
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertRaises(InvalidIRIError):
+        with self.assertRaises(JsonLdError):
             v.check(j)
 
     def test_missing_top_level_type_dataset_keypair(self):

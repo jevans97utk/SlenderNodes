@@ -21,7 +21,7 @@ import lxml.etree
 
 # local imports
 from schema_org.so_core import SchemaDotOrgHarvester
-from schema_org.core import SITEMAP_RETRIEVAL_FAILURE_MESSAGE
+import schema_org.core
 from .test_common import TestCommon
 
 
@@ -169,7 +169,8 @@ class TestSuite(TestCommon):
                 asyncio.run(harvester.run())
 
                 self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
-                self.assertInfoLogMessage(cm.output, 'Created 1 new record')
+                self.assertInfoLogMessage(cm.output,
+                                          'Successfully processed 1 records')
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -225,7 +226,8 @@ class TestSuite(TestCommon):
                 asyncio.run(harvester.run())
 
                 self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
-                self.assertInfoLogMessage(cm.output, 'Created 0 new record')
+                expected = "Successfully processed 0 records."
+                self.assertInfoLogMessage(cm.output, expected)
 
                 expected = '1 records skipped due to lastmod time'
                 self.assertInfoLogMessage(cm.output, expected)
@@ -265,8 +267,7 @@ class TestSuite(TestCommon):
             with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
                 asyncio.run(harvester.run())
 
-                self.assertErrorLogMessage(cm.output,
-                                           "400, message='Bad Request'")
+                self.assertErrorLogMessage(cm.output, "Bad Request")
 
         self.assertEqual(harvester.failed_count, failed_count + 1)
 
@@ -382,7 +383,104 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
             asyncio.run(harvester.run())
 
-            self.assertLogMessage(cm.output, SITEMAP_RETRIEVAL_FAILURE_MESSAGE)
+            self.assertLogMessage(
+                cm.output, schema_org.core.SITEMAP_RETRIEVAL_FAILURE_MESSAGE
+            )
+
+    def test_check_if_can_be_updated(self):
+        """
+        SCENARIO:  The GMN existance check shows that the document has already
+        been harvested.  It has been updated since the last harvest time, and
+        the update succeeds.
+
+        EXPECTED RESULT:  The update check does not error out.
+        """
+        host, port = 'ieda.mn.org', 443
+        harvester = SchemaDotOrgHarvester(host=host, port=port)
+
+        # This is the existing document in the MN.  It is marked as complete.
+        existing_content = ir.read_binary('tests.data.ieda', '600121iso.xml')
+
+        # This is the "update" document, same as the existing document.  It is
+        # already marked as "complete" and is newer.
+        docbytes = ir.read_binary('tests.data.ieda', '600121iso-later.xml')
+        doi = 'doi.10000/abcde'
+
+        current_sid = 1
+        doi = 'doi.10000/abcde'
+
+        regex = re.compile('https://ieda.mn.org:443/')
+        with aioresponses() as m:
+            m.get(regex, body=existing_content)
+            asyncio.run(harvester.check_if_can_be_updated(docbytes, doi,
+                                                          current_sid))
+
+    def test_check_if_can_be_updated__document_is_the_same(self):
+        """
+        SCENARIO:  The GMN existance check shows that the document has already
+        been harvested.  We have the same document on hand.
+
+        EXPECTED RESULT:  The update check raises an exception.
+        """
+        host, port = 'ieda.mn.org', 443
+        harvester = SchemaDotOrgHarvester(host=host, port=port)
+
+        # This is the existing document in the MN.  It is marked as complete.
+        existing_content = ir.read_binary('tests.data.ieda', '600121iso.xml')
+
+        # This is the "update" document, same as the existing document.  It is
+        # already marked as "complete" and is newer.
+        docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        doi = 'doi.10000/abcde'
+        current_sid = 1
+
+        regex = re.compile('https://ieda.mn.org:443/')
+        with aioresponses() as m:
+            m.get(regex, body=existing_content)
+            with self.assertRaises(schema_org.core.RefusedToUpdateRecord):
+                asyncio.run(harvester.check_if_can_be_updated(docbytes, doi,
+                                                              current_sid))
+
+    def test_check_if_can_be_updated__progress_code_has_regressed(self):
+        """
+        SCENARIO:  The GMN existance check shows that the document has already
+        been harvested.  The new document, however, is no longer complete.
+
+        EXPECTED RESULT:  An exception is raised.
+        """
+        host, port = 'ieda.mn.org', 443
+        harvester = SchemaDotOrgHarvester(host=host, port=port)
+
+        # This is the existing document in the MN.  It is marked as complete.
+        existing_content = ir.read_binary('tests.data.ieda', '600121iso.xml')
+
+        # This is the "update" document, same as the existing document.  Change
+        # the progress code.
+        docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
+        doc = lxml.etree.parse(io.BytesIO(docbytes))
+        parts = [
+            'gmd:identificationInfo',
+            'gmd:MD_DataIdentification',
+            'gmd:status',
+            'gmd:MD_ProgressCode',
+        ]
+        path = '/'.join(parts)
+        elt = doc.xpath(path, namespaces=schema_org.core.ISO_NSMAP)[0]
+        elt.text = 'in progress'
+
+        # Re-serialize the update document.
+        docbytes = lxml.etree.tostring(doc, pretty_print=True,
+                                       encoding='utf-8', standalone=True)
+
+        current_sid = 1
+        doi = 'doi.10000/abcde'
+
+        regex = re.compile('https://ieda.mn.org:443/')
+        with aioresponses() as m:
+            m.get(regex, body=existing_content)
+            with self.assertRaises(schema_org.core.RefusedToUpdateRecord):
+                asyncio.run(harvester.check_if_can_be_updated(docbytes, doi,
+                                                              current_sid))
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -447,8 +545,7 @@ class TestSuite(TestCommon):
         been harvested.  It has been updated since the last harvest time, but
         the update failed.
 
-        EXPECTED RESULT:  The failure count goes up by one and the event is
-        logged at the warning level.
+        EXPECTED RESULT:  An exception is raised.
         """
         host, port = 'ieda.mn.org', 443
         harvester = SchemaDotOrgHarvester(host=host, port=port)
@@ -466,7 +563,6 @@ class TestSuite(TestCommon):
         mock_update_science_metadata.return_value = False
 
         harvester = SchemaDotOrgHarvester(host=host, port=port)
-        initial_failed_count = harvester.failed_count
 
         # Read a document that is the same except it has a later metadata
         # timestamp.  This means that we should update it.
@@ -476,16 +572,10 @@ class TestSuite(TestCommon):
         doi = 'doi.10000/abcde'
 
         regex = re.compile('https://ieda.mn.org:443/')
-        with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+        with self.assertRaises(schema_org.core.UnableToUpdateGmnRecord):
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
                 asyncio.run(harvester.harvest_document(doi, doc, record_date))
-
-            # Did we see a warning?
-            self.assertLogLevelCallCount(cm.output, level='WARNING', n=1)
-
-            # Did we increase the failure count?
-            self.assertEqual(harvester.failed_count, initial_failed_count + 1)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -552,8 +642,7 @@ class TestSuite(TestCommon):
         been harvested.  It has been updated since the last harvest time, but
         the proposed update record is even older than the original.
 
-        EXPECTED RESULT:  The rejected count goes up by one and the event is
-        logged at the warning level.
+        EXPECTED RESULT:  An exception is raised.
         """
         # This is the existing document in the MN.  It is requested by the
         # update check, and it is marked as complete.
@@ -570,8 +659,6 @@ class TestSuite(TestCommon):
         host, port = 'ieda.mn.org', 443
         harvester = SchemaDotOrgHarvester(host=host, port=port)
 
-        initial_rejected_count = harvester.rejected_count
-
         # Read a document that is the same except it has an earlier metadata
         # timestamp.  This means that we should NOT update it.
         doc_bytes = ir.read_binary('tests.data.ieda', '600121iso-earlier.xml')
@@ -580,16 +667,10 @@ class TestSuite(TestCommon):
         doi = 'doi.10000/abcde'
 
         regex = re.compile('https://ieda.mn.org:443/')
-        with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+        with self.assertRaises(schema_org.core.RefusedToUpdateRecord):
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
                 asyncio.run(harvester.harvest_document(doi, doc, record_date))
-
-            # Did we see a warning?
-            self.assertLogLevelCallCount(cm.output, level='WARNING', n=2)
-
-        # Did we increase the failure count?
-        self.assertEqual(harvester.rejected_count, initial_rejected_count + 1)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -600,10 +681,10 @@ class TestSuite(TestCommon):
     ):
         """
         SCENARIO:  The GMN existance check shows that the document has already
-        been harvested and has not changed since the last time.
+        been harvested and has not changed since the last time.  We don't want
+        to attempt to harvest in this case.
 
-        EXPECTED RESULT:  The event is logged at the info level.  The skipped
-        count goes up by one.
+        EXPECTED RESULT:  A SkipError is raised.
         """
         record_date = dt.datetime.now()
         mock_check_if_identifier_exists.return_value = {
@@ -613,19 +694,13 @@ class TestSuite(TestCommon):
         mock_update_science_metadata.return_value = False
 
         harvester = SchemaDotOrgHarvester()
-        skipped_count = harvester.skipped_exists_count
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
         doi = 'doi.10000/abcde'
 
-        with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+        with self.assertRaises(schema_org.core.SkipError):
             asyncio.run(harvester.harvest_document(doi, doc, record_date))
-
-            # Did we see a warning?
-            self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
-
-        self.assertEqual(harvester.skipped_exists_count, skipped_count + 1)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     @patch('schema_org.core.logging.getLogger')
@@ -686,10 +761,8 @@ class TestSuite(TestCommon):
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.core.logging.getLogger')
     def test_document_is_unrecognized_but_cannot_be_harvested(
         self,
-        mock_logger,
         mock_check_if_identifier_exists,
         mock_load_science_metadata
     ):
@@ -697,7 +770,7 @@ class TestSuite(TestCommon):
         SCENARIO:  The GMN has not seen the document before, but still cannot
         harvest the document for some reason.
 
-        EXPECTED RESULT:  The issue is logged at the error level.
+        EXPECTED RESULT:  An exception is raised.
         """
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = False
@@ -706,11 +779,10 @@ class TestSuite(TestCommon):
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
-        asyncio.run(harvester.harvest_document('doi.10000/abcde',
-                                               doc,
-                                               dt.datetime.now()))
-
-        harvester.logger.error.assert_called_once()
+        with self.assertRaises(schema_org.core.UnableToCreateNewGMNObject):
+            asyncio.run(harvester.harvest_document('doi.10000/abcde',
+                                                   doc,
+                                                   dt.datetime.now()))
 
     def test_jsonld_script_found_in_body_rather_than_head(self):
         """
