@@ -347,3 +347,23 @@ class TestSuite(TestCommon):
             validator.validate(file, format_id=expected)
             self.assertLogMessage(cm.output, expected, level='INFO')
             self.assertErrorLogCallCount(cm.output, n=0)
+
+    def test__waterml_v1p1(self):
+        """
+        SCENARIO:   Run the validator against a local WaterML file.  We don't
+        support that yet.  Try to validate it as
+        http://www.openarchives.org/OAI/2.0/oai_dc/ , which it is not.
+
+        EXPECTED RESULT:  The error is logged.
+        """
+        content = ir.read_binary('tests.data.waterML.v1p1', 'example.xml')
+        file = io.BytesIO(content)
+
+        expected = (
+            'No matching global declaration available for the validation root.'
+        )
+
+        validator = XMLValidator()
+        with self.assertLogs(logger=validator.logger, level='INFO') as cm:
+            validator.validate(file, format_id=expected)
+            self.assertErrorLogMessage(cm.output, expected)

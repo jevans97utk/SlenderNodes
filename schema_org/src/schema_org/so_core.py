@@ -7,10 +7,11 @@ import json
 import re
 
 # 3rd party library imports
+import lxml.etree
 
 # Local imports
 from .core import CoreHarvester, NO_JSON_LD_SCRIPT_ELEMENTS
-from .jsonld_validator import JSONLD_Validator
+from .jsonld_validator import JSONLD_Validator, JsonLdError
 
 
 class SchemaDotOrgHarvester(CoreHarvester):
@@ -46,7 +47,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
         path = './/script[@type="application/ld+json"]'
         scripts = doc.xpath(path)
         if len(scripts) == 0:
-            raise RuntimeError(NO_JSON_LD_SCRIPT_ELEMENTS)
+            raise JsonLdError(NO_JSON_LD_SCRIPT_ELEMENTS)
 
         jsonld = None
         for script in scripts:
@@ -60,7 +61,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
                 "Could not locate a JSON-LD <SCRIPT> element with @type "
                 "\"Dataset\"."
             )
-            raise RuntimeError(msg)
+            raise JsonLdError(msg)
 
         return jsonld
 
@@ -93,6 +94,34 @@ class SchemaDotOrgHarvester(CoreHarvester):
                 f"DOI ID parsing error, could not parse an ID out of "
                 f"JSON-LD '@id' element \"{jsonld['@id']}\""
             )
-            raise RuntimeError(msg)
+            raise JsonLdError(msg)
 
         return m.group('doi')
+
+    async def retrieve_record(self, landing_page_url):
+        """
+        Read the remote document, extract the JSON-LD, and load it into the
+        system.
+
+        Parameters
+        ----------
+        landing_page_url : str
+            URL for remote landing page HTML
+        """
+        self.logger.debug(f'retrieve_record')
+        self.logger.info(f"Requesting {landing_page_url}...")
+        content = await self.retrieve_url(landing_page_url)
+        doc = lxml.etree.HTML(content)
+
+        self.preprocess_landing_page(doc)
+
+        jsonld = self.extract_jsonld(doc)
+        self.jsonld_validator.check(jsonld)
+
+        identifier = self.extract_identifier(jsonld)
+        self.logger.debug(f"Have extracted the identifier {identifier}...")
+
+        metadata_url = jsonld['encoding']['contentUrl']
+
+        doc = await self.retrieve_metadata_document(metadata_url)
+        return identifier, doc

@@ -3,7 +3,6 @@ import asyncio
 import importlib.resources as ir
 import io
 import re
-import unittest
 
 # 3rd party library imports
 import lxml.etree
@@ -13,8 +12,7 @@ from aioresponses import aioresponses
 import schema_org
 from schema_org import D1CheckSitemap
 from schema_org.core import (
-    SITEMAP_RETRIEVAL_FAILURE_MESSAGE, SITEMAP_NOT_XML_MESSAGE,
-    NO_JSON_LD_SCRIPT_ELEMENTS
+    SITEMAP_RETRIEVAL_FAILURE_MESSAGE, SITEMAP_NOT_XML_MESSAGE
 )
 from .test_common import TestCommon
 
@@ -77,45 +75,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertErrorLogMessage(cm.output, "400, message='Bad Request'")
-            self.assertSuccessfulDebugIngest(cm.output)
-
-    @unittest.skip('Revisit skiperror')
-    @aioresponses()
-    def test_landing_page_is_missing_jsonld(self, aioresp_mocker):
-        """
-        SCENARIO:  The sitemap references two documents.  The first landing
-        page document does not have JSON-LD.  The 2nd one does have it.
-
-        EXPECTED RESULT:  The log records the JSON-LD failure, but also the
-        successful ingest of the 2nd document.
-        """
-
-        # External calls to read the:
-        #
-        #   1) sitemap
-        #   2) HTML document for record 1 (no XML document can be accessed)
-        #   3) HTML document for record 2
-        #   4) XML document for record 2
-        #
-        contents = [
-            ir.read_text('tests.data.arm', 'sitemap2.xml'),
-            ir.read_text('tests.data.arm', 'nsaqcrad1longC2.c2.no_jsonld.html'),  # noqa: E501
-            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
-            ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
-        ]
-        aioresp_mocker.get(self.pattern, body=contents[0])
-        aioresp_mocker.get(self.pattern, body=contents[1])
-        aioresp_mocker.get(self.pattern, body=contents[2])
-        aioresp_mocker.get(self.pattern, body=contents[3])
-
-        sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap_not.xml'
-        obj = D1CheckSitemap(sitemap_url=sitemap)
-
-        with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
-            asyncio.run(obj.run())
-
-            self.assertLogMessage(cm.output, NO_JSON_LD_SCRIPT_ELEMENTS)
+            self.assertErrorLogMessage(cm.output, "Bad Request")
             self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
@@ -237,7 +197,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertErrorLogMessage(cm.output, "400, message='Bad Request'")
+            self.assertErrorLogMessage(cm.output, "Bad Request")
             self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
@@ -275,7 +235,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
-            self.assertLogMessage(cm.output, 'XMLSyntaxError')
+            self.assertLogMessage(cm.output, 'XMLMetadataParsingError')
             self.assertSuccessfulDebugIngest(cm.output)
 
     @aioresponses()
@@ -426,10 +386,8 @@ class TestSuite(TestCommon):
             self.assertLogMessage(cm.output, SITEMAP_NOT_XML_MESSAGE,
                                   level='WARNING')
 
-            # Verify the two exceptions that are caught when trying to parse
-            # the sitemap.
+            # Verify the exception caught when trying to parse the sitemap.
             self.assertLogMessage(cm.output, 'XMLSyntaxError', level='ERROR')
-            self.assertLogMessage(cm.output, 'OSError', level='ERROR')
 
     @aioresponses()
     def test_limit_number_of_documents(self, aioresp_mocker):

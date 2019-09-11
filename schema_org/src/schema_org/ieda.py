@@ -5,6 +5,7 @@ DATAONE adapter for IEDA
 import re
 
 # Local imports
+from .jsonld_validator import JsonLdError
 from .so_core import SchemaDotOrgHarvester
 
 
@@ -17,7 +18,7 @@ class IEDAHarvester(SchemaDotOrgHarvester):
 
     def extract_identifier(self, jsonld):
         """
-        Parse the DOI from the json['@id'] value.  IEDA identifiers
+        Parse the DOI from the json['@id'] value.  IEDA identifiers usually
         look something like
 
             'doi:10.15784/601015'
@@ -37,9 +38,9 @@ class IEDAHarvester(SchemaDotOrgHarvester):
             # possible leading white space (not supposed to be there)
             \s*
             # DOI:prefix/suffix - IEDA style
-            (https?://dx.doi.org/(?P<expected_doi>10\.\w+/\w+))
+            (((https?://dx.doi.org/)|(doi:))(?P<expected_doi>10\.\w+/\w+))
                 |
-            # other ARM-style
+            # other IEDA-style
             (?P<other_doi>urn:usap-dc:metadata:\w+)
             # possible trailing white space (not supposed to be there)
             \s*
@@ -51,7 +52,7 @@ class IEDAHarvester(SchemaDotOrgHarvester):
                 f"DOI ID parsing error, could not parse an ID out of "
                 f"JSON-LD '@id' element \"{jsonld['@id']}\""
             )
-            raise RuntimeError(msg)
+            raise JsonLdError(msg)
 
         if m.group('expected_doi') is not None:
             return m.group('expected_doi')

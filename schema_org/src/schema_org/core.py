@@ -4,17 +4,20 @@ DATAONE SO core for multiple adaptors.
 
 # Standard library imports
 import asyncio
+import copy
+from dataclasses import dataclass
+import datetime as dt
 import gzip
 import io
 import logging
 import re
 import sys
-import urllib.parse
 
 # 3rd party library imports
 import aiohttp
 import dateutil.parser
 import lxml.etree
+import pandas as pd
 import requests
 import d1_scimeta.validate
 
@@ -38,8 +41,90 @@ ISO_NSMAP = {
 
 SITEMAP_NS = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
 
+# If an exception is one of these, then we may wish to try again.  Sometimes
+ERROR_RETRY_CANDIDATES = (
+    aiohttp.ClientPayloadError, aiohttp.ClientResponseError,
+    asyncio.TimeoutError
+)
+
+
+@dataclass
+class SlenderNodeJob(object):
+    """
+    Represents a job for processing a single document.
+
+    Use dataclasses instead of a named tuple because named tuples are
+    immutable and we want to keep track of the number of failures with any
+    particular job.
+
+    Attributes
+    ----------
+    url : str
+        URL of either a landing page or metadata document
+    identifier : str
+        Usually a DOI, sometimes a UUID.  We often do not have this information
+        when the job gets created.
+    lastmod : datetime
+        date when the document was last modified on the remote end
+    num_failures : int
+        Number of failures for this particular job so far.  If a job fails
+        and the number of allowed failures per job is greater than 1, then we
+        may want to try again.  Sometimes failures on the remote side may be
+        sporadic.
+    result : Exception or None
+        None if the job succeeded, or the generated exception if the job
+        failed.
+    """
+    url: str
+    identifier: str
+    lastmod: dt.datetime
+    num_failures: int
+    result: Exception
+
 
 class SkipError(RuntimeError):
+    """
+    Raise this exception when there is reason to not even attempt to harvest
+    a document with the GMN software.
+    """
+    pass
+
+
+class RefusedToUpdateRecord(RuntimeError):
+    """
+    Raise this when we have a record whose metadata says we should not update
+    it.  One reason seen was that a metadata timestamp regressed to an
+    earlier date.
+    """
+    pass
+
+
+class UnableToCreateNewGMNObject(RuntimeError):
+    """
+    Raise this when we have an identifier we have not seen before, but for
+    some reason the GMN software cannot harvest it.
+    """
+    pass
+
+
+class UnableToUpdateGmnRecord(RuntimeError):
+    """
+    Raise this when we have an identifier that we HAVE seen before, and the
+    reported modification date indicates that we should update it, but for
+    some reason the GMN software cannot update it.
+    """
+    pass
+
+
+class XMLValidationError(RuntimeError):
+    pass
+
+
+class InvalidSitemapError(RuntimeError):
+    pass
+
+
+class XMLMetadataParsingError(RuntimeError):
     pass
 
 
@@ -51,7 +136,7 @@ class CoreHarvester(object):
         name of the gmn member node host
     client_mgs : object
         Handles direct communication with dataone host.
-    {created,failed,rejected_skipped_exists,updated}_count t: int
+    {created,failed,rejected_updated}_count t: int
         Counters for the different ways that records are handled.  "failed" is
         different from "rejected" in the sense that this code knows why a
         rejection occurs.
@@ -82,7 +167,7 @@ class CoreHarvester(object):
     def __init__(self, host=None, port=None, certificate=None,
                  private_key=None, verbosity='INFO', id='none',
                  num_documents=-1, num_workers=1, max_num_errors=3,
-                 regex=None, ignore_harvest_time=False):
+                 regex=None, retry=0, ignore_harvest_time=False):
         """
         Parameters
         ----------
@@ -99,9 +184,7 @@ class CoreHarvester(object):
             means retrieve them all.
         """
         self.mn_host = host
-
         self.setup_session(certificate, private_key)
-
         self.setup_logging(id, verbosity)
 
         self.mn_base_url = f'https://{host}:{port}/mn'
@@ -116,6 +199,7 @@ class CoreHarvester(object):
             'originMN': f'urn:node:{id.upper()}',
 
             # should be consistent w/ scimeta_element format
+            # This starts off as a default.  It will be changed if necessary.
             'formatId_custom': 'http://www.isotc211.org/2005/gmd'
         }
 
@@ -124,15 +208,15 @@ class CoreHarvester(object):
                                           self.sys_meta_dict,
                                           self.logger)
 
+        self.job_records = []
+
         # Count the different ways that we update/create/skip records.  This
         # will be logged when we are finished.
-        self.created_count = 0
         self.failed_count = 0
-        self.rejected_count = 0
-        self.skipped_count = 0
-        self.skipped_exists_count = 0
         self.updated_count = 0
-        self.processed_count = 0
+        self.created_count = 0
+
+        self.retry = retry
 
         self.num_documents = num_documents
         self.num_records_processed = 0
@@ -210,22 +294,53 @@ class CoreHarvester(object):
         return last_harvest_time
 
     def summarize(self):
+        """
+        Summarize the harvest results.
+        """
 
-        self.logger.info(f'Created {self.created_count} new records.')
-        self.logger.info(f'Updated {self.updated_count} records.')
+        self.logger.info("\n\n")
+        self.logger.info("Job Summary")
+        self.logger.info("===========")
+        self.logger.info(f"There were {self.created_count} new records.")
+        self.logger.info(f"There were {self.updated_count} updated records.")
 
-        msg = (
-            f'Skipped {self.skipped_exists_count} records without updating.'
-        )
+        self.summarize_job_records()
+
+    def summarize_job_records(self):
+        """
+        Summarize the job records.  Keep this factored out of the summarize
+        routine for the purpose of testing.
+        """
+        # Create a pandas dataframe out of the job results.
+        columns = ['URL', 'Identifier', 'NumFailures', 'Result']
+        records = [
+            (job.url, job.identifier, job.num_failures, job.result)
+            for job in self.job_records
+        ]
+        df = pd.DataFrame.from_records(records, columns=columns)
+
+        # The rows with None in the Results column are successes.  Anything
+        # else in there should be an Exception object.
+        msg = f"Successfully processed {df.Result.isnull().sum()} records."
         self.logger.info(msg)
 
-        msg = (
-            f'Skipped {self.skipped_count} records before trying to harvest.'
-        )
-        self.logger.info(msg)
+        # Restrict to the job failures.
+        df = df.dropna()
+        if len(df) == 0:
+            # If no errors, then nothing more to do.
+            return
 
-        self.logger.info(f'Rejected {self.rejected_count} records.')
-        self.logger.info(f'Failed to update/create {self.failed_count} records.')  # noqa: E501
+        # Split the exceptions into two parts, the exception name and the
+        # exception message.
+        fcn = lambda x: repr(x).split('(')[0]  # noqa:  E371
+        df = df.assign(error=lambda df: df.Result.apply(fcn))
+        columns = ['URL', 'Identifier', 'NumFailures', 'Result']
+        df_error = df.drop(columns, axis='columns')
+        df_error['count'] = 1
+        summary = df_error.groupby('error').sum()
+
+        self.logger.info("\n\n")
+        self.logger.error(f"Error summary:\n\n{summary}\n\n")
 
     async def shutdown(self):
         """
@@ -269,15 +384,13 @@ class CoreHarvester(object):
             and exists_dict['record_date'] != record_date
         ):
             current_sid = exists_dict['current_version_id']
-            if not await self.can_be_updated(docbytes, doi, current_sid):
-                self.rejected_count += 1
-                self.logger.warning(f'Refused to update {doi}.')
+            await self.check_if_can_be_updated(docbytes, doi, current_sid)
 
             # the outcome of exists_dict determines how to
             # handle the record.  if identifier exists in GMN but
             # record date is different, this truly is an update so
             # call update method.
-            elif self.client_mgr.update_science_metadata(
+            if self.client_mgr.update_science_metadata(
                 docbytes,
                 doi,
                 record_date,
@@ -286,8 +399,7 @@ class CoreHarvester(object):
                 self.updated_count += 1
                 self.logger.info(f'Updated {doi}.')
             else:
-                self.failed_count += 1
-                self.logger.warning(f'Unable to update {doi}.')
+                raise UnableToUpdateGmnRecord(f'Unable to update {doi}.')
 
         elif (
             exists_dict['outcome'] == 'yes'
@@ -295,16 +407,11 @@ class CoreHarvester(object):
         ):
             # if identifier exists but record date is the same, it's not really
             # an update. So skip it and move on.
-            #
-            # identifier exists but there are no updates to apply because
-            # record date is the same
-            self.skipped_exists_count += 1
-
             msg = (
-                f'Skipped {doi}, '
-                f'it already exists and has the same record date'
+                f'Skipping {doi}, '
+                f'it already exists and has the same record date {record_date}'
             )
-            self.logger.info(msg)
+            raise SkipError(msg)
 
         elif exists_dict['outcome'] == 'failed':
             # if check failed for some reason, d1_client_manager would have
@@ -329,10 +436,9 @@ class CoreHarvester(object):
                 msg = (
                     f'Unable to create new object identified as {doi}.'
                 )
-                self.logger.error(msg)
-                self.failed_count += 1
+                raise UnableToCreateNewGMNObject(msg)
 
-    async def can_be_updated(self, new_doc_bytes, doi, existing_sid):
+    async def check_if_can_be_updated(self, new_doc_bytes, doi, existing_sid):
         """
         We have an existing document in the system and have been give a
         proposed update document.  We need to decide if an update is warranted.
@@ -385,7 +491,7 @@ class CoreHarvester(object):
         ):
             # Yes, we should update.  The new document is finished while the
             # old document is not.
-            return True
+            return
         elif (
             new_progress_code.lower() in ['complete', 'completed']
             and old_progress_code.lower() in ['complete', 'completed']
@@ -393,7 +499,7 @@ class CoreHarvester(object):
         ):
             # We have a tie between the progress codes, but the proposed
             # update document has a newer timestamp.
-            return True
+            return
         else:
             msg = (
                 f"The existing document identified by {doi} with SID "
@@ -403,8 +509,7 @@ class CoreHarvester(object):
                 f"document has MD_ProgressCode \"{new_progress_code}\" and a "
                 f"metadata timestamp of {new_timestamp}."
             )
-            self.logger.warning(msg)
-            return False
+            raise RefusedToUpdateRecord(msg)
 
     def is_sitemap_index_file(self, doc):
         """
@@ -576,10 +681,10 @@ class CoreHarvester(object):
             doc = lxml.etree.parse(io.BytesIO(content))
         except Exception as e:
             msg = (
-                f"Unable to parse the metadata document at {metadata_url} "
-                f"due to {repr(e)}."
+                f"Unable to parse the metadata document at {metadata_url}:  "
+                f"{e}."
             )
-            raise RuntimeError(msg)
+            raise XMLMetadataParsingError(msg)
 
         self.logger.debug('Got the metadata document')
         return doc
@@ -598,76 +703,79 @@ class CoreHarvester(object):
         """
         while True:
             try:
-                url, lastmod_time = await sitemap_queue.get()
-                msg = f'sitemap_consumer[{idx}] ==>  {url}, {lastmod_time}'
-                self.logger.debug(msg)
+                job = await sitemap_queue.get()
+                msg = (
+                    f"sitemap_consumer[{idx}] ==>  {job.url}, "
+                    f"{job.lastmod}:  "
+                    f"job failure count = {job.num_failures}, "
+                    f"queue size = {sitemap_queue.qsize()}"
+                )
+                self.logger.info(msg)
 
-                await self.process_record(url, lastmod_time)
+                await self.process_job(job)
 
             except asyncio.CancelledError:
                 self.logger.debug('CancelledError')
                 break
 
             except SkipError as e:
-                # Don't count this as an error.  CUAHSI documents don't all
-                # have SO JSON-LD.
-                msg = f"Skipping {url}:  {repr(e)}."
+                job.result = e
+                self.job_records.append(copy.copy(job))
+                msg = f"Unable to process {job.url}:  {e}"
                 self.logger.warning(msg)
-                self.skipped_count += 1
-
-            except RuntimeError as e:
-                self.failed_count += 1
-                msg = f"RuntimeError:  Unable to process {url} due to \"{e}\"."
-                self.logger.error(msg)
-
-                if self.failed_count == self.max_num_errors:
-                    self.logger.warning("Error threshold reached.")
-                    await self.shutdown()
 
             except Exception as e:
-                self.failed_count += 1
-                msg = f"Unable to process {url} due to \"{repr(e)}\"."
+                job.result = e
+
+                self.job_records.append(copy.copy(job))
+
+                msg = f"Unable to process {job.url}:  {e}"
                 self.logger.error(msg)
 
+                self.failed_count += 1
                 if self.failed_count == self.max_num_errors:
                     self.logger.warning("Error threshold reached.")
                     await self.shutdown()
 
+                if job.num_failures < self.retry:
+                    if isinstance(e, ERROR_RETRY_CANDIDATES):
+                        self.logger.info(f"Throwing {job.url} back on queue")
+                        job.num_failures += 1
+                        sitemap_queue.put_nowait(job)
+
             else:
-                # Use the last part of the URL to identify the record that was
-                # successfully processed.
-                p = urllib.parse.urlparse(url)
-                basename = p.path.split('/')[-1]
+                # The job was successful.
+                job.result = None
+                self.job_records.append(copy.copy(job))
+
                 msg = (
-                    f"sitemap_consumer[{idx}]:  "
-                    f"{SUCCESSFUL_INGEST_MESSAGE}: {basename}"
+                        f"sitemap_consumer[{idx}]:  "
+                        f"{SUCCESSFUL_INGEST_MESSAGE}: {job.identifier}"
                 )
                 self.logger.debug(msg)
 
-                msg = f"{SUCCESSFUL_INGEST_MESSAGE}: {basename}"
+                msg = f"{SUCCESSFUL_INGEST_MESSAGE}: {job.identifier}"
                 self.logger.info(msg)
-                self.processed_count += 1
 
             sitemap_queue.task_done()
 
-    async def process_record(self, url, lastmod_time):
+    async def process_job(self, job):
         """
         Now that we have the record, validate and harvest it.
 
         Parameters
         ----------
-        url : str
-            Landing page URL.
-        last_mod_time : datetime.datetime
-            Last document modification time according to the site map.
+        job : SlenderNodeJob
+            Record containing at least the following attributes: landing page
+            URL, last document modification time according to the site map.
         """
-        self.logger.debug(f'process_record:  starting')
+        self.logger.debug(f'process_job:  starting')
 
-        identifier, doc = await self.retrieve_record(url)
+        job.identifier, doc = await self.retrieve_record(job.url)
         self.validate_document(doc)
-        await self.harvest_document(identifier, doc, lastmod_time)
+        await self.harvest_document(job.identifier, doc, job.lastmod)
 
-        self.logger.debug(f'process_record:  finished')
+        self.logger.debug(f'process_job:  finished')
 
     def validate_document(self, doc):
         """
@@ -690,7 +798,7 @@ class CoreHarvester(object):
             validator = XMLValidator(logger=self.logger)
             format_id = validator.validate(doc)
             if format_id is None:
-                raise RuntimeError('Validation failed.')
+                raise XMLValidationError('XML metadata validation failed.')
             else:
                 # Reset the format ID to the one that worked.
                 self.sys_meta_dict['formatId_custom'] = format_id
@@ -708,37 +816,28 @@ class CoreHarvester(object):
         # Nothing to do in the general case.
         pass
 
-    async def retrieve_record(self, landing_page_url):
+    async def retrieve_record(self, document_url):
         """
-        Read the remote document, extract the JSON-LD, and load it into the
-        system.
-
         Parameters
         ----------
-        landing_page_url : str
-            URL for remote landing page HTML
+        document_url : str
+            URL for a remote document, could be a landing page, could be an
+            XML document
+
+        Returns
+        -------
+        identifier : str
+            Ideally this is a DOI, but here it is a UUID.
+        doc : ElementTree
+            Metadata document
         """
-        self.logger.debug(f'retrieve_record')
-        self.logger.info(f"Requesting {landing_page_url}...")
-        content = await self.retrieve_url(landing_page_url)
-        doc = lxml.etree.HTML(content)
-
-        self.preprocess_landing_page(doc)
-
-        jsonld = self.extract_jsonld(doc)
-        self.jsonld_validator.check(jsonld)
-
-        identifier = self.extract_identifier(jsonld)
-        self.logger.debug(f"Have extracted the identifier {identifier}...")
-
-        metadata_url = jsonld['encoding']['contentUrl']
-
-        doc = await self.retrieve_metadata_document(metadata_url)
-        return identifier, doc
+        raise NotImplementedError('must supply in sub class')
 
     async def process_sitemap(self, sitemap_url, last_harvest):
         """
-        Process the sitemap.  This may involve recursive calls.
+        Determine if the sitemap (or RSS feed or whatever) is an index file
+        or whether it is a single document.  If an index file, we need to
+        descend recursively into it.
 
         Parameters
         ----------
@@ -754,7 +853,9 @@ class CoreHarvester(object):
         doc = await self.get_sitemap_document(sitemap_url)
         if self.is_sitemap_index_file(doc):
 
-            self.logger.debug("It is a sitemap index file.")
+            msg = "process_sitemap:  This is a sitemap index file."
+            self.logger.debug(msg)
+
             path = 'sm:sitemap/sm:loc/text()'
             sitemap_urls = doc.xpath(path, namespaces=SITEMAP_NS)
             for sitemap_url in sitemap_urls:
@@ -762,17 +863,20 @@ class CoreHarvester(object):
 
         else:
 
-            self.logger.debug("It is a sitemap leaf.")
+            self.logger.debug("process_sitemap:  This is a sitemap leaf.")
             await self.process_sitemap_leaf(doc, last_harvest)
 
     async def get_sitemap_document(self, sitemap_url):
         """
+        Retrieve a remote sitemap document.
+
         Parameters
         ---------
         sitemap_url : str
             URL for a sitemap or sitemap index file.
         """
         self.logger.info(f'Requesting sitemap document from {sitemap_url}')
+
         try:
             content = await self.retrieve_url(sitemap_url,
                                               check_xml_headers=True)
@@ -784,18 +888,25 @@ class CoreHarvester(object):
         try:
             doc = lxml.etree.parse(io.BytesIO(content))
         except lxml.etree.XMLSyntaxError as e:
-            msg1 = repr(e)
+            msg1 = str(e)
 
-            # was it compressed?
             try:
+                # Gzipped XML can cause an XMLSyntaxError, so try again.
                 doc = lxml.etree.parse(io.BytesIO(gzip.decompress(content)))
-            except OSError as e:
+            except OSError:
                 # Must not have been gzipped.
-                # TODO:  more exceptions possible here
-                self.logger.error(msg1)
-                self.logger.error(repr(e))
-                msg = f'Unable to process the sitemap {sitemap_url}.'
-                raise RuntimeError(msg)
+                # TODO:  Is there some other possibility here?
+                msg = (
+                    f"XMLSyntaxError:  sitemap document at {sitemap_url}: "
+                    f"{msg1}"
+                )
+                self.logger.error(msg)
+
+                msg = (
+                    f'Unable to process the sitemap retrieved from '
+                    f'{sitemap_url}.'
+                )
+                raise InvalidSitemapError(msg)
 
         return doc
 
@@ -820,7 +931,8 @@ class CoreHarvester(object):
         records = self.extract_records_from_sitemap(doc)
         records = self.post_process_sitemap_records(records, last_harvest)
         for url, lastmod_time in records:
-            sitemap_queue.put_nowait((url, lastmod_time))
+            job = SlenderNodeJob(url, '', lastmod_time, 0, None)
+            sitemap_queue.put_nowait(job)
 
         # Create the worker tasks to consume the URLs
         tasks = []
