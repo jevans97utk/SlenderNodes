@@ -1,3 +1,7 @@
+"""
+Test suite for schema.org core functionality.
+"""
+
 # Standard library imports
 import asyncio
 import datetime as dt

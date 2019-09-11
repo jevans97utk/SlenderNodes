@@ -6,6 +6,7 @@ import asyncio
 import d1_scimeta.util
 
 # Local imports
+from .abds import AbdsIptHarvester
 from .arm import ARMHarvester
 from .cuahsi import CUAHSIHarvester
 from .ieda import IEDAHarvester
@@ -132,6 +133,14 @@ def d1_check_site():
                          num_documents=args.num_documents,
                          max_num_errors=args.max_num_errors)
     asyncio.run(obj.run())
+
+
+def abds_ipt():
+    parser = setup_parser("arm")
+    args = parser.parse_args()
+
+    arm_harvester = AbdsIptHarvester(**args.__dict__)
+    asyncio.run(arm_harvester.run())
 
 
 def arm():

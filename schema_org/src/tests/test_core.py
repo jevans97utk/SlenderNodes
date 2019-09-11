@@ -33,7 +33,9 @@ class TestSuite(TestCommon):
         doc = lxml.etree.parse(io.BytesIO(content))
         last_harvest = dateutil.parser.parse('1900-01-01T00:00:00Z')
 
-        records = harvester.extract_records_from_sitemap(doc, last_harvest)
+        records = harvester.extract_records_from_sitemap(doc)
+        records = harvester.post_process_sitemap_records(records, last_harvest)
+
         self.assertEqual(len(records), 2)
 
     @patch('schema_org.core.logging.getLogger')
@@ -52,7 +54,8 @@ class TestSuite(TestCommon):
         doc = lxml.etree.parse(io.BytesIO(content))
         last_harvest = dateutil.parser.parse('1900-01-01T00:00:00Z')
 
-        records = harvester.extract_records_from_sitemap(doc, last_harvest)
+        records = harvester.extract_records_from_sitemap(doc)
+        records = harvester.post_process_sitemap_records(records, last_harvest)
         self.assertEqual(len(records), 3)
 
     def test_no_lastmod_time_in_sitemap_leaf(self):
@@ -74,7 +77,9 @@ class TestSuite(TestCommon):
         obj = CoreHarvester()
 
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
-            records = obj.extract_records_from_sitemap(doc, last_harvest_time)
+            records = obj.extract_records_from_sitemap(doc)
+            records = obj.post_process_sitemap_records(records,
+                                                       last_harvest_time)
         self.assertEqual(len(records), 3)
 
     def test_sitemap_when_regex_applied(self):
@@ -110,5 +115,7 @@ class TestSuite(TestCommon):
         obj = CoreHarvester(regex=regex)
 
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
-            records = obj.extract_records_from_sitemap(doc, last_harvest_time)
+            records = obj.extract_records_from_sitemap(doc)
+            records = obj.post_process_sitemap_records(records,
+                                                       last_harvest_time)
         self.assertEqual(len(records), 1)

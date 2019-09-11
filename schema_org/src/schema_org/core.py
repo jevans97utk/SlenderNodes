@@ -419,7 +419,7 @@ class CoreHarvester(object):
         else:
             return False
 
-    def extract_records_from_sitemap(self, doc, last_harvest_time):
+    def extract_records_from_sitemap(self, doc):
         """
         Extract all the URLs and lastmod times from an XML sitemap.
         """
@@ -448,18 +448,33 @@ class CoreHarvester(object):
 
         msg = f"Extracted {len(urls)} from the sitemap document."
         self.logger.info(msg)
+        return records
 
+    def post_process_sitemap_records(self, records, last_harvest_time):
+        """
+        Prune the sitemap records for various reasons.
+
+        Parameters
+        ----------
+        records : list
+            Each item in the list is composed of a URL and a last modification
+            date.
+        """
+        # If we do not wish to ignore the last harvest time, then only those
+        # records in the sitemap that are newer than the last harvest time will
+        # pass through.
+        nrecs = len(records)
         if not self.ignore_harvest_time:
             records = [
                 (url, lastmod) for url, lastmod in records
                 if lastmod > last_harvest_time
             ]
 
-            nskipped = len(urls) - len(records)
+            nskipped = nrecs - len(records)
             msg = f"{nskipped} records skipped due to lastmod time."
             self.logger.info(msg)
 
-        # Further restrict by regex if so specified.
+        # If a regex was specified, filter out any records that do not match.
         if self.regex is not None:
             nrecs = len(records)
             records = [
@@ -510,6 +525,7 @@ class CoreHarvester(object):
                 if check_xml_headers:
                     exp_headers = [
                         'text/xml',
+                        'text/xml;charset=UTF-8',
                         'application/x-gzip',
                         'application/xml'
                     ]
@@ -801,7 +817,8 @@ class CoreHarvester(object):
 
         sitemap_queue = asyncio.Queue()
 
-        records = self.extract_records_from_sitemap(doc, last_harvest)
+        records = self.extract_records_from_sitemap(doc)
+        records = self.post_process_sitemap_records(records, last_harvest)
         for url, lastmod_time in records:
             sitemap_queue.put_nowait((url, lastmod_time))
 
