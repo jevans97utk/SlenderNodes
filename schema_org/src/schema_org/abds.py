@@ -34,7 +34,7 @@ class AbdsIptHarvester(CoreHarvester):
     def __init__(self, **kwargs):
         super().__init__(id='abds_ipt', **kwargs)
 
-        self.site_map = 'http://geo.abds.is/ipt/rss.do'
+        self.sitemap = 'http://geo.abds.is/ipt/rss.do'
 
     def is_sitemap_index_file(self, doc):
         """

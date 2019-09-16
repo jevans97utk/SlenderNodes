@@ -10,12 +10,21 @@ from .abds import AbdsIptHarvester
 from .arm import ARMHarvester
 from .cuahsi import CUAHSIHarvester
 from .ieda import IEDAHarvester
+from .nkn import NKNHarvester
 from .check_sitemap import D1CheckSitemap
 from .html import D1CheckHtmlFile
 from .xml_validator import XMLValidator
 
 
 def setup_parser(id):
+    """
+    All the harvesters use a common parser.
+
+    Parameters
+    ----------
+    id : str
+        Name of the harvester, i.e. "arm" or "ieda".
+    """
 
     description = f"Harvest metadata from {id.upper()}."
     epilog = (
@@ -141,16 +150,16 @@ def abds_ipt():
     parser = setup_parser("arm")
     args = parser.parse_args()
 
-    arm_harvester = AbdsIptHarvester(**args.__dict__)
-    asyncio.run(arm_harvester.run())
+    harvester = AbdsIptHarvester(**args.__dict__)
+    asyncio.run(harvester.run())
 
 
 def arm():
     parser = setup_parser("arm")
     args = parser.parse_args()
 
-    arm_harvester = ARMHarvester(**args.__dict__)
-    asyncio.run(arm_harvester.run())
+    harvester = ARMHarvester(**args.__dict__)
+    asyncio.run(harvester.run())
 
 
 def cuahsi():
@@ -165,8 +174,16 @@ def ieda():
     parser = setup_parser("ieda")
     args = parser.parse_args()
 
-    ieda_harvester = IEDAHarvester(**args.__dict__)
-    asyncio.run(ieda_harvester.run())
+    harvester = IEDAHarvester(**args.__dict__)
+    asyncio.run(harvester.run())
+
+
+def nkn():
+    parser = setup_parser("nkn")
+    args = parser.parse_args()
+
+    harvester = NKNHarvester(**args.__dict__)
+    asyncio.run(harvester.run())
 
 
 def validate():

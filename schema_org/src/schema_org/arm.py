@@ -13,4 +13,4 @@ class ARMHarvester(SchemaDotOrgHarvester):
     def __init__(self, **kwargs):
         super().__init__(id='arm', **kwargs)
 
-        self.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
+        self.sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501

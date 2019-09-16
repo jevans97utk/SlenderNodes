@@ -72,6 +72,19 @@ class TestSuite(TestCommon):
         self.assertEqual(mock_cuahsi.call_count, 1)
 
     @patch.object(sys, 'argv', [''])
+    @patch('schema_org.commandline.NKNHarvester.run')
+    @patch('schema_org.commandline.asyncio')
+    def test_nkn(self, mock_asyncio, mock_nkn):
+        """
+        SCENARIO:  Run with no command line arguments.
+
+        EXPECTED RESULT:  The run method was called.
+        """
+        commandline.nkn()
+
+        self.assertEqual(mock_nkn.call_count, 1)
+
+    @patch.object(sys, 'argv', [''])
     @patch('schema_org.commandline.ARMHarvester.run')
     @patch('schema_org.commandline.asyncio')
     def test_arm(self, mock_asyncio, mock_arm):

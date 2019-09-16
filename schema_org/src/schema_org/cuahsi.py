@@ -27,7 +27,7 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         xslt_tree = lxml.etree.XML(content)
         self.transform_to_dataone_simple_dc = lxml.etree.XSLT(xslt_tree)
 
-        self.site_map = 'https://www.hydroshare.org/sitemap.xml'
+        self.sitemap = 'https://www.hydroshare.org/sitemap.xml'
 
     def preprocess_landing_page(self, landing_page_doc):
         """

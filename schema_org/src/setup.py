@@ -56,6 +56,7 @@ kwargs = {
             'harvest-arm=schema_org.commandline:arm',
             'harvest-cuahsi=schema_org.commandline:cuahsi',
             'harvest-ieda=schema_org.commandline:ieda',
+            'harvest-nkn=schema_org.commandline:nkn',
         ],
     }
 }

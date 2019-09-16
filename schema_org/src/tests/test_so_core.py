@@ -144,7 +144,7 @@ class TestSuite(TestCommon):
         mock_load_science_metadata.return_value = True
 
         harvester = SchemaDotOrgHarvester()
-        harvester.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
+        harvester.sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
 
         # External calls to read the:
         #
@@ -194,7 +194,7 @@ class TestSuite(TestCommon):
         mock_load_science_metadata.return_value = True
 
         harvester = SchemaDotOrgHarvester(host='test.arm.gov')
-        harvester.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
+        harvester.sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
 
         # External calls to read the:
         #
@@ -243,7 +243,7 @@ class TestSuite(TestCommon):
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
 
         harvester = SchemaDotOrgHarvester()
-        harvester.site_map = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
+        harvester.sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
 
         failed_count = harvester.failed_count
 

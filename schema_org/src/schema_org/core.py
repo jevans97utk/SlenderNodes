@@ -163,6 +163,9 @@ class CoreHarvester(object):
         A dict containing node-specific system metadata properties that
         will apply to all science metadata documents loaded into GMN.
     """
+    SITEMAP_URL_PATH = './/sm:loc/text()'
+    SITEMAP_LASTMOD_PATH = './/sm:lastmod/text()'
+    SITEMAP_NAMESPACE = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
 
     def __init__(self, host=None, port=None, certificate=None,
                  private_key=None, verbosity='INFO', id='none',
@@ -528,10 +531,18 @@ class CoreHarvester(object):
         """
         Extract all the URLs and lastmod times from an XML sitemap.
         """
-        urls = doc.xpath('.//sm:loc/text()', namespaces=SITEMAP_NS)
+        urls = doc.xpath(self.SITEMAP_URL_PATH,
+                         namespaces=self.SITEMAP_NAMESPACE)
 
-        lastmods = doc.xpath('.//sm:lastmod/text()',
-                             namespaces=SITEMAP_NS)
+        # If the URLs do not begin with 'http', then they may be relative?
+        # If so, tack the sitemap URL onto them.
+        urls = [
+            f"{self.sitemap}/{url}" if not url.startswith('http') else url
+            for url in urls
+        ]
+
+        lastmods = doc.xpath(self.SITEMAP_LASTMOD_PATH,
+                             namespaces=self.SITEMAP_NAMESPACE)
         if len(lastmods) == 0:
             # Sometimes a sitemap has no <lastmod> items at all.  That's ok.
             lastmods = [
@@ -628,21 +639,29 @@ class CoreHarvester(object):
                 response.raise_for_status()
 
                 if check_xml_headers:
-                    exp_headers = [
-                        'text/xml',
-                        'text/xml;charset=UTF-8',
-                        'application/x-gzip',
-                        'application/xml'
-                    ]
-                    if response.headers['Content-Type'] not in exp_headers:
-                        msg = (
-                            f"get_sitemap_document: headers are "
-                            f"{response.headers}"
-                        )
-                        self.logger.debug(msg)
-                        self.logger.warning(SITEMAP_NOT_XML_MESSAGE)
+                    self.check_xml_headers(response)
 
                 return await response.read()
+
+    def check_xml_headers(self, response):
+        """
+        Check the headers returned by the sitemap request response.
+
+        Parameters
+        ----------
+        response : aiohttp.ClientResponse
+            Response for the sitemap.
+        """
+        exp_headers = [
+            'text/xml',
+            'text/xml;charset=UTF-8',
+            'application/x-gzip',
+            'application/xml'
+        ]
+        if response.headers['Content-Type'] not in exp_headers:
+            msg = f"get_sitemap_document: headers are {response.headers}"
+            self.logger.debug(msg)
+            self.logger.warning(SITEMAP_NOT_XML_MESSAGE)
 
     async def run(self):
 
@@ -650,7 +669,7 @@ class CoreHarvester(object):
         last_harvest_time = self.get_last_harvest_time()
 
         try:
-            await self.process_sitemap(self.site_map, last_harvest_time)
+            await self.process_sitemap(self.sitemap, last_harvest_time)
         except Exception as e:
             self.logger.error(repr(e))
 
@@ -831,7 +850,7 @@ class CoreHarvester(object):
         doc : ElementTree
             Metadata document
         """
-        raise NotImplementedError('must supply in sub class')
+        raise NotImplementedError('must implement retrieve_record in sub class')  # noqa:  E501
 
     async def process_sitemap(self, sitemap_url, last_harvest):
         """

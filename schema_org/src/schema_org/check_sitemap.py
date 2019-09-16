@@ -1,3 +1,8 @@
+"""
+Check a sitemap as to availability and validity of metadata documents.  This
+is for Schema.Org sites only.
+"""
+
 # Standard library imports
 
 # 3rd party library imports
@@ -14,10 +19,11 @@ class D1CheckSitemap(SchemaDotOrgHarvester):
     def __init__(self, sitemap_url=None, **kwargs):
         super().__init__(id='d1checksite', **kwargs)
 
-        self.site_map = sitemap_url
+        self.sitemap = sitemap_url
 
     async def harvest_document(self, doi, doc, record_date):
         """
-        We don't actually harvest.
+        We don't actually harvest when just checking the sitemap, so do nothing
+        here.
         """
         pass
