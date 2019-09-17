@@ -18,7 +18,7 @@ class D1CheckHtmlFile(object):
         self.html_file = html_file
         self.setup_logging(verbosity)
 
-        self.validator = JSONLD_Validator(self.logger)
+        self.validator = JSONLD_Validator(logger=self.logger)
 
     def run(self):
         """

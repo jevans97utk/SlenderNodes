@@ -1,5 +1,6 @@
 """
-DATAONE SO core for multiple adaptors.
+DATAONE Schema.Org core functionality.  This is meant to be subclassed by
+individual adaptors for different Slendernodes.
 """
 
 # Standard library imports
@@ -26,10 +27,10 @@ class SchemaDotOrgHarvester(CoreHarvester):
         URL for XML site map.  This must be overridden for each custom client.
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, id='', **kwargs):
         super().__init__(**kwargs)
 
-        self.jsonld_validator = JSONLD_Validator(logger=self.logger)
+        self.jsonld_validator = JSONLD_Validator(id=id, logger=self.logger)
 
         self.sitemap = ''
 
@@ -42,6 +43,10 @@ class SchemaDotOrgHarvester(CoreHarvester):
         doc : ElementTree
             The parsed HTML.  The JSON-LD should be embedded within a
             <SCRIPT> element embedded in the <HEAD> element.
+
+        Returns
+        -------
+        Dictionary of JSON-LD data.
         """
         self.logger.debug('extract_jsonld:')
         path = './/script[@type="application/ld+json"]'
@@ -65,38 +70,41 @@ class SchemaDotOrgHarvester(CoreHarvester):
 
         return jsonld
 
-    def extract_identifier(self, jsonld):
+    def extract_series_identifier(self, d):
         """
         Parse the DOI from the json['@id'] value.  The identifiers should
         look something like
 
             'https://dx.doi.org/10.5439/1025173
 
-        The DOI in this case would be '10.5439/1025173'.  This will be used as
-        the series identifier.
+        The DOI in this case would be 'doi:10.5439/1025173'.  This will be used
+        as the series identifier.
 
         Parameters
         ----------
-        JSON-LD obj
+        d : a valid python dictionary created from a JSON-LD string
+            This has hopefully been extracted from a JSON-LD <SCRIPT> element
+            from a landing page.
 
         Returns
         -------
-        The identifier substring.
+        the DOI identifier
         """
         pattern = r'''
                   # DOI:prefix/suffix - ARM style
                   (https?://dx.doi.org/(?P<doi>10\.\w+/\w+))
                   '''
         regex = re.compile(pattern, re.VERBOSE)
-        m = regex.search(jsonld['@id'])
+        m = regex.search(d['@id'])
         if m is None:
             msg = (
                 f"DOI ID parsing error, could not parse an ID out of "
-                f"JSON-LD '@id' element \"{jsonld['@id']}\""
+                f"JSON-LD '@id' element \"{d['@id']}\""
             )
             raise JsonLdError(msg)
 
-        return m.group('doi')
+        identifier = f"doi:{m.group('doi')}"
+        return identifier
 
     async def retrieve_record(self, landing_page_url):
         """
@@ -107,6 +115,16 @@ class SchemaDotOrgHarvester(CoreHarvester):
         ----------
         landing_page_url : str
             URL for remote landing page HTML
+
+        Returns
+        -------
+        sid : str
+            Node's system identifier for this object, which becomes the
+            series ID.
+        pid : str
+            Intended to be the GMN unique identifier of the science
+            metadata record to be archived.
+        doc : ElementTree
         """
         self.logger.debug(f'retrieve_record')
         self.logger.info(f"Requesting {landing_page_url}...")
@@ -118,10 +136,29 @@ class SchemaDotOrgHarvester(CoreHarvester):
         jsonld = self.extract_jsonld(doc)
         self.jsonld_validator.check(jsonld)
 
-        identifier = self.extract_identifier(jsonld)
-        self.logger.debug(f"Have extracted the identifier {identifier}...")
+        sid = self.extract_series_identifier(jsonld)
+        self.logger.debug(f"Series ID (sid): {sid}")
 
-        metadata_url = jsonld['encoding']['contentUrl']
+        pid = self.extract_record_version(landing_page_url)
+        self.logger.debug(f"Record version (pid): {pid}")
+
+        metadata_url = self.extract_metadata_url(jsonld)
 
         doc = await self.retrieve_metadata_document(metadata_url)
-        return identifier, doc
+        return sid, pid, doc
+
+    def extract_metadata_url(self, jsonld):
+        """
+        Extract the URL for the XML metadata document.
+
+        Parameters
+        ----------
+        jsonld : dict
+            Dictionary of JSON-LD data.
+
+        Returns
+        -------
+        The URL for the XML metadata document.
+        """
+        metadata_url = jsonld['encoding']['contentUrl']
+        return metadata_url

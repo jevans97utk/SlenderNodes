@@ -4,6 +4,7 @@ DATAONE adapter for CUAHSI
 
 # Standard library imports
 import importlib.resources as ir
+import hashlib
 import io
 import json
 import zipfile
@@ -101,8 +102,8 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         # Don't bother validating, we know it fails.
         # self.jsonld_validator.check(jsonld)
 
-        identifier = self.extract_identifier(jsonld)
-        self.logger.debug(f"Have extracted the identifier {identifier}...")
+        sid = self.extract_series_identifier(jsonld)
+        self.logger.debug(f"Have extracted the identifier {sid}...")
 
         # Construct the URL for the bagit zip archive.
         path = './/a[@id="btn-download-all"]'
@@ -117,14 +118,14 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
 
         url = 'https://www.hydroshare.org/' + elt.attrib['href']
 
-        doc = await self.retrieve_metadata_document(url)
+        doc, pid = await self.retrieve_metadata_document(url)
 
         # Must transform the document.
         doc = self.transform_to_dataone_simple_dc(doc)
 
-        return identifier, doc
+        return sid, pid, doc
 
-    def extract_identifier(self, jsonld):
+    def extract_series_identifier(self, jsonld):
         """
         Parse the DOI from the json['@id'] value.  The identifiers should
         look something like
@@ -157,7 +158,10 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
 
         Returns
         -------
-        The ElementTree document.
+        doc : ElementTree
+            The XML metadata document
+        pid : str
+            Record version.  For CUAHSI, it is the checksum of the zip file.
         """
 
         self.logger.debug(f'Requesting bagit zip archive: {url}')
@@ -179,6 +183,10 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         except Exception as e:
             msg = f"Unable to parse the metadata document at {url}:  {e}."
             raise XMLMetadataParsingError(msg)
+        else:
+            self.logger.debug('Got the metadata document')
 
-        self.logger.debug('Got the metadata document')
-        return doc
+        self.logger.debug('Got the pid from the zip file content')
+        pid = hashlib.md5(zip_content).hexdigest()
+
+        return doc, pid

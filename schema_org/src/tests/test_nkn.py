@@ -39,7 +39,7 @@ class TestSuite(TestCommon):
         doc = lxml.etree.parse(io.BytesIO(content))
 
         harvester = NKNHarvester()
-        identifier = harvester.extract_identifier(doc)
+        identifier = harvester.extract_series_identifier(doc)
 
         self.assertEqual(identifier,
                          'nkn:0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0')
@@ -205,4 +205,4 @@ class TestSuite(TestCommon):
         harvester = NKNHarvester()
 
         with self.assertRaises(MissingMetadataFileIdentifierError):
-            harvester.extract_identifier(doc)
+            harvester.extract_series_identifier(doc)

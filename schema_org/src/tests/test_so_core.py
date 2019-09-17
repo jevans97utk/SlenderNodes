@@ -107,9 +107,9 @@ class TestSuite(TestCommon):
         """
         jsonld = {'@id': 'http://dx.doi.org/10.5439/1027257'}
         harvester = SchemaDotOrgHarvester()
-        identifier = harvester.extract_identifier(jsonld)
+        identifier = harvester.extract_series_identifier(jsonld)
 
-        self.assertEqual(identifier, '10.5439/1027257')
+        self.assertEqual(identifier, 'doi:10.5439/1027257')
 
     @patch('schema_org.core.logging.getLogger')
     def test_identifier_parsing_error(self, mock_logger):
@@ -123,7 +123,7 @@ class TestSuite(TestCommon):
         harvester = SchemaDotOrgHarvester()
 
         with self.assertRaises(RuntimeError):
-            harvester.extract_identifier(jsonld)
+            harvester.extract_series_identifier(jsonld)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -281,7 +281,7 @@ class TestSuite(TestCommon):
         harvester = SchemaDotOrgHarvester()
         jsonld = {'@id': " doi:10.15784/601015"}
         with self.assertRaises(RuntimeError):
-            harvester.extract_identifier(jsonld)
+            harvester.extract_series_identifier(jsonld)
 
     def test_metadata_document_retrieval(self):
         """
@@ -525,7 +525,8 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
-                asyncio.run(harvester.harvest_document(doi, doc, record_date))
+                asyncio.run(harvester.harvest_document(doi, '1',
+                                                       doc, record_date))
 
             # Did we see a warning?
             self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
@@ -575,7 +576,8 @@ class TestSuite(TestCommon):
         with self.assertRaises(schema_org.core.UnableToUpdateGmnRecord):
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
-                asyncio.run(harvester.harvest_document(doi, doc, record_date))
+                asyncio.run(harvester.harvest_document(doi, '1',
+                                                       doc, record_date))
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -622,7 +624,7 @@ class TestSuite(TestCommon):
         regex = re.compile('https://ieda.mn.org:443/')
         with aioresponses() as m:
             m.get(regex, body=existing_content)
-            asyncio.run(harvester.harvest_document(doi, doc, record_date))
+            asyncio.run(harvester.harvest_document(doi, '1', doc, record_date))
 
         # Did we increase the failure count?
         self.assertEqual(harvester.updated_count, initial_updated_count + 1)
@@ -670,7 +672,8 @@ class TestSuite(TestCommon):
         with self.assertRaises(schema_org.core.RefusedToUpdateRecord):
             with aioresponses() as m:
                 m.get(regex, body=existing_content)
-                asyncio.run(harvester.harvest_document(doi, doc, record_date))
+                asyncio.run(harvester.harvest_document(doi, '1',
+                                                       doc, record_date))
 
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -700,7 +703,7 @@ class TestSuite(TestCommon):
         doi = 'doi.10000/abcde'
 
         with self.assertRaises(schema_org.core.SkipError):
-            asyncio.run(harvester.harvest_document(doi, doc, record_date))
+            asyncio.run(harvester.harvest_document(doi, '1', doc, record_date))
 
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     @patch('schema_org.core.logging.getLogger')
@@ -724,7 +727,7 @@ class TestSuite(TestCommon):
 
         record_date = dt.datetime.now()
 
-        asyncio.run(harvester.harvest_document('doi.10000/abcde',
+        asyncio.run(harvester.harvest_document('doi.10000/abcde', '1',
                                                doc, record_date))
 
         harvester.logger.warning.assert_called_once()
@@ -753,6 +756,7 @@ class TestSuite(TestCommon):
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
         asyncio.run(harvester.harvest_document('doi.10000/abcde',
+                                               '1',
                                                doc,
                                                dt.datetime.now()))
 
@@ -780,7 +784,7 @@ class TestSuite(TestCommon):
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
         with self.assertRaises(schema_org.core.UnableToCreateNewGMNObject):
-            asyncio.run(harvester.harvest_document('doi.10000/abcde',
+            asyncio.run(harvester.harvest_document('doi.10000/abcde', '1',
                                                    doc,
                                                    dt.datetime.now()))
 

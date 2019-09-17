@@ -47,6 +47,51 @@ class AbdsIptHarvester(CoreHarvester):
         """
         return False
 
+    def generate_system_metadata(self, *,
+                                 scimeta_bytes=None,
+                                 native_identifier_sid=None,
+                                 record_date=None,
+                                 record_version=None):
+        """
+        This function generates a system metadata document for describing
+        the science metadata record being loaded. Some of the fields,
+        such as checksum and size, are based off the bytes of the science
+        metadata object itself. Other system metadata fields are passed
+        to D1ClientManager in a dict which is configured in the main
+        adapter program.  Note that the checksum is assigned as an
+        arbitrary version identifier to accommodate the source system's
+        mutable content represented in the target system's immutable
+        content standard.
+
+        Parameters
+        ----------
+        scimeta_bytes :
+            Bytes of the node's original metadata document.
+        native_identifier_sid :
+            Node's system identifier for this object, which becomes the series
+            ID, or sid.
+        record_date :
+            Date metadata document was created/modified in the source
+            system. Becomes dateUploaded.
+        record_version : str
+            Will be the pid.
+
+        Returns
+        -------
+            A dict containing node-specific system metadata properties that
+            will apply to all science metadata documents loaded into GMN.
+        """
+        kwargs = {
+            'scimeta_bytes': scimeta_bytes,
+            'native_identifier_sid': native_identifier_sid,
+            'record_date': record_date,
+            'record_version': record_version,
+        }
+        sys_meta = super().generate_system_metadata(**kwargs)
+
+        sys_meta.identifier = record_version
+        return sys_meta
+
     def extract_records_from_sitemap(self, doc):
         """
         Extract all the URLs and lastmod times from the RSS feed.
@@ -85,8 +130,10 @@ class AbdsIptHarvester(CoreHarvester):
 
         Returns
         -------
-        identifier : str
+        sid : str
             Ideally this is a DOI, but here it is a UUID.
+        pid : str
+            The version of the document.
         doc : ElementTree
             Metadata document
         """
@@ -97,12 +144,15 @@ class AbdsIptHarvester(CoreHarvester):
 
         # Normally it would make sense to factor this out, but the schema.org,
         # it gets a lot more complicated.
-        identifier = self.extract_identifier(doc)
-        self.logger.debug(f"Have extracted the identifier {identifier}...")
+        sid = self.extract_series_identifier(doc)
+        self.logger.debug(f"Have extracted the identifier {sid}...")
 
-        return identifier, doc
+        pid = doc.getroot().attrib['packageId']
+        self.logger.debug(f"Have extracted the version ID {pid}...")
 
-    def extract_identifier(self, doc):
+        return sid, pid, doc
+
+    def extract_series_identifier(self, doc):
         """
         Parse the identifier from the XML.
 

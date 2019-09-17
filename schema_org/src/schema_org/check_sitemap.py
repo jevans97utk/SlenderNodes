@@ -21,7 +21,7 @@ class D1CheckSitemap(SchemaDotOrgHarvester):
 
         self.sitemap = sitemap_url
 
-    async def harvest_document(self, doi, doc, record_date):
+    async def harvest_document(self, sid, pid, doc, record_date):
         """
         We don't actually harvest when just checking the sitemap, so do nothing
         here.

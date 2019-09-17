@@ -8,6 +8,7 @@ import copy
 from dataclasses import dataclass
 import datetime as dt
 import gzip
+import hashlib
 import io
 import logging
 import re
@@ -20,6 +21,9 @@ import lxml.etree
 import pandas as pd
 import requests
 import d1_scimeta.validate
+import d1_common
+import d1_common.types.dataoneTypes_v2_0 as v2
+import d1_common.types.dataoneTypes_v2_0 as dataoneTypes
 
 # Local imports
 from .d1_client_manager import D1ClientManager
@@ -208,7 +212,6 @@ class CoreHarvester(object):
 
         self.client_mgr = D1ClientManager(self.mn_base_url,
                                           certificate, private_key,
-                                          self.sys_meta_dict,
                                           self.logger)
 
         self.job_records = []
@@ -284,6 +287,83 @@ class CoreHarvester(object):
         sh.setFormatter(formatter)
         self.logger.addHandler(sh)
 
+    def generate_system_metadata(self, *,
+                                 scimeta_bytes=None,
+                                 native_identifier_sid=None,
+                                 record_date=None,
+                                 record_version=None):
+        """
+        This function generates a system metadata document for describing
+        the science metadata record being loaded. Some of the fields,
+        such as checksum and size, are based off the bytes of the science
+        metadata object itself. Other system metadata fields are passed
+        to D1ClientManager in a dict which is configured in the main
+        adapter program.  Note that the checksum is assigned as an
+        arbitrary version identifier to accommodate the source system's
+        mutable content represented in the target system's immutable
+        content standard.
+
+        This is the default case.  It should be specialized by each slender
+        nodes object.
+
+        Parameters
+        ----------
+        scimeta_bytes :
+            Bytes of the node's original metadata document.
+        native_identifier_sid :
+            Node's system identifier for this object, which becomes the series
+            ID, or sid.
+        record_date :
+            Date metadata document was created/modified in the source
+            system. Becomes dateUploaded.
+        record_version : str
+            Will be the pid.
+
+        Returns
+        -------
+            A dict containing node-specific system metadata properties that
+            will apply to all science metadata documents loaded into GMN.
+        """
+        sys_meta = v2.systemMetadata()
+        sys_meta.seriesId = native_identifier_sid
+
+        sys_meta.formatId = self.sys_meta_dict['formatId_custom']
+        sys_meta.size = len(scimeta_bytes)
+
+        digest = hashlib.md5(scimeta_bytes).hexdigest()
+        sys_meta.checksum = dataoneTypes.checksum(digest)
+
+        sys_meta.checksum.algorithm = 'MD5'
+        sys_meta.identifier = sys_meta.checksum.value()
+        sys_meta.dateUploaded = record_date
+        sys_meta.dateSysMetadataModified = dt.datetime.now()
+        sys_meta.rightsHolder = self.sys_meta_dict['rightsholder']
+        sys_meta.submitter = self.sys_meta_dict['submitter']
+        sys_meta.authoritativeMemberNode = self.sys_meta_dict['authoritativeMN']  # noqa:  E501
+        sys_meta.originMemberNode = self.sys_meta_dict['originMN']
+        sys_meta.accessPolicy = self.generate_public_access_policy()
+        return sys_meta
+
+    def generate_public_access_policy(self):
+        """
+        This function generates an access policy which is needed as
+        part of system metadata for describing a science metadata object.
+        In an adapter-based implementation, the ability to modify records
+        is managed by the native repository, not GMN, and any changes
+        in the native repository simple cascade down to GMN. This means
+        it is unnecessary to set specific access policies for individual
+        records. Therefore, a generic public read-only access policy
+        is generated and assigned as part of system metadata to every
+        record as it is loaded.
+        """
+        accessPolicy = v2.AccessPolicy()
+        accessRule = v2.AccessRule()
+        accessRule.subject.append(d1_common.const.SUBJECT_PUBLIC)
+        permission = v2.Permission('write')
+        accessRule.permission.append(permission)
+        accessPolicy.append(accessRule)
+        return accessPolicy
+
     def get_last_harvest_time(self):
 
         if self.mn_host is not None:
@@ -328,7 +408,7 @@ class CoreHarvester(object):
         self.logger.info(msg)
 
         # Restrict to the job failures.
-        df = df.dropna()
+        df = df.dropna(subset=['Result'])
         if len(df) == 0:
             # If no errors, then nothing more to do.
             return
@@ -343,7 +423,9 @@ class CoreHarvester(object):
         summary = df_error.groupby('error').sum()
 
         self.logger.info("\n\n")
-        self.logger.error(f"Error summary:\n\n{summary}\n\n")
+
+        msg = f"Error summary:\n\n{summary}\n\n"
+        self.logger.error(msg)
 
     async def shutdown(self):
         """
@@ -360,49 +442,62 @@ class CoreHarvester(object):
         [task.cancel() for task in tasks]
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def harvest_document(self, doi, doc, record_date):
+    async def harvest_document(self, sid, pid, doc, record_date):
         """
         Check if the member node has seen the document before and decide how to
         harvest it (or not) accordingly.
 
         Parameters
         ----------
-        doi : str
-            Handle used to identify objects uniquely.
+        sid : str
+            Handle used to identify objects uniquely.  Also known as the
+            series identifier.
+        pid : str
+            Record version.
         doc : bytes
             serialized version of XML metadata document
         record_date : datetime obj
             Last document modification time according to the site map.
         """
-        self.logger.debug(f'harvest_document:  {doi}')
+        self.logger.debug(f'harvest_document:  {sid}')
 
         # Re-seriealize to bytes.
         docbytes = lxml.etree.tostring(doc, pretty_print=True,
                                        encoding='utf-8', standalone=True)
 
-        exists_dict = self.client_mgr.check_if_identifier_exists(doi)
+        kwargs = {
+            'scimeta_bytes': docbytes,
+            'native_identifier_sid': sid,
+            'record_date': record_date,
+            'record_version': pid
+        }
+        sys_metadata = self.generate_system_metadata(**kwargs)
+
+        exists_dict = self.client_mgr.check_if_identifier_exists(sid)
 
         if (
             exists_dict['outcome'] == 'yes'
             and exists_dict['record_date'] != record_date
         ):
             current_sid = exists_dict['current_version_id']
-            await self.check_if_can_be_updated(docbytes, doi, current_sid)
+            await self.check_if_can_be_updated(docbytes, sid, current_sid)
 
             # the outcome of exists_dict determines how to
             # handle the record.  if identifier exists in GMN but
             # record date is different, this truly is an update so
             # call update method.
-            if self.client_mgr.update_science_metadata(
-                docbytes,
-                doi,
-                record_date,
-                exists_dict['current_version_id']
-            ):
+            kwargs = {
+                'sci_metadata_bytes': docbytes,
+                'native_identifier_sid': sid,
+                'record_date': record_date,
+                'old_version_pid': exists_dict['current_version_id'],
+                'system_metadata': sys_metadata
+            }
+            if self.client_mgr.update_science_metadata(**kwargs):
                 self.updated_count += 1
-                self.logger.info(f'Updated {doi}.')
+                self.logger.info(f'Updated {sid}.')
             else:
-                raise UnableToUpdateGmnRecord(f'Unable to update {doi}.')
+                raise UnableToUpdateGmnRecord(f'Unable to update {sid}.')
 
         elif (
             exists_dict['outcome'] == 'yes'
@@ -411,7 +506,7 @@ class CoreHarvester(object):
             # if identifier exists but record date is the same, it's not really
             # an update. So skip it and move on.
             msg = (
-                f'Skipping {doi}, '
+                f'Skipping {sid}, '
                 f'it already exists and has the same record date {record_date}'
             )
             raise SkipError(msg)
@@ -420,7 +515,7 @@ class CoreHarvester(object):
             # if check failed for some reason, d1_client_manager would have
             # logged the error so just skip.
             msg = (
-                f'The existance check for {doi} failed.  Is this '
+                f'The existance check for {sid} failed.  Is this '
                 f'logged anywhere?'
             )
             self.logger.warning(msg)
@@ -428,16 +523,22 @@ class CoreHarvester(object):
         elif exists_dict['outcome'] == 'no':
             # If this identifer is not already found in GMN in any way, then
             # create a new object in GMN
-            if self.client_mgr.load_science_metadata(docbytes, doi, record_date):  # noqa: E501
+            kwargs = {
+                'sci_metadata_bytes': docbytes,
+                'native_identifier_sid': sid,
+                'record_date': record_date,
+                'system_metadata': sys_metadata
+            }
+            if self.client_mgr.load_science_metadata(**kwargs):
                 # track number of successfully created new objects
                 self.created_count += 1
 
-                msg = f'Created a new object identified as {doi}'
+                msg = f'Created a new object identified as {sid}'
                 self.logger.info(msg)
 
             else:
                 msg = (
-                    f'Unable to create new object identified as {doi}.'
+                    f'Unable to create new object identified as {sid}.'
                 )
                 raise UnableToCreateNewGMNObject(msg)
 
@@ -790,9 +891,12 @@ class CoreHarvester(object):
         """
         self.logger.debug(f'process_job:  starting')
 
-        job.identifier, doc = await self.retrieve_record(job.url)
+        series_id, version_id, doc = await self.retrieve_record(job.url)
+
+        job.identifier = series_id
         self.validate_document(doc)
-        await self.harvest_document(job.identifier, doc, job.lastmod)
+
+        await self.harvest_document(series_id, version_id, doc, job.lastmod)
 
         self.logger.debug(f'process_job:  finished')
 
@@ -968,3 +1072,18 @@ class CoreHarvester(object):
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
+
+    def extract_record_version(self, landing_page_url):
+        """
+        Get the PID.
+
+        Parameters
+        ----------
+        landing_page_url : str
+            URL of the landing page
+
+        Returns
+        -------
+        The record version for GMN.  In IEDA, it is the landing page URL.
+        """
+        return landing_page_url

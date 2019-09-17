@@ -46,7 +46,7 @@ class NKNHarvester(CoreHarvester):
 
         self.sitemap = 'https://www.northwestknowledge.net/data/'
 
-    def extract_identifier(self, doc):
+    def extract_series_identifier(self, doc):
         """
         Parse the identifier from the XML metadata document.
 
@@ -122,7 +122,7 @@ class NKNHarvester(CoreHarvester):
 
         # Normally it would make sense to factor this out, but the schema.org,
         # it gets a lot more complicated.
-        identifier = self.extract_identifier(doc)
+        identifier = self.extract_series_identifier(doc)
         self.logger.debug(f"Have extracted the identifier {identifier}...")
 
         return identifier, doc

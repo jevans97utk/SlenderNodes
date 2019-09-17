@@ -26,13 +26,16 @@ class JSONLD_Validator(object):
         Same logger as 'dataone'.
     """
 
-    def __init__(self, logger):
+    def __init__(self, *, id='', logger=None):
         """
         Parameters
         ----------
+        id : str
+            Identifies the client, i.e. 'ieda', 'arm', etc.
         logger : logging.Logger
             Same logger as 'dataone'.
         """
+        self.id = id
         self.logger = logger
 
         self.shacl_graph_src = ir.read_text('schema_org.data', 'shacl.ttl')
@@ -102,6 +105,11 @@ class JSONLD_Validator(object):
         j : dict
             JSON extracted from a landing page <SCRIPT> element.
         """
+        if self.id in ['ieda']:
+            # IEDA JSON-LD does not validate, we know that.
+            self.logger.warning(f"Skipping SHACL checks on {self.id.upper()}.")
+            return
+
         self.logger.debug(f'{__name__}:check')
         self.pre_shacl_checks(j)
         self.check_shacl(j)

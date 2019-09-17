@@ -1,5 +1,6 @@
 # standard library imports
 import asyncio
+import datetime as dt
 import importlib.resources as ir
 import io
 import json
@@ -23,6 +24,9 @@ class TestSuite(TestCommon):
         # Every URL request for CUAHSI will match this pattern, so we set
         # aioresponses to intercept all of them.
         self.regex = re.compile(r'https://www.hydroshare.org/')
+
+        # The IEDA harvesters will use these values.
+        self.host, self.port = 'cuahsi.mn.org', 443
 
     def test_landing_page_is_published(self):
         """
@@ -149,10 +153,9 @@ class TestSuite(TestCommon):
                 m.get(self.regex, body=contents1)
                 m.get(self.regex, body=contents2)
 
-                identifier, doc = asyncio.run(harvester.retrieve_record(url))
+                sid, pid, doc = asyncio.run(harvester.retrieve_record(url))
 
-        self.assertEqual(identifier,
-                         '10.4211/hs.81e947faccf04de59392dddaac77bc75')
+        self.assertEqual(sid, '10.4211/hs.81e947faccf04de59392dddaac77bc75')
 
     def test_retrieve_record__no_url_for_zip_archive(self):
         """
@@ -344,3 +347,150 @@ class TestSuite(TestCommon):
 
                 expected = "ClientResponseError"
                 self.assertErrorLogMessage(cm.output, expected)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_update_run(self,
+                        mock_harvest_time,
+                        mock_check_if_identifier_exists,
+                        mock_update_science_metadata,
+                        mock_load_science_metadata):
+        """
+        SCENARIO:  We have a valid sitemap for one valid document, which is to
+        be updated.
+
+        EXPECTED RESULT:  The document is updated, not loaded for the first
+        time.
+        """
+
+        record_date = dt.datetime.now()
+        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+        mock_check_if_identifier_exists.return_value = {
+            'outcome': 'yes',
+            'record_date': record_date - dt.timedelta(days=1),
+            'current_version_id': 1,
+        }
+        mock_update_science_metadata.return_value = True
+        mock_load_science_metadata.return_value = True
+
+        harvester = CUAHSIHarvester(host=self.host, port=self.port)
+
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) Remote HTML document for record 1
+        #   3) Remote XML document for record 1
+        #   4) Existing XML document for record 1 (retrieved from the member
+        #      node)
+        #
+        b = io.BytesIO()
+        zf = zipfile.ZipFile(b, mode='w')
+        package = 'tests.data.cuahsi.81e947faccf04de59392dddaac77bc75.data'
+        content = ir.read_binary(package, 'resourcemetadata.xml')
+        zf.writestr('81e947faccf04de59392dddaac77bc75/data/resourcemetadata',
+                    content)
+        zf.close()
+        b.seek(0)
+        zip_archive_content = b.read()
+
+        contents = [
+            ir.read_binary('tests.data.cuahsi', 'sitemap1.xml'),
+            ir.read_binary('tests.data.cuahsi.81e947faccf04de59392dddaac77bc75', 'landing_page.html'),  # noqa : E501
+            zip_archive_content,
+            ir.read_binary('tests.data.cuahsi.81e947faccf04de59392dddaac77bc75.data', 'resourcemetadata.previous.xml'),  # noqa : E501
+        ]
+
+        status_codes = [200, 200, 200, 200]
+        headers = [
+            {'Content-Type': 'application/xml'},
+            {'Content-Type': 'application/html'},
+            {'Content-Type': 'application/zip'},
+            {'Content-Type': 'application/xml'},
+        ]
+        regex = [
+            re.compile('https://www.hydroshare.org/'),
+            re.compile('https://www.hydroshare.org/'),
+            re.compile('https://www.hydroshare.org/'),
+            re.compile('https://cuahsi.mn.org:443/mn/v2/'),
+        ]
+
+        with aioresponses() as m:
+            z = zip(regex, contents, status_codes, headers)
+            for regex, content, status_code, headers in z:
+                m.get(regex, body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                asyncio.run(harvester.run())
+
+        self.assertEqual(mock_load_science_metadata.call_count, 0),
+        self.assertEqual(mock_update_science_metadata.call_count, 1),
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_new_run(self,
+                     mock_harvest_time,
+                     mock_check_if_identifier_exists,
+                     mock_update_science_metadata,
+                     mock_load_science_metadata):
+        """
+        SCENARIO:  We have a valid sitemap for one valid document, which is a
+        document that has not been seen before.
+
+        EXPECTED RESULT:  The document is loaded, not updated.
+        """
+
+        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+        mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
+        mock_load_science_metadata.return_value = True
+        mock_update_science_metadata.return_value = True
+
+        harvester = CUAHSIHarvester(host=self.host, port=self.port)
+
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) Remote HTML document for record 1
+        #   3) Remote Zip archive (contains metadata)
+        #
+
+        contents = [
+            ir.read_binary('tests.data.cuahsi', 'sitemap1.xml'),
+            ir.read_binary('tests.data.cuahsi.81e947faccf04de59392dddaac77bc75', 'landing_page.html'),  # noqa : E501
+        ]
+
+        b = io.BytesIO()
+        zf = zipfile.ZipFile(b, mode='w')
+        package = 'tests.data.cuahsi.81e947faccf04de59392dddaac77bc75.data'
+        content = ir.read_binary(package, 'resourcemetadata.xml')
+        zf.writestr('81e947faccf04de59392dddaac77bc75/data/resourcemetadata',
+                    content)
+        zf.close()
+        b.seek(0)
+        contents.append(b.read())
+
+        status_codes = [200, 200, 200]
+        headers = [
+            {'Content-Type': 'application/xml'},
+            {'Content-Type': 'application/html'},
+            {'Content-Type': 'application/zip'},
+        ]
+        regex = [
+            re.compile('https://www.hydroshare.org/'),
+            re.compile('https://www.hydroshare.org/'),
+            re.compile('https://www.hydroshare.org/'),
+        ]
+
+        with aioresponses() as m:
+            z = zip(regex, contents, status_codes, headers)
+            for regex, content, status_code, headers in z:
+                m.get(regex, body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                asyncio.run(harvester.run())
+
+        self.assertEqual(mock_load_science_metadata.call_count, 1),
+        self.assertEqual(mock_update_science_metadata.call_count, 0),
