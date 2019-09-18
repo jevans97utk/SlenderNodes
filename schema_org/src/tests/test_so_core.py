@@ -229,7 +229,7 @@ class TestSuite(TestCommon):
                 expected = "Successfully processed 0 records."
                 self.assertInfoLogMessage(cm.output, expected)
 
-                expected = '1 records skipped due to lastmod time'
+                expected = '1 records skipped'
                 self.assertInfoLogMessage(cm.output, expected)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501

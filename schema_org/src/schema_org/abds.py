@@ -3,6 +3,41 @@ DATAONE adapter for Arctic Biodiversity Data Service, IPT (Integrated
 Publishing Toolkit).
 
 See http://geo.abds.is/ipt/
+
+ABDS IPT does not implement Schema.org, but instead does something similar,
+making available an RSS feed.  An individual record from the RSS feed looks
+something like.
+
+      <item>
+        <title>
+            Phytoplankton from the White Sea,
+            Barents Sea, Norwegian Sea and Arctic Basin 1993-2003
+            - Version 1.3
+        </title>
+        <link>http://geo.abds.is/ipt/resource?r=arcod_2007p6</link>
+
+        <!-- shows what changed in this version, or shows the resource
+             description if change summary was empty -->
+        <description>Correct scientificNameID</description>
+        <author>hoddi@caff.is (Hólmgrímur Helgason)</author>
+        <ipt:eml>http://geo.abds.is/ipt/eml.do?r=arcod_2007p6</ipt:eml>
+        <ipt:dwca>http://geo.abds.is/ipt/archive.do?r=arcod_2007p6</ipt:dwca>
+        <pubDate>Wed, 04 Sep 2019 10:54:41 +0000</pubDate>
+        <guid isPermaLink="false">
+            59876921-fda6-4fd5-af5d-cba2a7152527/v1.3
+        </guid>
+      </item>
+
+metadata URL:
+    Given by the <ipt:eml> element in the RSS feed.
+lastModified:
+    Given by the <pubDate> element in the RSS feed.
+PID (record version):
+    This is available both in the <guid> element in the RSS feed and in the
+    packageVersion attribute in the top level element in the metadata document.
+SID (series ID):
+    The series ID is extracted from the metadata document.  It could likely
+    be inferred from the PID, however.
 """
 
 # Standard library imports

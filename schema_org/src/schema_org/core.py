@@ -165,7 +165,8 @@ class CoreHarvester(object):
         Makes all URL requests.
     sys_meta_dict : dict
         A dict containing node-specific system metadata properties that
-        will apply to all science metadata documents loaded into GMN.
+        will apply to all science metadata documents loaded into GMN.  This
+        should be specialized by each client.
     """
     SITEMAP_URL_PATH = './/sm:loc/text()'
     SITEMAP_LASTMOD_PATH = './/sm:lastmod/text()'
@@ -196,17 +197,13 @@ class CoreHarvester(object):
 
         self.mn_base_url = f'https://{host}:{port}/mn'
         self.sys_meta_dict = {
-            'submitter': f'urn:node:{id.upper()}',
-            'rightsholder': f'urn:node:{id.upper()}',
+            'submitter': 'TBD',
+            'rightsholder': 'TBD',
+            'authoritativeMN': 'TBD',
+            'originMN': 'TBD',
 
-            # Use your node's DataONE URI
-            'authoritativeMN': f'urn:node:mnTest{id.upper()}',
-
-            # Use your node's DataONE URI
-            'originMN': f'urn:node:{id.upper()}',
-
-            # should be consistent w/ scimeta_element format
-            # This starts off as a default.  It will be changed if necessary.
+            # This will be determinted automatically.  No need to specialize
+            # it.
             'formatId_custom': 'http://www.isotc211.org/2005/gmd'
         }
 
@@ -334,7 +331,13 @@ class CoreHarvester(object):
         sys_meta.checksum = dataoneTypes.checksum(digest)
 
         sys_meta.checksum.algorithm = 'MD5'
-        sys_meta.identifier = sys_meta.checksum.value()
+
+        if record_version is None:
+            # only if we have nothing else.
+            sys_meta.identifier = sys_meta.checksum.value()
+        else:
+            sys_meta.identifier = record_version
+
         sys_meta.dateUploaded = record_date
         sys_meta.dateSysMetadataModified = dt.datetime.now()
         sys_meta.rightsHolder = self.sys_meta_dict['rightsholder']
@@ -688,7 +691,10 @@ class CoreHarvester(object):
             ]
 
             nskipped = nrecs - len(records)
-            msg = f"{nskipped} records skipped due to lastmod time."
+            msg = (
+                f"{nskipped} records skipped due to last harvest time "
+                f"{last_harvest_time} > lastmod times."
+            )
             self.logger.info(msg)
 
         # If a regex was specified, filter out any records that do not match.

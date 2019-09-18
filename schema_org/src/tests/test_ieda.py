@@ -11,6 +11,7 @@ from aioresponses import aioresponses
 import lxml.etree
 
 # local imports
+from schema_org.core import SITEMAP_NS
 from schema_org.jsonld_validator import JsonLdError
 from schema_org.ieda import IEDAHarvester
 from .test_common import TestCommon
@@ -215,6 +216,104 @@ class TestSuite(TestCommon):
         self.assertEqual(mock_load_science_metadata.call_count, 0),
         self.assertEqual(mock_update_science_metadata.call_count, 1),
 
+    def _docbytes(self, landing_page_url):
+        """
+        Construct a byte stream of a sitemap document.
+        """
+        urlset = lxml.etree.Element(f"{{{SITEMAP_NS['sm']}}}urlset")
+        url = lxml.etree.SubElement(urlset, f"{{{SITEMAP_NS['sm']}}}url")
+
+        loc = lxml.etree.SubElement(url, f"{{{SITEMAP_NS['sm']}}}loc")
+        loc.text = landing_page_url
+
+        lastmod = lxml.etree.SubElement(url, f"{{{SITEMAP_NS['sm']}}}lastmod")
+        lastmod.text = "2018-06-21T22:05:27-04:00"
+
+        docbytes = lxml.etree.tostring(urlset)
+        return docbytes
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_load_run(self,
+                      mock_harvest_time,
+                      mock_check_if_identifier_exists,
+                      mock_update_science_metadata,
+                      mock_load_science_metadata):
+        """
+        SCENARIO:  We have a valid sitemap for one valid document, which is a
+        document that has not been seen before.
+
+        EXPECTED RESULT:  The document is loaded, not updated.  Verify that the
+        PID is the URL of a landing page and the SID is a DOI.
+        """
+        record_date = dt.datetime.now()
+        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+        mock_check_if_identifier_exists.return_value = {
+            'outcome': 'yes',
+            'record_date': record_date - dt.timedelta(days=1),
+            'current_version_id': 1,
+        }
+        mock_load_science_metadata.return_value = True
+        mock_update_science_metadata.return_value = True
+
+        landing_page_url = "http://get.iedadata.org/metadata/iso/609246"
+        docbytes = self._docbytes(landing_page_url)
+
+        harvester = IEDAHarvester(host=self.host, port=self.port)
+
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) Remote HTML document for record 1
+        #   3) Remote XML document for record 1
+        #   4) Prior existing record in MN for record 1
+        #
+        contents = [
+            docbytes,
+            ir.read_binary('tests.data.ieda', 'ieda609246.html'),
+            ir.read_binary('tests.data.ieda', '609246.xml'),
+            ir.read_binary('tests.data.ieda', '609246-existing.xml'),
+        ]
+        status_codes = [200, 200, 200, 200]
+        headers = [
+            {'Content-Type': 'application/xml'},
+            {'Content-Type': 'application/html'},
+            {'Content-Type': 'application/xml'},
+            {'Content-Type': 'application/xml'},
+        ]
+        regex = [
+            re.compile('http://get.iedadata.org/'),
+            re.compile('http://get.iedadata.org/'),
+            re.compile('http://get.iedadata.org/'),
+            re.compile('https://ieda.mn.org:443/mn/v2'),
+        ]
+
+        with aioresponses() as m:
+            z = zip(regex, contents, status_codes, headers)
+            for regex, content, status_code, headers in z:
+                m.get(regex, body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                asyncio.run(harvester.run())
+
+        self.assertEqual(mock_load_science_metadata.call_count, 0),
+        self.assertEqual(mock_update_science_metadata.call_count, 1),
+
+        # Verify the PID and SID
+        args, kwargs = mock_update_science_metadata.call_args_list[0]
+
+        # Verify the PID
+        actual = kwargs['system_metadata'].identifier.value()
+        expected = landing_page_url
+        self.assertEqual(actual, expected)
+
+        # Verify the SID
+        actual = kwargs['system_metadata'].seriesId.value()
+        expected = 'urn:usap-dc:metadata:609246'
+        self.assertEqual(actual, expected)
+
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -228,13 +327,17 @@ class TestSuite(TestCommon):
         SCENARIO:  We have a valid sitemap for one valid document, which is a
         document that has not been seen before.
 
-        EXPECTED RESULT:  The document is loaded, not updated.
+        EXPECTED RESULT:  The document is loaded, not updated.  Verify that the
+        PID is the URL of a landing page and the SID is a DOI.
         """
 
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = True
         mock_update_science_metadata.return_value = True
+
+        landing_page_url = "http://get.iedadata.org/metadata/iso/609246"
+        docbytes = self._docbytes(landing_page_url)
 
         harvester = IEDAHarvester(host=self.host, port=self.port)
 
@@ -245,7 +348,7 @@ class TestSuite(TestCommon):
         #   3) Remote XML document for record 1
         #
         contents = [
-            ir.read_binary('tests.data.ieda', 'sitemap-1.xml'),
+            docbytes,
             ir.read_binary('tests.data.ieda', 'ieda609246.html'),
             ir.read_binary('tests.data.ieda', '609246.xml'),
         ]
@@ -271,6 +374,19 @@ class TestSuite(TestCommon):
 
         self.assertEqual(mock_load_science_metadata.call_count, 1),
         self.assertEqual(mock_update_science_metadata.call_count, 0),
+
+        # Verify the PID and SID
+        args, kwargs = mock_load_science_metadata.call_args_list[0]
+
+        # Verify the PID
+        actual = kwargs['system_metadata'].identifier.value()
+        expected = landing_page_url
+        self.assertEqual(actual, expected)
+
+        # Verify the SID
+        actual = kwargs['system_metadata'].seriesId.value()
+        expected = 'urn:usap-dc:metadata:609246'
+        self.assertEqual(actual, expected)
 
     def test_generate_system_metadata(self):
         """

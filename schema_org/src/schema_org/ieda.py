@@ -1,5 +1,18 @@
 """
 DATAONE adapter for IEDA
+
+IEDA implements Schema.org, but not to our liking.   There is no top-level
+encoding key, so the series ID and metadata URL have to be retrieved from other
+locations in the JSON-LD.  The dateModified is only taken from the sitemap.
+
+metadata URL:
+    The url field in one of the distribution list items in the SO.
+dateModified:
+    Taken from the sitemap.
+PID (record version):
+    Given by the URL of the landing page.
+SID (series ID):
+    DOI given in the top-level '@id' key in the JSON-LD.
 """
 # Standard library imports
 import re
@@ -14,6 +27,11 @@ class IEDAHarvester(SchemaDotOrgHarvester):
     def __init__(self, **kwargs):
         super().__init__(id='ieda', **kwargs)
         self.sitemap = 'http://get.iedadata.org/sitemaps/usap_sitemap.xml'
+
+        self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestIEDA'
+        self.sys_meta_dict['originMN'] = 'urn:node:mnTestIEDA'
+        self.sys_meta_dict['rightsholder'] = 'CN=urn:node:mnTestIEDA,DC=dataone,DC=org'  # noqa : E501
+        self.sys_meta_dict['submitter'] = 'CN=urn:node:mnTestIEDA,DC=dataone,DC=org'  # noqa : E501
 
     def generate_system_metadata(self, *,
                                  scimeta_bytes=None,

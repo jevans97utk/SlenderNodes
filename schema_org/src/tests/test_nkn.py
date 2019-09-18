@@ -1,5 +1,6 @@
 # Standard library imports
 import asyncio
+import datetime as dt
 try:
     import importlib.resources as ir
 except ImportError:  # pragma:  nocover
@@ -26,13 +27,16 @@ class TestSuite(TestCommon):
         # with this base.
         self.regex = re.compile("https://www.northwestknowledge.net/data/")
 
+        # The NKN harvesters will use these values.
+        self.host, self.port = 'nkn.mn.org', 443
+
     @patch('schema_org.core.logging.getLogger')
     def test_identifier(self, mock_logger):
         """
         SCENARIO:  The NKN identifier is a UUID that must be retrieved from
         the metadata XML document.
 
-        EXPECTED RESULT:  nkn:0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0
+        EXPECTED RESULT:  0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0
         """
         package = 'tests.data.nkn.0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0'
         content = ir.read_binary(package, 'metadata.xml')
@@ -42,7 +46,7 @@ class TestSuite(TestCommon):
         identifier = harvester.extract_series_identifier(doc)
 
         self.assertEqual(identifier,
-                         'nkn:0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0')
+                         '0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0')
 
     def test_sitemap_header__text_html_charset_utf8(self):
         """
@@ -93,10 +97,10 @@ class TestSuite(TestCommon):
                 m.get(self.regex, body=contents[0])
                 m.get(self.regex, body=contents[1])
 
-                identifier, doc = asyncio.run(harvester.retrieve_record(url))
+                sid, _, doc = asyncio.run(harvester.retrieve_record(url))
 
-        expected = 'nkn:0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0'
-        self.assertEqual(identifier, expected)
+        expected = '0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0'
+        self.assertEqual(sid, expected)
 
     def test_retrieve_record__500_error(self):
         """
@@ -206,3 +210,157 @@ class TestSuite(TestCommon):
 
         with self.assertRaises(MissingMetadataFileIdentifierError):
             harvester.extract_series_identifier(doc)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_update_run(self,
+                        mock_harvest_time,
+                        mock_check_if_identifier_exists,
+                        mock_update_science_metadata,
+                        mock_load_science_metadata):
+        """
+        SCENARIO:  One document is to be updated.
+        be updated.
+
+        EXPECTED RESULT:  The document is updated, not loaded for the first
+        time.  Verify that the sid is a UUID and that the pid is the MD5SUM of
+        the metadata document.
+        """
+
+        record_date = dt.datetime.now()
+        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+        mock_check_if_identifier_exists.return_value = {
+            'outcome': 'yes',
+            'record_date': record_date - dt.timedelta(days=1),
+            'current_version_id': 1,
+        }
+        mock_update_science_metadata.return_value = True
+        mock_load_science_metadata.return_value = True
+
+        harvester = NKNHarvester(host=self.host, port=self.port)
+
+        # External calls to read the:
+        #
+        #   1) sitemap (raw HTML directory listing)
+        #   2) Remote HTML document for record 1 (another directory listing)
+        #   3) Remote XML document for record 1
+        #   4) Existing XML document for record 1 (retrieved from the member
+        #      node)
+        #
+        uuid = '0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0'
+        contents = [
+            ir.read_binary('tests.data.nkn', 'index.html'),
+            ir.read_binary(f'tests.data.nkn.{uuid}', 'index.html'),
+            ir.read_binary(f'tests.data.nkn.{uuid}', 'metadata.xml'),
+            ir.read_binary(f'tests.data.nkn.{uuid}', 'metadata.prior.xml')
+        ]
+
+        status_codes = [200, 200, 200, 200]
+        headers = [
+            {'Content-Type': 'text/html;charset=UTF-8'},
+            {'Content-Type': 'text/html;charset=UTF-8'},
+            {'Content-Type': 'application/xml'},
+            {'Content-Type': 'application/xml'},
+        ]
+        regex = [
+            re.compile('https://www.northwestknowledge.net/data/'),
+            re.compile('https://www.northwestknowledge.net/data/'),
+            re.compile('https://www.northwestknowledge.net/data/'),
+            re.compile('https://nkn.mn.org:443/mn/v2/'),
+        ]
+
+        with aioresponses() as m:
+            z = zip(regex, contents, status_codes, headers)
+            for regex, content, status_code, headers in z:
+                m.get(regex, body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                asyncio.run(harvester.run())
+
+        self.assertEqual(mock_load_science_metadata.call_count, 0),
+        self.assertEqual(mock_update_science_metadata.call_count, 1),
+
+        # Verify the PID and SID
+        args, kwargs = mock_update_science_metadata.call_args_list[0]
+
+        actual = kwargs['system_metadata'].identifier.value()
+        expected = '679742d8c458378928ed21b2868db95b'
+        self.assertEqual(actual, expected)
+
+        actual = kwargs['system_metadata'].seriesId.value()
+        expected = uuid
+        self.assertEqual(actual, expected)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_load_run(self,
+                      mock_harvest_time,
+                      mock_check_if_identifier_exists,
+                      mock_update_science_metadata,
+                      mock_load_science_metadata):
+        """
+        SCENARIO:  One document is to be loaded for the first time, not
+        updated.
+
+        EXPECTED RESULT:  The call counts must reflect that the load routine
+        is called and not the update routine. Verify that the sid is a UUID and
+        that the pid is the MD5SUM of the metadata document.
+        """
+
+        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+        mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
+        mock_update_science_metadata.return_value = True
+        mock_load_science_metadata.return_value = True
+
+        harvester = NKNHarvester(host=self.host, port=self.port)
+
+        # External calls to read the:
+        #
+        #   1) sitemap (raw HTML directory listing)
+        #   2) Remote HTML document for record 1 (another directory listing)
+        #   3) Remote XML document for record 1
+        #
+        uuid = '0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0'
+        contents = [
+            ir.read_binary('tests.data.nkn', 'index.html'),
+            ir.read_binary(f'tests.data.nkn.{uuid}', 'index.html'),
+            ir.read_binary(f'tests.data.nkn.{uuid}', 'metadata.xml'),
+        ]
+
+        status_codes = [200, 200, 200]
+        headers = [
+            {'Content-Type': 'text/html;charset=UTF-8'},
+            {'Content-Type': 'text/html;charset=UTF-8'},
+            {'Content-Type': 'application/xml'},
+        ]
+        regex = [
+            re.compile('https://www.northwestknowledge.net/data/'),
+            re.compile('https://www.northwestknowledge.net/data/'),
+            re.compile('https://www.northwestknowledge.net/data/'),
+        ]
+
+        with aioresponses() as m:
+            z = zip(regex, contents, status_codes, headers)
+            for regex, content, status_code, headers in z:
+                m.get(regex, body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                asyncio.run(harvester.run())
+
+        self.assertEqual(mock_load_science_metadata.call_count, 1),
+        self.assertEqual(mock_update_science_metadata.call_count, 0),
+
+        # Verify the PID and SID
+        args, kwargs = mock_load_science_metadata.call_args_list[0]
+
+        actual = kwargs['system_metadata'].identifier.value()
+        expected = '679742d8c458378928ed21b2868db95b'
+        self.assertEqual(actual, expected)
+
+        actual = kwargs['system_metadata'].seriesId.value()
+        expected = uuid
+        self.assertEqual(actual, expected)

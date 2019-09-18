@@ -1,5 +1,18 @@
 """
 DATAONE adapter for CUAHSI
+
+Hydroshare/CUAHSI has nested sitemaps and partially implements Schema.Org.  The
+SO implementation is not fully to our liking, however
+
+metadata URL:
+    This is indirect.  The landing page provides a URL for downloading a "bagit
+    zip archive" that contains the metadata along with the data itself.
+lastModified:
+    Taken from the sitemap.
+PID (record version):
+    MD5 digest of the zip archive content
+SID (series ID):
+    DOI taken from the '@id' key in the SO.
 """
 
 # Standard library imports
@@ -22,13 +35,18 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
     def __init__(self, **kwargs):
         super().__init__(id='cuahsi', **kwargs)
 
-        # Create the XSLT stylesheet for transforming the CUAHSI documents
+        # Create an XSLT stylesheet for transforming the CUAHSI documents
         # from their native format to something we can use (simplified DC).
         content = ir.read_binary('schema_org.data', 'simple_d1_dublincore.xsl')
         xslt_tree = lxml.etree.XML(content)
         self.transform_to_dataone_simple_dc = lxml.etree.XSLT(xslt_tree)
 
         self.sitemap = 'https://www.hydroshare.org/sitemap.xml'
+
+        self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestHydroshare'
+        self.sys_meta_dict['originMN'] = 'urn:node:mnTestHydroshare'
+        self.sys_meta_dict['rightsholder'] = 'CN=urn:node:mnTestHydroshare,DC=dataone,DC=org'  # noqa : E501
+        self.sys_meta_dict['submitter'] = 'CN=urn:node:mnTestHydroshare,DC=dataone,DC=org'  # noqa : E501
 
     def preprocess_landing_page(self, landing_page_doc):
         """
@@ -186,7 +204,11 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         else:
             self.logger.debug('Got the metadata document')
 
-        self.logger.debug('Got the pid from the zip file content')
         pid = hashlib.md5(zip_content).hexdigest()
+        msg = (
+            f"Got the pid {pid} as an MD5 hexdigest from the zip archive "
+            f"content."
+        )
+        self.logger.debug(msg)
 
         return doc, pid

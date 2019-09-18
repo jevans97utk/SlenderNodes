@@ -28,7 +28,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
     """
 
     def __init__(self, id='', **kwargs):
-        super().__init__(**kwargs)
+        super().__init__(id=id, **kwargs)
 
         self.jsonld_validator = JSONLD_Validator(id=id, logger=self.logger)
 

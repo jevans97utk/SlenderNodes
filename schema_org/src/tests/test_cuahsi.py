@@ -1,6 +1,7 @@
 # standard library imports
 import asyncio
 import datetime as dt
+import hashlib
 import importlib.resources as ir
 import io
 import json
@@ -362,7 +363,8 @@ class TestSuite(TestCommon):
         be updated.
 
         EXPECTED RESULT:  The document is updated, not loaded for the first
-        time.
+        time.  Verify that the sid is a DOI and that the pid is the MD5SUM of
+        the zip archive.
         """
 
         record_date = dt.datetime.now()
@@ -427,6 +429,17 @@ class TestSuite(TestCommon):
         self.assertEqual(mock_load_science_metadata.call_count, 0),
         self.assertEqual(mock_update_science_metadata.call_count, 1),
 
+        # Verify the PID and SID
+        args, kwargs = mock_update_science_metadata.call_args_list[0]
+
+        actual = kwargs['system_metadata'].identifier.value()
+        expected = hashlib.md5(zip_archive_content).hexdigest()
+        self.assertEqual(actual, expected)
+
+        actual = kwargs['system_metadata'].seriesId.value()
+        expected = '10.4211/hs.81e947faccf04de59392dddaac77bc75'
+        self.assertEqual(actual, expected)
+
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -440,7 +453,8 @@ class TestSuite(TestCommon):
         SCENARIO:  We have a valid sitemap for one valid document, which is a
         document that has not been seen before.
 
-        EXPECTED RESULT:  The document is loaded, not updated.
+        EXPECTED RESULT:  The document is loaded, not updated.  Verify that the
+        sid is a DOI and that the pid is the MD5SUM of the zip archive.
         """
 
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
@@ -470,7 +484,9 @@ class TestSuite(TestCommon):
                     content)
         zf.close()
         b.seek(0)
-        contents.append(b.read())
+        zip_archive_content = b.read()
+
+        contents.append(zip_archive_content)
 
         status_codes = [200, 200, 200]
         headers = [
@@ -494,3 +510,16 @@ class TestSuite(TestCommon):
 
         self.assertEqual(mock_load_science_metadata.call_count, 1),
         self.assertEqual(mock_update_science_metadata.call_count, 0),
+
+        # Verify the PID and SID
+        args, kwargs = mock_load_science_metadata.call_args_list[0]
+
+        # Verify the PID
+        actual = kwargs['system_metadata'].identifier.value()
+        expected = hashlib.md5(zip_archive_content).hexdigest()
+        self.assertEqual(actual, expected)
+
+        # Verify the SID
+        actual = kwargs['system_metadata'].seriesId.value()
+        expected = '10.4211/hs.81e947faccf04de59392dddaac77bc75'
+        self.assertEqual(actual, expected)

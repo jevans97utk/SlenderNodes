@@ -1,5 +1,19 @@
 """
 DATAONE adapter for NKN
+
+NKN does not implement either Schema.org or sitemaps.  It also technically has
+no landing pages, although they can technically be created from raw HTML
+directory listings.
+
+metadata URL:
+    The metadata documents seem to always be "metadata.xml" relative URLs
+    hanging off the parent directory listing URL.
+dateModified:
+    Taken from the raw HTML directory listing.
+PID (record version):
+    MD5 message digest of the bytes constituting the metadata document.
+SID (series ID):
+    A UUID parsed from the gmd:fileIdentifier element in the metadata document.
 """
 
 # Standard library imports
@@ -57,14 +71,17 @@ class NKNHarvester(CoreHarvester):
 
         Returns
         -------
-        The identifier substring.
+        The identifier substring.  It should look something like
+        "nkn:0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0".  Just return the UUID
+        portion of it.
         """
         path = './/gmd:fileIdentifier/gco:CharacterString/text()'
         elts = doc.xpath(path, namespaces=ISO_NSMAP)
         if len(elts) == 0:
             msg = "Missing a gmd:fileIdentifier element."
             raise MissingMetadataFileIdentifierError(msg)
-        return elts[0]
+
+        return elts[0].split(':')[1]
 
     def check_xml_headers(self, response):
         """
@@ -91,8 +108,10 @@ class NKNHarvester(CoreHarvester):
 
         Returns
         -------
-        identifier : str
+        sid : str
             Ideally this is a DOI, but here it is a UUID.
+        pid : None
+            There is no record version available.
         doc : ElementTree
             Metadata document
         """
@@ -122,7 +141,7 @@ class NKNHarvester(CoreHarvester):
 
         # Normally it would make sense to factor this out, but the schema.org,
         # it gets a lot more complicated.
-        identifier = self.extract_series_identifier(doc)
-        self.logger.debug(f"Have extracted the identifier {identifier}...")
+        sid = self.extract_series_identifier(doc)
+        self.logger.debug(f"Have extracted the series ID {sid}...")
 
-        return identifier, doc
+        return sid, None, doc

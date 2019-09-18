@@ -1,5 +1,17 @@
 """
 DATAONE adapter for ARM
+
+ARM does Schema.org right!
+
+metadata URL:
+    Taken from contentUrl item in the top-level encoding map of the SO.
+lastModified:
+    Taken from the sitemap, but also available in the SO in the dateModified
+    element of the top-level encoding map.
+PID (record version):
+    Given by the URL of the landing page.
+SID (series ID):
+    DOI taken from the '@id' key in the SO.
 """
 
 # Standard library imports
