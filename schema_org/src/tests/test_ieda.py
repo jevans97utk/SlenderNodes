@@ -57,7 +57,7 @@ class TestSuite(TestCommon):
         harvester = IEDAHarvester()
 
         landing_page_url = 'http://get.iedadata.org/metadata/iso/600048'
-        pid = harvester.extract_record_version(landing_page_url)
+        pid = harvester.extract_record_version(None, landing_page_url)
 
         self.assertEqual(pid, landing_page_url)
 

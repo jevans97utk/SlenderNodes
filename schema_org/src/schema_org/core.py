@@ -1078,18 +1078,3 @@ class CoreHarvester(object):
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
-
-    def extract_record_version(self, landing_page_url):
-        """
-        Get the PID.
-
-        Parameters
-        ----------
-        landing_page_url : str
-            URL of the landing page
-
-        Returns
-        -------
-        The record version for GMN.  In IEDA, it is the landing page URL.
-        """
-        return landing_page_url

@@ -78,10 +78,12 @@ class IEDAHarvester(SchemaDotOrgHarvester):
         sys_meta.identifier = record_version
         return sys_meta
 
-    def extract_record_version(self, landing_page_url):
+    def extract_record_version(self, doc, landing_page_url):
         """
         Parameters
         ----------
+        doc : ElementTree
+            XML metadata document
         landing_page_url : str
             URL of the landing page
 

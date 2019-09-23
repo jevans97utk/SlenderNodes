@@ -38,8 +38,8 @@ class TestSuite(TestCommon):
         be updated.
 
         EXPECTED RESULT:  The document is updated, not loaded for the first
-        time.  The update occurs with the PID set to the landing page and
-        the SID set to the DOI.
+        time.  The update occurs with the PID set to the checksum of the xml
+        document and the SID set to the DOI.
         """
 
         record_date = dt.datetime.now()
@@ -98,7 +98,7 @@ class TestSuite(TestCommon):
 
         # Verify the PID
         actual = kwargs['system_metadata'].identifier.value()
-        expected = 'https://www.archive.arm.gov/metadata/adc/html/nsasondewnpnS01.b1.html'  # noqa # E501
+        expected = 'b96feb9f87705bb03d466ad44289cb11'
         self.assertEqual(actual, expected)
 
         # Verify the SID
@@ -119,8 +119,8 @@ class TestSuite(TestCommon):
         SCENARIO:  We encounter a document that has not yet been harvested.
 
         EXPECTED RESULT:  The document is loaded for the first time, not
-        updated.  The update occurs with the PID set to the landing page and
-        the SID set to the DOI.
+        updated.  The update occurs with the PID set to the checksum of the
+        XML document and the SID set to the DOI.
         """
 
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
@@ -171,7 +171,7 @@ class TestSuite(TestCommon):
 
         # Verify the PID
         actual = kwargs['system_metadata'].identifier.value()
-        expected = 'https://www.archive.arm.gov/metadata/adc/html/nsasondewnpnS01.b1.html'  # noqa : E501
+        expected = 'b96feb9f87705bb03d466ad44289cb11'
         self.assertEqual(actual, expected)
 
         # Verify the SID

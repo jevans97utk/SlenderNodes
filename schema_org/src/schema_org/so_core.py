@@ -139,13 +139,32 @@ class SchemaDotOrgHarvester(CoreHarvester):
         sid = self.extract_series_identifier(jsonld)
         self.logger.debug(f"Series ID (sid): {sid}")
 
-        pid = self.extract_record_version(landing_page_url)
-        self.logger.debug(f"Record version (pid): {pid}")
-
         metadata_url = self.extract_metadata_url(jsonld)
 
         doc = await self.retrieve_metadata_document(metadata_url)
+
+        pid = self.extract_record_version(doc, landing_page_url)
+        self.logger.debug(f"Record version (pid): {pid}")
+
         return sid, pid, doc
+
+    def extract_record_version(self, doc, landing_page_url):
+        """
+        Get the PID.  The default SO case is to set it to None.  This should
+        eventually be turned into a checksum.
+
+        Parameters
+        ----------
+        doc : ElementTree
+            XML metadata document
+        landing_page_url : str
+            URL of the landing page
+
+        Returns
+        -------
+        The record version for GMN.
+        """
+        return None
 
     def extract_metadata_url(self, jsonld):
         """
