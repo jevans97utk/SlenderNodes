@@ -41,37 +41,35 @@ def setup_parser(id):
     parser.add_argument('-v', '--verbosity', choices=choices, default='INFO',
                         help=help)
 
-    help = (
-        "Harvest records to this dataone node host.  This is NOT "
-        "the host where the site map is found."
-    )
+    help = "Harvest records to this DataOne member node."
     parser.add_argument('--host', default='localhost', help=help)
 
-    help = "DataONE host SSL port."
+    help = "DataOne member node SSL port."
     parser.add_argument('--port', default=443, type=int, help=help)
 
-    help = 'Path to dataone host certificate.'
+    help = 'Path to dataone client-side certificate.'
     parser.add_argument('--certificate', default=None, help=help)
 
-    help = 'Path to dataone host private key.'
+    help = 'Path to dataone host client-side key.'
     parser.add_argument('--private-key', default=None, help=help)
 
     help = "Limit number of documents retrieved to this number."
     parser.add_argument('--num-documents', type=int, default=-1, help=help)
 
     help = (
-        "Limit documents retrieved to those that match this regular "
+        "Limit documents retrieved to those whose URL match this regular "
         "expression."
     )
     parser.add_argument('--regex', help=help)
 
-    help = (
-        "Limit number of workers operating asynchronously to this number. "
-    )
+    help = "Limit number of workers operating asynchronously to this number."
     parser.add_argument('--num-workers', type=int, default=1, help=help)
 
     help = (
-        "Limit number of errors to this number."
+        "Limit number of errors to this number.  This number is not exact, "
+        "because if the number of asynchronous workers is more than one, it "
+        "is possible that the threshold is passed simultaneously by more than "
+        "one worker."
     )
     parser.add_argument('--max-num-errors', type=int, default=1, help=help)
 
@@ -83,7 +81,7 @@ def setup_parser(id):
     parser.add_argument('--ignore-harvest-time', action='store_true',
                         help=help)
 
-    help = "Retry a failed record this many times"
+    help = "Retry a failed record this number of times."
     parser.add_argument('--retry', type=int, default=1, help=help)
     return parser
 

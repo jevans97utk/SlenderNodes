@@ -4,15 +4,76 @@ Slender Node Adapter Supporting schema.org described Resources
 Notes for implementation of a "slender node" adapter to support synchronization
 of content described with schema.org constructs.
 
-Examples: d1-check-site
+Commandline executables
 -----------------------
-Before anything else, you need to do an install a new command line utility
-called d1-check-site.
 
+The following commandline utilities are included in this package and require Python 3.7.
+
+* d1-validate - validates a single XML document against DataOne-supported formats
+* d1-check-site - validate XML documents located through a sitemap URL
+* harvest-adbs-ipt - harvest XML documents from the Arctic Biodiversity Data Service IPT RSS feed
+* harvest-arm - harvest XML documents from the ARM Climate Research Faciility
+* harvest-cuahsi - harvest XML documents from CUAHSI's Hydroshare online collaboration environment
+* harvest-ieda - harvest XML documents from the Interdisciplinary Earth Data Alliance (IEDA) 
+* harvest-nkn - harvest XML documents from the Northwest Knowledge Network (University of Idaho)
+
+Install the utilities as follows:
 ```
 $ python setup.py develop
 ```
 
+In each case, the harvesters all have a similar commandline interface.  For example, ``harvest-arm`` has the following help:
+
+```
+usage: harvest-arm [-h] [-v {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--host HOST]
+                   [--port PORT] [--certificate CERTIFICATE]
+                   [--private-key PRIVATE_KEY] [--num-documents NUM_DOCUMENTS]
+                   [--regex REGEX] [--num-workers NUM_WORKERS]
+                   [--max-num-errors MAX_NUM_ERRORS] [--ignore-harvest-time]
+                   [--retry RETRY]
+
+Harvest metadata from ARM.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --verbosity {DEBUG,INFO,WARNING,ERROR,CRITICAL}
+                        Verbosity level of log file arm.log (default: INFO)
+  --host HOST           Harvest records to this DataOne member node. (default:
+                        localhost)
+  --port PORT           DataOne member node SSL port. (default: 443)
+  --certificate CERTIFICATE
+                        Path to dataone client-side certificate. (default:
+                        None)
+  --private-key PRIVATE_KEY
+                        Path to dataone host client-side key. (default: None)
+  --num-documents NUM_DOCUMENTS
+                        Limit number of documents retrieved to this number.
+                        (default: -1)
+  --regex REGEX         Limit documents retrieved to those whose URL match
+                        this regular expression. (default: None)
+  --num-workers NUM_WORKERS
+                        Limit number of workers operating asynchronously to
+                        this number. (default: 1)
+  --max-num-errors MAX_NUM_ERRORS
+                        Limit number of errors to this number. This number is
+                        not exact, because if the number of asynchronous
+                        workers is more than one, it is possible that the
+                        threshold is passed simultaneously by more than one
+                        worker. (default: 1)
+  --ignore-harvest-time
+                        Ignore the last harvest time. Use this switch to
+                        attempt to harvest records that may have failed for
+                        some reason on a recent harvest attempt. (default:
+                        False)
+  --retry RETRY         Retry a failed record this number of times. (default:
+                        1)
+
+Not supplying an argument to both the certificate and key arguments will
+disable client side authentication.
+```
+
+Example URLs for d1-check-site
+------------------------------
 1. No sitemap.
 
     $ d1-check-site http://104.236.112.76/demo/no_site_map/sitemap.xml
@@ -41,7 +102,7 @@ $ python setup.py develop
 
     $ d1-check-site http://104.236.112.76/demo/metadata-document-has-invalid-xml/sitemap.xml
 
-8. Two documents listed, but the first document does not validate, which is different than having invalid XML.
+8. Two documents listed, but the first document does not validate according to any supported format IDs, which is different than having invalid XML.
 
     $ d1-check-site http://104.236.112.76/demo/metadata-document-does-not-validate/sitemap.xml
 
@@ -59,92 +120,4 @@ $ python setup.py develop
 
 12. Check only 5 documents.
 
-    $ d1-check-site --num-documents=5 http://get.iedadata.org/sitemaps/usap_sitemap.xml
-
-TLDR;
------
-```
-$ python setup.py install
-```
-
-This will install two command-line utilities, harvest-ieda and harvest-arm, that may be used to harvest IEDA and ARM metadata.
-
-```
-$ harvest-ieda -h
-usage: harvest-ieda [-h] [-v {DEBUG,INFO,WARNING,ERROR,CRITICAL}]
-                [--host HOST] [--port PORT] [--certificate CERTIFICATE]
-                [--key KEY]
-
-Harvest metadata from IEDA.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -v {DEBUG,INFO,WARNING,ERROR,CRITICAL}, --verbose {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Verbosity level of log file ieda.log (default: INFO)
-  --host HOST           Harvest records to this dataone node host. This is NOT
-                        the host where the site map is found. (default:
-                        localhost)
-  --port PORT           DataONE host SSL port. (default: 443)
-  --certificate CERTIFICATE
-                        Path to dataone host certificate. (default: None)
-  --key KEY             Path to dataone host private key. (default: None)
-
-Not supplying an argument to both the certificate and key arguments will
-disable client side authentication.
-```
-
-
-Discovery Pattern
------------------
-
-The general pattern for discovery of schema.org resources given a domain name is:
-
-1. parse http(s)://domain.name/robots.txt
-
-   This step is optional if the location of the sitemap.xml is known (step 2)
-
-2. Get the sitemap.xml file from the location identified or inferred from robots.txt
-
-3. For each entry in the sitemap.xml file:
-
-   a. Parse the resource and extract the schema.org information
-
-   b. If sufficient and appropriate schema.org information is available, then add the
-      referenced resource or resources to the set of items to be processed. Note that
-      the sitemap.xml may point to Dataset or a DataCatalog instance. In the latter case,
-      the DataCatalog item should be processed to discover the contained Dataset
-      instances.
-
-A schema.org Dataset instance is considered to be the target item for synchronization by
-DataONE, and the Dataset should contain references to the components of the Dataset.
-
-DataONE treats the Dataset instance as a view of the actual dataset, with parts of the
-view populated from difference components of the dataset such as the metadata and
-resource map or its equivalent providing relationships between components.
-
-
-Dataset Constructs
-------------------
-
-This content is in DRAFT status, subject to change.
-
-Required properties:
-
-* identifier
-* datePublished
-* dateModified  (required if there are updates after datePublished)
-* distribution
-
-The distribution element must be an array of DataDownload entries, one for each component
-of the dataset being desribed.
-
-Each entry in distribution should include:
-
-* identifier
-* encodingFormat
-* name
-* url
-* "additionalType": "http://www.w3.org/ns/dcat#DataCatalog"
-
-
-
+    $ d1-check-site --num-documents=5 https://www.archive.arm.gov/metadata/adc/sitemap.xml

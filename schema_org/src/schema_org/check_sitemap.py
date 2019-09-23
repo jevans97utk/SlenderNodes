@@ -27,3 +27,14 @@ class D1CheckSitemap(SchemaDotOrgHarvester):
         here.
         """
         pass
+
+    def summarize(self):
+        """
+        Summarize the harvest results.
+        """
+
+        self.logger.info("\n\n")
+        self.logger.info("Job Summary")
+        self.logger.info("===========")
+
+        self.summarize_job_records()
