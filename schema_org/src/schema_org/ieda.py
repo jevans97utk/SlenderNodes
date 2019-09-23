@@ -159,9 +159,6 @@ class IEDAHarvester(SchemaDotOrgHarvester):
         if len(urls) == 1:
             metadata_url = urls[0]
         else:
-            msg = (
-                "Unable to determine a unique metadata URL from the "
-                "{self.id.upper()} JSON-LD."
-            )
-            raise RuntimeError(msg)
+            msg = "Unable to determine a unique metadata URL from the JSON-LD."
+            raise JsonLdError(msg)
         return metadata_url

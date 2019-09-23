@@ -93,6 +93,34 @@ class TestSuite(TestCommon):
         with self.assertRaises(JsonLdError):
             harvester.extract_series_identifier(j)
 
+    def test_extract_url__too_many_metadata_urls(self):
+        """
+        SCENARIO:  We have JSON-LD from an IEDA landing page.  The
+        'distribution' key has more than one list item for an 'ISO Metadata
+        Document' field.  We don't necessarily know which one to use.  This is
+        admittedly an extreme edge case.
+
+        EXPECTED RESULT:  A JsonLDError is raised.
+        """
+        j = {
+            '@id':  'https://dx.doi.org:10.15784/600048',
+            'distribution': [
+                {
+                    'url': 'https://get.ieda.org/doc1.xml',
+                    'name': 'ISO Metadata Document',
+                },
+                {
+                    'url': 'https://get.ieda.org/doc2.xml',
+                    'name': 'ISO Metadata Document',
+                },
+            ]
+        }
+
+        harvester = IEDAHarvester()
+
+        with self.assertRaises(JsonLdError):
+            harvester.extract_metadata_url(j)
+
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     def test_document_already_harvested_but_can_be_successfully_updated(
