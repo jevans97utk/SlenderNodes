@@ -140,11 +140,12 @@ class TestSuite(TestCommon):
         EXPECTED RESULT.  A RuntimeError is issued.
         """
 
-        j = {'@type': 'Book'}
+        j = {'@context': 'https://schema.org', '@type': 'Book'}
 
         v = JSONLD_Validator(logger=self.logger)
-        with self.assertRaises(RuntimeError):
-            v.check(j)
+        with self.assertLogs(logger=v.logger, level='DEBUG'):
+            with self.assertRaises(JsonLdError):
+                v.check(j)
 
     def test_dataset_type_is_camelcase(self):
         """
