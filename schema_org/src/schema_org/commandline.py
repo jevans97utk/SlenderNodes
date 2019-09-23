@@ -12,7 +12,6 @@ from .cuahsi import CUAHSIHarvester
 from .ieda import IEDAHarvester
 from .nkn import NKNHarvester
 from .check_sitemap import D1CheckSitemap
-from .html import D1CheckHtmlFile
 from .xml_validator import XMLValidator
 
 
@@ -87,28 +86,6 @@ def setup_parser(id):
     help = "Retry a failed record this many times"
     parser.add_argument('--retry', type=int, default=1, help=help)
     return parser
-
-
-def d1_check_html():
-
-    description = (
-        "Check a single landing page for validity.  This will validate only "
-        "the JSON-LD, it will not look at the referenced XML metadata file."
-    )
-    parser = argparse.ArgumentParser(description=description)
-
-    help = "path to local HTML file"
-    parser.add_argument('htmlfile', type=str, help=help)
-
-    help = f"log verbosity level"
-    choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-    parser.add_argument('-v', '--verbose', choices=choices, default='INFO',
-                        help=help)
-
-    args = parser.parse_args()
-
-    obj = D1CheckHtmlFile(args.htmlfile, verbosity=args.verbose)
-    obj.run()
 
 
 def d1_check_site():

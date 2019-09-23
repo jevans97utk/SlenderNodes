@@ -126,18 +126,3 @@ class TestSuite(TestCommon):
         commandline.validate()
 
         self.assertEqual(mock_validator.call_count, 1)
-
-    @patch('schema_org.html.logging.getLogger')
-    @patch.object(sys, 'argv', [
-        '', 'tests/data/arm/nsanimfraod1michC2.c1.html'
-    ])
-    def test_local_html_validator(self, mock_logger):
-        """
-        SCENARIO:  Run the local HTML validator with a single file for a
-        positional argument.  That HTML file has an incorrect @type key in the
-        JSON-LD.
-
-        EXPECTED RESULT:  A RuntimeError is issued.
-        """
-        with self.assertRaises(RuntimeError):
-            commandline.d1_check_html()
