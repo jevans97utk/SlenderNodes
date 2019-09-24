@@ -35,6 +35,7 @@ dependencies:
   - nose
   - openssl
   - packaging
+  - pandas
   - pip
   - pluggy
   - py
