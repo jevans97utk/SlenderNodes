@@ -21,6 +21,14 @@ Install the utilities as follows:
 $ python setup.py develop
 ```
 
+## General Architecture
+
+Despite this directory being named ``schema_org``, not all of the executables use Schema.Org.  There is some core functionality concerning asynchronous I/O that all 
+
+In fact, only the ARM harvester can be described as the real deal w.r.t. both Schema.Org and sitemaps.  The Hydroshare/CUAHSI and IEDA harvesters use some Schema.Org functionality, but do not use all.
+
+
+## Commandline Help
 In each case, the harvesters all have a similar commandline interface.  For example, ``harvest-arm`` has the following help:
 
 ```

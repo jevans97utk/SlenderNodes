@@ -60,6 +60,11 @@ class NKNHarvester(CoreHarvester):
 
         self.sitemap = 'https://www.northwestknowledge.net/data/'
 
+        self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestNKN'
+        self.sys_meta_dict['originMN'] = 'urn:node:mnTestNKN'
+        self.sys_meta_dict['rightsholder'] = 'CN=urn:node:mnTestNKN,DC=dataone,DC=org'  # noqa : E501
+        self.sys_meta_dict['submitter'] = 'CN=urn:node:mnTestNKN,DC=dataone,DC=org'  # noqa : E501
+
     def extract_series_identifier(self, doc):
         """
         Parse the identifier from the XML metadata document.

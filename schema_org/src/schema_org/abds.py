@@ -71,6 +71,11 @@ class AbdsIptHarvester(CoreHarvester):
 
         self.sitemap = 'http://geo.abds.is/ipt/rss.do'
 
+        self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestABDS'
+        self.sys_meta_dict['originMN'] = 'urn:node:mnTestABDS'
+        self.sys_meta_dict['rightsholder'] = 'CN=urn:node:mnTestABDS,DC=dataone,DC=org'  # noqa : E501
+        self.sys_meta_dict['submitter'] = 'CN=urn:node:mnTestABDS,DC=dataone,DC=org'  # noqa : E501
+
     def is_sitemap_index_file(self, doc):
         """
         Answer the question as to whether the document found at the other end
