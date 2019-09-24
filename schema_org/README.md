@@ -4,8 +4,7 @@ Slender Node Adapter Supporting schema.org described Resources
 Notes for implementation of a "slender node" adapter to support synchronization
 of content described with schema.org constructs.
 
-Commandline executables
------------------------
+# Commandline executables
 
 The following commandline utilities are included in this package and require Python 3.7.
 
@@ -72,8 +71,96 @@ Not supplying an argument to both the certificate and key arguments will
 disable client side authentication.
 ```
 
-Example URLs for d1-check-site
-------------------------------
+## Example for Harvesting from Arctic Biodiversity Data Center
+
+```shell
+harvest-abds-ipt --port=8444 --max-num-errors=2
+```
+
+This sends harvested documents to a VM running locally with GMN.
+There is an SSH tunnel already established for channeling SSL traffic
+from port 8444 locally to 443 on the GMN VM.  There will be an expected
+failure about 34 records into the processing that we wish to get past,
+so an error threshold count is set to 2.  Out of 70 total datasets, 69 will be successfully processed.
+
+The log of the harvest is as follows:
+
+
+    2019-09-24 09:38:56,796 - datatone - INFO - Last harvest time:  1900-01-01 00:00:00+00:00
+    2019-09-24 09:38:56,796 - datatone - INFO - Requesting sitemap document from http://geo.abds.is/ipt/rss.do
+    2019-09-24 09:38:57,536 - datatone - INFO - Extracted 70 from the sitemap document.
+    2019-09-24 09:38:57,536 - datatone - INFO - 0 records skipped due to last harvest time 1900-01-01 00:00:00+00:00 > lastmod times.
+    2019-09-24 09:38:57,537 - datatone - INFO - Looking to process 70 records...
+    2019-09-24 09:38:57,537 - datatone - INFO - sitemap_consumer[0] ==>  http://geo.abds.is/ipt/eml.do?r=arcod_2007p6, 2019-09-04 10:54:41+00:00:  job failure count = 0, queue size = 69
+    2019-09-24 09:38:57,537 - datatone - INFO - Requesting http://geo.abds.is/ipt/eml.do?r=arcod_2007p6...
+    2019-09-24 09:38:58,128 - datatone - INFO - Default validation failed with format ID http://www.isotc211.org/2005/gmd.
+    2019-09-24 09:38:58,129 - datatone - INFO - Running validation against all format IDs.
+    2019-09-24 09:38:58,257 - datatone - INFO - Validated against eml://ecoinformatics.org/eml-2.1.1
+    2019-09-24 09:38:59,286 - datatone - INFO - CREATED object with SID: 59876921-fda6-4fd5-af5d-cba2a7152527 / PID: 59876921-fda6-4fd5-af5d-cba2a7152527/v1.3.
+    2019-09-24 09:38:59,286 - datatone - INFO - Created a new object identified as 59876921-fda6-4fd5-af5d-cba2a7152527
+    2019-09-24 09:38:59,286 - datatone - INFO - Successfully processed record: 59876921-fda6-4fd5-af5d-cba2a7152527
+    2019-09-24 09:38:59,286 - datatone - INFO - sitemap_consumer[0] ==>  http://geo.abds.is/ipt/eml.do?r=as_zoo, 2019-09-03 14:14:08+00:00:  job failure count = 0, queue size = 68
+    2019-09-24 09:38:59,286 - datatone - INFO - Requesting http://geo.abds.is/ipt/eml.do?r=as_zoo...
+    2019-09-24 09:38:59,832 - datatone - INFO - CREATED object with SID: 451eb991-c1f4-479f-b1f8-7c1b4e8f9114 / PID: 451eb991-c1f4-479f-b1f8-7c1b4e8f9114/v1.2.
+    2019-09-24 09:38:59,832 - datatone - INFO - Created a new object identified as 451eb991-c1f4-479f-b1f8-7c1b4e8f9114
+    2019-09-24 09:38:59,832 - datatone - INFO - Successfully processed record: 451eb991-c1f4-479f-b1f8-7c1b4e8f9114
+    2019-09-24 09:38:59,832 - datatone - INFO - sitemap_consumer[0] ==>  http://geo.abds.is/ipt/eml.do?r=dfo_amfd, 2019-08-29 12:55:15+00:00:  job failure count = 0, queue size = 67
+    2019-09-24 09:38:59,832 - datatone - INFO - Requesting http://geo.abds.is/ipt/eml.do?r=dfo_amfd...
+    2019-09-24 09:39:00,342 - datatone - INFO - CREATED object with SID: 40feadfa-94ea-4af3-90e1-5dffd0fb61df / PID: 40feadfa-94ea-4af3-90e1-5dffd0fb61df/v1.4.
+    2019-09-24 09:39:00,342 - datatone - INFO - Created a new object identified as 40feadfa-94ea-4af3-90e1-5dffd0fb61df
+    2019-09-24 09:39:00,342 - datatone - INFO - Successfully processed record: 40feadfa-94ea-4af3-90e1-5dffd0fb61df
+    2019-09-24 09:39:00,343 - datatone - INFO - sitemap_consumer[0] ==>  http://geo.abds.is/ipt/eml.do?r=me2008g, 2019-08-26 14:17:03+00:00:  job failure count = 0, queue size = 66
+    .
+    .
+    .
+    .
+    .
+    .
+    2019-09-24 09:39:16,416 - datatone - INFO - sitemap_consumer[0] ==>  http://geo.abds.is/ipt/eml.do?r=arc_2007f1, 2019-08-26 14:16:44+00:00:  job failure count = 0, queue size = 35
+    2019-09-24 09:39:16,416 - datatone - INFO - Requesting http://geo.abds.is/ipt/eml.do?r=arc_2007f1...
+    2019-09-24 09:39:16,834 - datatone - INFO - Default validation failed with format ID eml://ecoinformatics.org/eml-2.1.1.
+    2019-09-24 09:39:16,836 - datatone - INFO - Running validation against all format IDs.
+    2019-09-24 09:39:17,402 - datatone - ERROR - XML document does not validate. Errors and warnings:
+      <string>: Line 6: Element '{eml://ecoinformatics.org/eml-2.1.1}eml': No matching global declaration available for the validation root.
+    2019-09-24 09:39:17,414 - datatone - ERROR - Unable to process http://geo.abds.is/ipt/eml.do?r=arc_2007f1:  XML metadata validation failed.
+    2019-09-24 09:39:17,414 - datatone - INFO - sitemap_consumer[0] ==>  http://geo.abds.is/ipt/eml.do?r=arcod_2006b2, 2019-08-26 14:16:43+00:00:  job failure count = 0, queue size = 34
+    2019-09-24 09:39:17,414 - datatone - INFO - Requesting http://geo.abds.is/ipt/eml.do?r=arcod_2006b2...
+    2019-09-24 09:39:17,961 - datatone - INFO - CREATED object with SID: 9bfd4499-050e-41b7-93a8-72d9e2490e21 / PID: 9bfd4499-050e-41b7-93a8-72d9e2490e21/v1.1.
+    2019-09-24 09:39:17,961 - datatone - INFO - Created a new object identified as 9bfd4499-050e-41b7-93a8-72d9e2490e21
+    2019-09-24 09:39:17,961 - datatone - INFO - Successfully processed record: 9bfd4499-050e-41b7-93a8-72d9e2490e21
+    .
+    .
+    .
+    2019-09-24 09:39:43,242 - datatone - INFO - sitemap_consumer[0] ==>  http://geo.abds.is/ipt/eml.do?r=arcod_2007b2, 2019-08-26 14:16:23+00:00:  job failure count = 0, queue size = 0
+    2019-09-24 09:39:43,242 - datatone - INFO - Requesting http://geo.abds.is/ipt/eml.do?r=arcod_2007b2...
+    2019-09-24 09:39:43,757 - datatone - INFO - CREATED object with SID: e2cde7e3-0b90-40ea-93ad-de06e6ed3a3c / PID: e2cde7e3-0b90-40ea-93ad-de06e6ed3a3c/v1.1.
+    2019-09-24 09:39:43,757 - datatone - INFO - Created a new object identified as e2cde7e3-0b90-40ea-93ad-de06e6ed3a3c
+    2019-09-24 09:39:43,757 - datatone - INFO - Successfully processed record: e2cde7e3-0b90-40ea-93ad-de06e6ed3a3c
+    2019-09-24 09:39:43,757 - datatone - INFO - 
+    .
+    .
+    .
+    2019-09-24 09:39:43,757 - datatone - INFO - Job Summary
+    2019-09-24 09:39:43,757 - datatone - INFO - ===========
+    2019-09-24 09:39:43,758 - datatone - INFO - There were 69 new records.
+    2019-09-24 09:39:43,758 - datatone - INFO - There were 0 updated records.
+    2019-09-24 09:39:43,760 - datatone - INFO - Successfully processed 69 records.
+    2019-09-24 09:39:43,765 - datatone - INFO - 
+    .
+    .
+    .
+    2019-09-24 09:39:43,768 - datatone - ERROR - Error summary:
+                        count
+    error                    
+    XMLValidationError      1
+    
+    
+    
+
+
+
+
+# Example URLs for d1-check-site
 1. No sitemap.
 
     $ d1-check-site http://104.236.112.76/demo/no_site_map/sitemap.xml
