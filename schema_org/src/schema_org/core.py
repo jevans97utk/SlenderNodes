@@ -841,16 +841,23 @@ class CoreHarvester(object):
                 await self.process_job(job)
 
             except asyncio.CancelledError:
+                # This is ok, it is a signal that we are done.  Our custom
+                # shutdown process will raise this exception.
                 self.logger.debug('CancelledError')
                 break
 
             except SkipError as e:
+                # For whatever reason, we cannot proceed with the current job,
+                # but we do not count the situation as an "error".  All we do
+                # is tally the issue.
                 job.result = e
                 self.job_records.append(copy.copy(job))
                 msg = f"Unable to process {job.url}:  {e}"
                 self.logger.warning(msg)
 
             except Exception as e:
+                # There was a genuine error situation.  Tally the issue AND
+                # take other action as needed.
                 job.result = e
 
                 self.job_records.append(copy.copy(job))
@@ -864,13 +871,18 @@ class CoreHarvester(object):
                     await self.shutdown()
 
                 if job.num_failures < self.retry:
+                    # If we are instructed to retry a job in case of certain
+                    # errors (a network glitch, maybe?), we put the job back
+                    # onto the work queue, but increment the count so that we
+                    # don't get caught in an infinite loop retrying a bad
+                    # URL or some such thing.
                     if isinstance(e, ERROR_RETRY_CANDIDATES):
                         self.logger.info(f"Throwing {job.url} back on queue")
                         job.num_failures += 1
                         sitemap_queue.put_nowait(job)
 
             else:
-                # The job was successful.
+                # The job was successful, so just tally the result.
                 job.result = None
                 self.job_records.append(copy.copy(job))
 
