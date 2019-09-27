@@ -62,7 +62,7 @@ class TestSuite(TestCommon):
             ir.read_text('tests.data.arm', 'sitemap2.xml'),
             b'',
             ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.html'),
-            ir.read_text('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.xml'),
+            ir.read_text('tests.data.arm', 'nsasondewnpnS01.b1.fixed.xml'),
         ]
         aioresp_mocker.get(self.pattern, body=contents[0])
         aioresp_mocker.get(self.pattern, status=400)
