@@ -258,8 +258,12 @@ class CoreHarvester(object):
 
     def setup_logging(self, logid, verbosity):
         """
+        We will log both to STDOUT and to a file.
+
         Parameters
         ----------
+        logid : str
+            Use this to help name the physical log file.
         verbosity : str
             Level of logging verbosity.
         """
@@ -368,14 +372,18 @@ class CoreHarvester(object):
         return accessPolicy
 
     def get_last_harvest_time(self):
+        """
+        Get the last time that a harvest was run on this node.
 
-        if self.mn_host is not None:
-            last_harvest_time_str = self.client_mgr.get_last_harvest_time()
-            last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
-            self.logger.info(f'Last harvest time:  {last_harvest_time}')
-        else:
-            last_harvest_time_str = '1900-01-01T00:00:00Z'
-            last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
+        Returns
+        -------
+        datetime of last harvest
+        """
+
+        last_harvest_time_str = self.client_mgr.get_last_harvest_time()
+        last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
+
+        self.logger.info(f'Last harvest time:  {last_harvest_time}')
 
         return last_harvest_time
 

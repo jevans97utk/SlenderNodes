@@ -6,6 +6,7 @@ is for Schema.Org sites only.
 # Standard library imports
 
 # 3rd party library imports
+import dateutil.parser
 
 # local imports
 from .so_core import SchemaDotOrgHarvester
@@ -38,3 +39,19 @@ class D1CheckSitemap(SchemaDotOrgHarvester):
         self.logger.info("===========")
 
         self.summarize_job_records()
+
+    def get_last_harvest_time(self):
+        """
+        Get the last time that a harvest was run on this node.
+
+        For the purposes of checking a sitemap, we really don't need this
+        functionality.  Just give a date that is ridiculously distant in the
+        past.
+
+        Returns
+        -------
+        datetime of last harvest
+        """
+
+        last_harvest_time = dateutil.parser.parse('1900-01-01T00:00:00Z')
+        return last_harvest_time

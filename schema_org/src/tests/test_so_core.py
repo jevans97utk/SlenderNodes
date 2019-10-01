@@ -128,53 +128,6 @@ class TestSuite(TestCommon):
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
-    def test_default_run(self,
-                         mock_harvest_time,
-                         mock_check_if_identifier_exists,
-                         mock_load_science_metadata):
-        """
-        SCENARIO:  We have a valid sitemap and valid documents.
-
-        EXPECTED RESULT:  No errors are logged.  One record is successfully
-        harvested, according to the logs.
-        """
-
-        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
-        mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
-        mock_load_science_metadata.return_value = True
-
-        harvester = SchemaDotOrgHarvester()
-        harvester.sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
-
-        # External calls to read the:
-        #
-        #   1) sitemap
-        #   2) HTML document for record 1
-        #   3) XML document for record 1
-        #
-        contents = [
-            ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
-            ir.read_binary('tests.data.arm',
-                           'nsanimfraod1michC2.c1.fixed.html'),
-            ir.read_binary('tests.data.arm',
-                           'nsanimfraod1michC2.c1.fixed.xml'),
-        ]
-        status_codes = [200, 200, 200]
-
-        with aioresponses() as m:
-            for content, status_code in zip(contents, status_codes):
-                m.get(self.regex, body=content, status=status_code)
-
-            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
-                asyncio.run(harvester.run())
-
-                self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
-                self.assertInfoLogMessage(cm.output,
-                                          'Successfully processed 1 records')
-
-    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
-    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
     def test__last_harvest_time_gt_lastmod(self,
                                            mock_harvest_time,
                                            mock_check_if_identifier_exists,
@@ -231,45 +184,6 @@ class TestSuite(TestCommon):
 
                 expected = '1 records skipped'
                 self.assertInfoLogMessage(cm.output, expected)
-
-    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
-    def test_metadata_document_retrieval_failure(self, mock_harvest_time):
-        """
-        SCENARIO:  The XML metadata document retrieval fails.
-
-        EXPECTED RESULT:  The failure count goes up by one.
-        """
-
-        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
-
-        harvester = SchemaDotOrgHarvester()
-        harvester.sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
-
-        failed_count = harvester.failed_count
-
-        # External calls to read the:
-        #
-        #   1) sitemap
-        #   2) HTML document for record 1
-        #   3) XML document for record 1
-        #
-        contents = [
-            ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
-            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.html'),  # noqa: E501
-            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.xml'),
-        ]
-        status_codes = [200, 200, 400]
-
-        with aioresponses() as m:
-            for content, status_code in zip(contents, status_codes):
-                m.get(self.regex, body=content, status=status_code)
-
-            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
-                asyncio.run(harvester.run())
-
-                self.assertErrorLogMessage(cm.output, "Bad Request")
-
-        self.assertEqual(harvester.failed_count, failed_count + 1)
 
     def test_identifier_parsing_error__space(self):
         """
@@ -373,15 +287,17 @@ class TestSuite(TestCommon):
         """
         SCENARIO:  a non-200 status code is returned by the site map retrieval.
 
-        EXPECTED RESULT:  A requests HTTPError is raised and the exception is
+        EXPECTED RESULT:  A ClientResponseError is raised and the exception is
         logged.
         """
         harvester = SchemaDotOrgHarvester()
 
+        sitemap_url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         aioresp_mocker.get(self.regex, status=500)
 
         with self.assertLogs(logger=harvester.logger, level='INFO') as cm:
-            asyncio.run(harvester.run())
+            with self.assertRaises(aiohttp.ClientResponseError):
+                asyncio.run(harvester.get_sitemap_document(sitemap_url))
 
             self.assertLogMessage(
                 cm.output, schema_org.core.SITEMAP_RETRIEVAL_FAILURE_MESSAGE

@@ -178,3 +178,41 @@ class TestSuite(TestCommon):
         actual = kwargs['system_metadata'].seriesId.value()
         expected = 'doi:10.5439/1021460'
         self.assertEqual(actual, expected)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_metadata_document_retrieval_failure(self, mock_harvest_time):
+        """
+        SCENARIO:  The XML metadata document retrieval fails.
+
+        EXPECTED RESULT:  The failure count goes up by one.
+        """
+
+        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+
+        harvester = ARMHarvester(host=self.host, port=self.port)
+
+        failed_count = harvester.failed_count
+
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) HTML document for record 1
+        #   3) XML document for record 1
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
+            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.fixed.html'),  # noqa: E501
+            ir.read_binary('tests.data.arm', 'nsanimfraod1michC2.c1.xml'),
+        ]
+        status_codes = [200, 200, 400]
+
+        with aioresponses() as m:
+            for content, status_code in zip(contents, status_codes):
+                m.get(self.regex, body=content, status=status_code)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                asyncio.run(harvester.run())
+
+                self.assertErrorLogMessage(cm.output, "Bad Request")
+
+        self.assertEqual(harvester.failed_count, failed_count + 1)
