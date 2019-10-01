@@ -389,7 +389,7 @@ class CoreHarvester(object):
 
     def summarize(self):
         """
-        Summarize the harvest results.
+        Produce a text summary for the logs about how the harvest went.
         """
 
         self.logger.info("\n\n")
@@ -402,8 +402,8 @@ class CoreHarvester(object):
 
     def summarize_job_records(self):
         """
-        Summarize the job records.  Keep this factored out of the summarize
-        routine for the purpose of testing.
+        Summarize the job record queue.  Keep this factored out of the
+        summarize routine for the purpose of testing.
         """
         # Create a pandas dataframe out of the job results.
         columns = ['URL', 'Identifier', 'NumFailures', 'Result']
@@ -631,6 +631,15 @@ class CoreHarvester(object):
         Answer the question as to whether the document found at the other end
         of the sitemap URL is a sitemap index file - i.e. it references other
         sitemaps - or if it is a sitemap leaf.
+
+        Parameters
+        ----------
+        doc : ElementTree
+            the sitemap XML document loaded into an ElementTree object
+
+        Returns
+        -------
+        True or False, whether or not the document is a sitemap index file.
         """
 
         elts = doc.xpath('sm:sitemap', namespaces=SITEMAP_NS)
@@ -642,6 +651,16 @@ class CoreHarvester(object):
     def extract_records_from_sitemap(self, doc):
         """
         Extract all the URLs and lastmod times from an XML sitemap.
+
+        Parameters
+        ----------
+        doc : ElementTree
+            the sitemap XML document loaded into an ElementTree object
+
+        Returns
+        -------
+        List of tuples, each consisting of a URL for a metadata document and
+        its associated last modification time.
         """
         urls = doc.xpath(self.SITEMAP_URL_PATH,
                          namespaces=self.SITEMAP_NAMESPACE)
@@ -680,7 +699,17 @@ class CoreHarvester(object):
 
     def post_process_sitemap_records(self, records, last_harvest_time):
         """
-        Prune the sitemap records for various reasons.
+        Prune the sitemap records for various reasons.  These might include:
+
+            i)
+                pruning any records that are older than the last harvest time
+                IFF we are not directed to ignore the last harvest time
+            ii)
+                pruning records that do not match a regex IFF we are directed
+                to use a regex
+            iii)
+                pruning records if we are limiting the number of documents that
+                we are willing to process
 
         Parameters
         ----------
@@ -731,12 +760,18 @@ class CoreHarvester(object):
 
     async def retrieve_url(self, url, headers=None, check_xml_headers=False):
         """
+        Return the contents pointed to by a URL.
+
         Parameters
         ----------
         url : str
             URL of either an HTML document or an XML metadata document
         headers : dict
             Optional headers to supply with the retrieval.
+
+        Returns
+        -------
+        Binary contents of the body of the response object.
         """
         self.logger.debug(f'retrieve_url: {url}')
 
