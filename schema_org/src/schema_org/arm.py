@@ -31,4 +31,3 @@ class ARMHarvester(SchemaDotOrgHarvester):
         self.sys_meta_dict['originMN'] = 'urn:node:mnTestARM'
         self.sys_meta_dict['rightsholder'] = 'CN=urn:node:mnTestARM,DC=dataone,DC=org'  # noqa : E501
         self.sys_meta_dict['submitter'] = 'CN=urn:node:mnTestARM,DC=dataone,DC=org'  # noqa : E501
-

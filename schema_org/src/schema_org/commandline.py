@@ -122,7 +122,7 @@ def d1_check_site():
 
 
 def abds_ipt():
-    parser = setup_parser("arm")
+    parser = setup_parser("abds_ipt")
     args = parser.parse_args()
 
     harvester = AbdsIptHarvester(**args.__dict__)

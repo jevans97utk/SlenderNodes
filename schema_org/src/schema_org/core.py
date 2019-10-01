@@ -842,7 +842,7 @@ class CoreHarvester(object):
 
             except asyncio.CancelledError:
                 # This is ok, it is a signal that we are done.  Our custom
-                # shutdown process will raise this exception.  Trying to 
+                # shutdown process will raise this exception.  Trying to
                 # retrieve from an empty queue will also raise the exception.
                 # Just break out of this loop and the consumer task will then
                 # be over.
