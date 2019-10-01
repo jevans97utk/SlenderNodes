@@ -721,7 +721,8 @@ class CoreHarvester(object):
         self.logger.info(msg)
         return records
 
-    async def retrieve_url(self, url, headers=None, check_xml_headers=False):
+    async def retrieve_url(self, url, return_json=False, headers=None,
+                           check_xml_headers=False):
         """
         Parameters
         ----------
@@ -729,6 +730,9 @@ class CoreHarvester(object):
             URL of either an HTML document or an XML metadata document
         headers : dict
             Optional headers to supply with the retrieval.
+        return_json : bool
+            If true, return the JSON content, otherwise return the body
+            content.
         """
         self.logger.debug(f'retrieve_url: {url}')
 
@@ -748,7 +752,10 @@ class CoreHarvester(object):
                 if check_xml_headers:
                     self.check_xml_headers(response)
 
-                return await response.read()
+                if return_json:
+                    return await response.json()
+                else:
+                    return await response.read()
 
     def check_xml_headers(self, response):
         """

@@ -7,6 +7,7 @@ import d1_scimeta.util
 
 # Local imports
 from .abds import AbdsIptHarvester
+from .abds_geonet import AbdsGeonetHarvester
 from .arm import ARMHarvester
 from .cuahsi import CUAHSIHarvester
 from .ieda import IEDAHarvester
@@ -119,6 +120,14 @@ def d1_check_site():
                          num_documents=args.num_documents,
                          max_num_errors=args.max_num_errors)
     asyncio.run(obj.run())
+
+
+def abds_geonet():
+    parser = setup_parser("abds_geonet")
+    args = parser.parse_args()
+
+    harvester = AbdsGeonetHarvester(**args.__dict__)
+    asyncio.run(harvester.run())
 
 
 def abds_ipt():
