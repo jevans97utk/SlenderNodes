@@ -868,7 +868,8 @@ class CoreHarvester(object):
         idx:  int
             The only purpose for this is to identify the consumer in the logs.
         sitemap_queue : asyncio.Queue
-            Holds URLs and modification times retrieved from the sitemap.
+            Holds jobs associated with the sitemap.  Each job includes, among
+            other things, a URL and a modification time.
         """
         while True:
             try:
