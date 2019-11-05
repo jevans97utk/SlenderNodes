@@ -146,6 +146,9 @@ class CoreHarvester(object):
         rejection occurs.
     logger : logging.Logger
         All events are recorded by this object.
+    logstrings : io.StringIO
+        If log_to_string is set to True, logs will also be stored here for
+        later retrieval.
     max_num_errors : int
         Abort if this threshold is reached.
     mn_base_url : str
@@ -175,7 +178,8 @@ class CoreHarvester(object):
     def __init__(self, host=None, port=None, certificate=None,
                  private_key=None, verbosity='INFO', id='none',
                  num_documents=-1, num_workers=1, max_num_errors=3,
-                 regex=None, retry=0, ignore_harvest_time=False):
+                 regex=None, retry=0, ignore_harvest_time=False,
+                 log_to_string=False, log_to_stdout=True):
         """
         Parameters
         ----------
@@ -185,6 +189,11 @@ class CoreHarvester(object):
         certificate, private_key : str or path or None
             Paths to client side certificates.  None if no verification is
             desired.
+        log_to_string : bool
+            If true, log to a string and nowhere else.  The messages may later
+            be recovered.
+        log_to_stdout : bool
+            If true, log to sys.stdout.
         max_num_errors : int
             Abort if this threshold is reached.
         num_documents : int
@@ -193,7 +202,9 @@ class CoreHarvester(object):
         """
         self.mn_host = host
         self.setup_session(certificate, private_key)
-        self.setup_logging(id, verbosity)
+        self.setup_logging(id, verbosity,
+                           log_to_string=log_to_string,
+                           log_to_stdout=log_to_stdout)
 
         self.mn_base_url = f'https://{host}:{port}/mn'
         self.sys_meta_dict = {
@@ -256,7 +267,8 @@ class CoreHarvester(object):
             'From': 'jevans97@utk.edu'
         }
 
-    def setup_logging(self, logid, verbosity):
+    def setup_logging(self, logid, verbosity, log_to_string=False,
+                      log_to_stdout=True):
         """
         We will log both to STDOUT and to a file.
 
@@ -264,6 +276,11 @@ class CoreHarvester(object):
         ----------
         logid : str
             Use this to help name the physical log file.
+        log_to_string : bool
+            If true, additionally log to a StringIO object, which allows the
+            log records to be later recovered.
+        log_to_stdout : bool
+            If true, log to sys.stdout.
         verbosity : str
             Level of logging verbosity.
         """
@@ -272,10 +289,12 @@ class CoreHarvester(object):
         self.logger = logging.getLogger('datatone')
         self.logger.setLevel(level)
 
+        # Do NOT change the formatting unless you review the
+        # "extract_log_messages" method down below.
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         formatter = logging.Formatter(format)
 
-        # Log to file
+        # Log to file no matter what.
         #
         # I admit that the use of "delay" is only to prevent warnings being
         # issued during testing.
@@ -283,10 +302,41 @@ class CoreHarvester(object):
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)
 
-        # Also log to stdout.
-        sh = logging.StreamHandler(sys.stdout)
-        sh.setFormatter(formatter)
-        self.logger.addHandler(sh)
+        # Also log to stdout unless directed not to do so
+        if log_to_stdout:
+            stream = logging.StreamHandler(sys.stdout)
+            stream.setFormatter(formatter)
+            self.logger.addHandler(stream)
+
+        self.logstrings = io.StringIO()
+        if log_to_string:
+            stringstream = logging.StreamHandler(self.logstrings)
+            stringstream.setFormatter(formatter)
+            self.logger.addHandler(stringstream)
+
+    def extract_log_messages(self):
+        """
+        If log_to_string was specified as a constructor keyword argument, all
+        the log entries are stored in the "logstrings" attribute, making them
+        recoverable.
+
+        Returns
+        -------
+        JSON array of log entries
+        """
+        text = self.logstrings.getvalue()
+        msgs = []
+        for line in text.splitlines():
+            datestr, loggerstr, levelstr, msg = line.split(' - ')
+            timestamp = dateutil.parser.parse(datestr).isoformat()
+            obj = {
+                'level': levelstr,
+                'msg': msg,
+                'timestamp': timestamp,
+            }
+            msgs.append(obj)
+
+        return msgs
 
     def generate_system_metadata(self, *,
                                  scimeta_bytes=None,
