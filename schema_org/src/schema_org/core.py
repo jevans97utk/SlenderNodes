@@ -164,6 +164,10 @@ class CoreHarvester(object):
     regex : str
         If not None, restrict documents to those that match this regular
         expression.
+    sitemaps : list
+        List of all sitemaps processed (only the leafs, though)
+    sitemap_records : list
+        List of the URLSET records (url and lastmod times) for all sitemaps.
     session : requests.sessions.Session
         Makes all URL requests.
     sys_meta_dict : dict
@@ -179,7 +183,7 @@ class CoreHarvester(object):
                  private_key=None, verbosity='INFO', id='none',
                  num_documents=-1, num_workers=1, max_num_errors=3,
                  regex=None, retry=0, ignore_harvest_time=False,
-                 log_to_string=False, log_to_stdout=True):
+                 no_harvest=False, log_to_string=False, log_to_stdout=True):
         """
         Parameters
         ----------
@@ -241,6 +245,10 @@ class CoreHarvester(object):
 
         self.regex = re.compile(regex) if regex is not None else None
         self.ignore_harvest_time = ignore_harvest_time
+        self.no_harvest = no_harvest
+
+        self.sitemaps = []
+        self.sitemap_records = []
 
         requests.packages.urllib3.disable_warnings()
 
@@ -327,7 +335,12 @@ class CoreHarvester(object):
         text = self.logstrings.getvalue()
         msgs = []
         for line in text.splitlines():
-            datestr, loggerstr, levelstr, msg = line.split(' - ')
+            try:
+                datestr, loggerstr, levelstr, msg = line.split(' - ')
+            except ValueError:
+                # Not enough items to parse, just ignore
+                continue
+
             timestamp = dateutil.parser.parse(datestr).isoformat()
             obj = {
                 'level': levelstr,
@@ -429,6 +442,8 @@ class CoreHarvester(object):
         -------
         datetime of last harvest
         """
+        if self.ignore_harvest_time:
+            return None
 
         last_harvest_time_str = self.client_mgr.get_last_harvest_time()
         last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
@@ -1102,6 +1117,7 @@ class CoreHarvester(object):
         else:
 
             self.logger.debug("process_sitemap:  This is a sitemap leaf.")
+            self.sitemaps.append(sitemap_url)
             await self.process_sitemap_leaf(doc, last_harvest)
 
     async def get_sitemap_document(self, sitemap_url):
@@ -1164,10 +1180,16 @@ class CoreHarvester(object):
         """
         self.logger.debug(f'process_sitemap_leaf:')
 
-        sitemap_queue = asyncio.Queue()
-
         records = self.extract_records_from_sitemap(doc)
         records = self.post_process_sitemap_records(records, last_harvest)
+
+        self.sitemap_records.extend(records)
+
+        if self.no_harvest:
+            return
+
+        sitemap_queue = asyncio.Queue()
+
         for url, lastmod_time in records:
             job = SlenderNodeJob(url, '', lastmod_time, 0, None)
             sitemap_queue.put_nowait(job)
