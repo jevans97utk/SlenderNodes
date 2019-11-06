@@ -30,11 +30,11 @@ class SchemaDotOrgHarvester(CoreHarvester):
     def __init__(self, id='', **kwargs):
         super().__init__(id=id, **kwargs)
 
-        self.jsonld_validator = JSONLD_Validator(id=id, logger=self.logger)
+        self._jsonld_validator = JSONLD_Validator(id=id, logger=self.logger)
 
         self.sitemap = ''
 
-    def extract_jsonld(self, doc):
+    def extract_jsonld_from_landing_page(self, doc):
         """
         Extract JSON-LD from HTML document.
 
@@ -48,7 +48,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
         -------
         Dictionary of JSON-LD data.
         """
-        self.logger.debug('extract_jsonld:')
+        self.logger.debug('extract_jsonld_from_landing_page:')
         path = './/script[@type="application/ld+json"]'
         scripts = doc.xpath(path)
         if len(scripts) == 0:
@@ -127,6 +127,14 @@ class SchemaDotOrgHarvester(CoreHarvester):
         self.preprocess_landing_page(doc)
         return doc
 
+    def get_jsonld(self, doc):
+        """
+        Retrieve the JSON-LD from the landing page URL and validate it.
+        """
+        jsonld = self.extract_jsonld_from_landing_page(doc)
+        self._jsonld_validator.check(jsonld)
+        return jsonld
+
     async def retrieve_record(self, landing_page_url):
         """
         Read the remote document, extract the JSON-LD, and load it into the
@@ -148,9 +156,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
         doc : ElementTree
         """
         doc = await self.retrieve_landing_page_content(landing_page_url)
-
-        jsonld = self.extract_jsonld(doc)
-        self.jsonld_validator.check(jsonld)
+        jsonld = self.get_jsonld(doc)
 
         sid = self.extract_series_identifier(jsonld)
         self.logger.debug(f"Series ID (sid): {sid}")
