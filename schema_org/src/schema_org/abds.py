@@ -69,7 +69,7 @@ class AbdsIptHarvester(CoreHarvester):
     def __init__(self, **kwargs):
         super().__init__(id='abds_ipt', **kwargs)
 
-        self.sitemap = 'http://geo.abds.is/ipt/rss.do'
+        self.sitemap_url = 'http://geo.abds.is/ipt/rss.do'
 
         self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestABDS'
         self.sys_meta_dict['originMN'] = 'urn:node:mnTestABDS'

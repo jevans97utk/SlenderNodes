@@ -25,7 +25,7 @@ class ARMHarvester(SchemaDotOrgHarvester):
     def __init__(self, **kwargs):
         super().__init__(id='arm', **kwargs)
 
-        self.sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
+        self.sitemap_url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
 
         self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestARM'
         self.sys_meta_dict['originMN'] = 'urn:node:mnTestARM'

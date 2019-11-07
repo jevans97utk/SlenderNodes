@@ -41,7 +41,7 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         xslt_tree = lxml.etree.XML(content)
         self.transform_to_dataone_simple_dc = lxml.etree.XSLT(xslt_tree)
 
-        self.sitemap = 'https://www.hydroshare.org/sitemap.xml'
+        self.sitemap_url = 'https://www.hydroshare.org/sitemap.xml'
 
         self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestHydroshare'
         self.sys_meta_dict['originMN'] = 'urn:node:mnTestHydroshare'

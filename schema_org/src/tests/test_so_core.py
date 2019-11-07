@@ -147,7 +147,7 @@ class TestSuite(TestCommon):
         mock_load_science_metadata.return_value = True
 
         harvester = SchemaDotOrgHarvester(host='test.arm.gov')
-        harvester.sitemap = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
+        harvester.sitemap_url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
 
         # External calls to read the:
         #

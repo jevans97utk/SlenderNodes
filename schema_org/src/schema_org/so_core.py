@@ -23,7 +23,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
     ----------
     jsonld_validator : obj
         Run conformance checks on the JSON-LD extracted from a site page.
-    sitemap : str
+    sitemap_url : str
         URL for XML site map.  This must be overridden for each custom client.
     """
 
@@ -32,7 +32,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
 
         self._jsonld_validator = JSONLD_Validator(id=id, logger=self.logger)
 
-        self.sitemap = ''
+        self.sitemap_url = ''
 
     def extract_jsonld_from_landing_page(self, doc):
         """

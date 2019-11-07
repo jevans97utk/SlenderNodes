@@ -733,7 +733,7 @@ class CoreHarvester(object):
         # If the URLs do not begin with 'http', then they may be relative?
         # If so, tack the sitemap URL onto them.
         urls = [
-            f"{self.sitemap}/{url}" if not url.startswith('http') else url
+            f"{self.sitemap_url}/{url}" if not url.startswith('http') else url
             for url in urls
         ]
 
@@ -884,7 +884,7 @@ class CoreHarvester(object):
         last_harvest_time = self.get_last_harvest_time()
 
         try:
-            await self.process_sitemap(self.sitemap, last_harvest_time)
+            await self.process_sitemap(self.sitemap_url, last_harvest_time)
         except Exception as e:
             self.logger.error(repr(e))
 

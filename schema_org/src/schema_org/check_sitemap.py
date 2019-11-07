@@ -20,7 +20,7 @@ class D1CheckSitemap(SchemaDotOrgHarvester):
     def __init__(self, sitemap_url=None, **kwargs):
         super().__init__(id='d1checksite', **kwargs)
 
-        self.sitemap = sitemap_url
+        self.sitemap_url = sitemap_url
 
     async def harvest_document(self, sid, pid, doc, record_date):
         """
