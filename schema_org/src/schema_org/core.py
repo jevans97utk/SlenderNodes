@@ -51,6 +51,8 @@ ERROR_RETRY_CANDIDATES = (
     asyncio.TimeoutError
 )
 
+_TOO_OLD_HARVEST_DATETIME = dateutil.parser.parse('1950-01-01T00:00:00Z')
+
 
 @dataclass
 class SlenderNodeJob(object):
@@ -266,8 +268,13 @@ class CoreHarvester(object):
         """
         Return list of landing page URLs and last modified times of the landing
         pages.
+
+        Filter the items if no lastmod time was listed.
         """
-        return self._sitemap_records
+        return [
+            (item[0], None) if item[1] is _TOO_OLD_HARVEST_DATETIME else item
+            for item in self._sitemap_records
+        ]
 
     def setup_session(self, certificate, private_key):
         """
@@ -760,10 +767,8 @@ class CoreHarvester(object):
                              namespaces=self.SITEMAP_NAMESPACE)
         if len(lastmods) == 0:
             # Sometimes a sitemap has no <lastmod> items at all.  That's ok.
-            lastmods = [
-                dateutil.parser.parse('1950-01-01T00:00:00Z')
-                for url in urls
-            ]
+            # Use a datetime that we know is too old to be valid.
+            lastmods = [_TOO_OLD_HARVEST_DATETIME for url in urls]
         else:
             # Parse the last modification times.  It is possible that the dates
             # have no timezone information in them, so we will assume that it
