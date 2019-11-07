@@ -247,10 +247,23 @@ class CoreHarvester(object):
         self.ignore_harvest_time = ignore_harvest_time
         self.no_harvest = no_harvest
 
-        self.sitemaps = []
-        self.sitemap_records = []
+        self._sitemaps = []
+        self._sitemap_records = []
 
         requests.packages.urllib3.disable_warnings()
+
+    def get_sitemaps(self):
+        """
+        Return list of sitemaps (plural, in case the sitemap is nested).
+        """
+        return self._sitemaps
+
+    def get_sitemaps_urlset(self):
+        """
+        Return list of landing page URLs and last modified times of the landing
+        pages.
+        """
+        return self._sitemap_records
 
     def setup_session(self, certificate, private_key):
         """
@@ -1117,7 +1130,7 @@ class CoreHarvester(object):
         else:
 
             self.logger.debug("process_sitemap:  This is a sitemap leaf.")
-            self.sitemaps.append(sitemap_url)
+            self._sitemaps.append(sitemap_url)
             await self.process_sitemap_leaf(doc, last_harvest)
 
     async def get_sitemap_document(self, sitemap_url):
@@ -1183,7 +1196,7 @@ class CoreHarvester(object):
         records = self.extract_records_from_sitemap(doc)
         records = self.post_process_sitemap_records(records, last_harvest)
 
-        self.sitemap_records.extend(records)
+        self._sitemap_records.extend(records)
 
         if self.no_harvest:
             return
