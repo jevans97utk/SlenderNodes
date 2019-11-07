@@ -33,6 +33,7 @@ from .core import SkipError, XMLMetadataParsingError
 class CUAHSIHarvester(SchemaDotOrgHarvester):
 
     def __init__(self, **kwargs):
+        kwargs['sitemap_url'] = 'https://www.hydroshare.org/sitemap.xml'
         super().__init__(id='cuahsi', **kwargs)
 
         # Create an XSLT stylesheet for transforming the CUAHSI documents
@@ -41,7 +42,6 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         xslt_tree = lxml.etree.XML(content)
         self.transform_to_dataone_simple_dc = lxml.etree.XSLT(xslt_tree)
 
-        self.sitemap_url = 'https://www.hydroshare.org/sitemap.xml'
 
         self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestHydroshare'
         self.sys_meta_dict['originMN'] = 'urn:node:mnTestHydroshare'

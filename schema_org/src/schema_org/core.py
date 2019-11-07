@@ -168,6 +168,8 @@ class CoreHarvester(object):
         List of all sitemaps processed (only the leafs, though)
     sitemap_records : list
         List of the URLSET records (url and lastmod times) for all sitemaps.
+    sitemap_url : str
+        URL for XML site map.  This must be overridden for each custom client.
     session : requests.sessions.Session
         Makes all URL requests.
     sys_meta_dict : dict
@@ -183,7 +185,8 @@ class CoreHarvester(object):
                  private_key=None, verbosity='INFO', id='none',
                  num_documents=-1, num_workers=1, max_num_errors=3,
                  regex=None, retry=0, ignore_harvest_time=False,
-                 no_harvest=False, log_to_string=False, log_to_stdout=True):
+                 no_harvest=False, log_to_string=False, log_to_stdout=True,
+                 sitemap_url=None):
         """
         Parameters
         ----------
@@ -247,6 +250,7 @@ class CoreHarvester(object):
         self.ignore_harvest_time = ignore_harvest_time
         self.no_harvest = no_harvest
 
+        self.sitemap_url = sitemap_url
         self._sitemaps = []
         self._sitemap_records = []
 
@@ -469,6 +473,8 @@ class CoreHarvester(object):
         """
         Produce a text summary for the logs about how the harvest went.
         """
+        if self.no_harvest:
+            return
 
         self.logger.info("\n\n")
         self.logger.info("Job Summary")

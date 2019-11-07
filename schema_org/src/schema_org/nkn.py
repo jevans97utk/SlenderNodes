@@ -56,9 +56,8 @@ class NKNHarvester(CoreHarvester):
     SITEMAP_NAMESPACE = {'xhtml': 'http://www.w3.org/1999/xhtml'}
 
     def __init__(self, **kwargs):
+        kwargs['sitemap_url'] = 'https://www.northwestknowledge.net/data/'
         super().__init__(id='core', **kwargs)
-
-        self.sitemap_url = 'https://www.northwestknowledge.net/data/'
 
         self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestNKN'
         self.sys_meta_dict['originMN'] = 'urn:node:mnTestNKN'

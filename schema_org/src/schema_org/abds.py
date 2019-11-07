@@ -67,9 +67,8 @@ EML_211_NSMAP = {
 class AbdsIptHarvester(CoreHarvester):
 
     def __init__(self, **kwargs):
+        kwargs['sitemap_url'] = 'http://geo.abds.is/ipt/rss.do'
         super().__init__(id='abds_ipt', **kwargs)
-
-        self.sitemap_url = 'http://geo.abds.is/ipt/rss.do'
 
         self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestABDS'
         self.sys_meta_dict['originMN'] = 'urn:node:mnTestABDS'
