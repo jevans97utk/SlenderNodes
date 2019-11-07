@@ -16,6 +16,7 @@ import lxml.etree
 # local imports
 from schema_org.core import SkipError, XMLMetadataParsingError
 from schema_org.cuahsi import CUAHSIHarvester
+from schema_org.jsonld_validator import JsonLdError
 from .test_common import TestCommon
 
 
@@ -116,7 +117,7 @@ class TestSuite(TestCommon):
         obj = CUAHSIHarvester()
 
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
-            with self.assertRaises(SkipError):
+            with self.assertRaises(JsonLdError):
                 obj.extract_jsonld_from_landing_page(doc)
 
     def test_retrieve_record(self):

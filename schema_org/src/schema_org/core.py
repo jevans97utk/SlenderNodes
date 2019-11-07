@@ -269,7 +269,8 @@ class CoreHarvester(object):
         Return list of landing page URLs and last modified times of the landing
         pages.
 
-        Filter the items if no lastmod time was listed.
+        Filter the items if no lastmod time was listed.  Replace the too-old
+        time with None.
         """
         return [
             (item[0], None) if item[1] is _TOO_OLD_HARVEST_DATETIME else item
