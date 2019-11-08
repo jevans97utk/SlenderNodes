@@ -42,7 +42,6 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         xslt_tree = lxml.etree.XML(content)
         self.transform_to_dataone_simple_dc = lxml.etree.XSLT(xslt_tree)
 
-
         self.sys_meta_dict['authoritativeMN'] = 'urn:node:mnTestHydroshare'
         self.sys_meta_dict['originMN'] = 'urn:node:mnTestHydroshare'
         self.sys_meta_dict['rightsholder'] = 'CN=urn:node:mnTestHydroshare,DC=dataone,DC=org'  # noqa : E501

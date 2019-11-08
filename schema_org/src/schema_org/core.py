@@ -10,7 +10,6 @@ import datetime as dt
 import gzip
 import hashlib
 import io
-import json
 import logging
 import re
 import sys
