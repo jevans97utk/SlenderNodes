@@ -13,6 +13,7 @@ import io
 import logging
 import re
 import sys
+import time
 
 # 3rd party library imports
 import aiohttp
@@ -333,6 +334,11 @@ class CoreHarvester(object):
             formatter = jsonlogger.JsonFormatter(format)
         else:
             formatter = logging.Formatter(format)
+
+        # Use UTC, and fix the millisecond format so that javaScript can use
+        # it
+        formatter.default_msec_format = '%s.%03d'
+        formatter.converter = time.gmtime
 
         # Log to file no matter what.
         #
