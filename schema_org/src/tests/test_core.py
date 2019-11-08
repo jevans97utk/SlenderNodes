@@ -7,6 +7,7 @@ try:
 except ImportError:  # pragma:  nocover
     import importlib_resources as ir
 import io
+import json
 import re
 import string
 from unittest.mock import patch
@@ -117,15 +118,14 @@ class TestSuite(TestCommon):
 
         regex = re.compile('609469')
 
-        obj = CoreHarvester(regex=regex, log_to_string=True, log_to_stdout=False)
+        obj = CoreHarvester(regex=regex,
+                            log_to_string=True, log_to_stdout=False)
         records = obj.extract_records_from_sitemap(doc)
         records = obj.post_process_sitemap_records(records, last_harvest_time)
 
-        msgs = obj.extract_log_messages()
+        msgs = obj.get_log_messages()
         num_messages = 4
-        self.assertEqual(len(msgs), num_messages)
-        for j in range(num_messages):
-            self.assertTrue(isinstance(msgs[j], dict))
+        self.assertEqual(len(msgs.splitlines()), num_messages)
 
     def test_sitemap_when_regex_applied(self):
         """
@@ -377,3 +377,29 @@ class TestSuite(TestCommon):
             """
             messages = message.split()
             self.assertErrorLogMessage(cm.output, messages)
+
+    def test_json_logging(self):
+        """
+        SCENARIO:  The sitemap has 3 documents.  Invoke with --log-to-json.
+
+        EXPECTED RESULT:  the get_log_messages method returns a string that
+        can be loaded by the json module.
+        """
+        kwargs = {
+            'log_to_string': True,
+            'log_to_json': True,
+            'log_to_stdout': False,
+        }
+        harvester = CoreHarvester(**kwargs)
+
+        content = ir.read_binary('tests.data.ieda', 'sitemap3.xml')
+        doc = lxml.etree.parse(io.BytesIO(content))
+        last_harvest = dateutil.parser.parse('1900-01-01T00:00:00Z')
+
+        records = harvester.extract_records_from_sitemap(doc)
+        records = harvester.post_process_sitemap_records(records, last_harvest)
+
+        s = harvester.get_log_messages()
+        records = json.loads(s)
+
+        self.assertEqual(len(records), 3)

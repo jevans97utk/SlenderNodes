@@ -10,6 +10,7 @@ import datetime as dt
 import gzip
 import hashlib
 import io
+import json
 import logging
 import re
 import sys
@@ -24,6 +25,7 @@ import d1_scimeta.validate
 import d1_common
 import d1_common.types.dataoneTypes_v2_0 as v2
 import d1_common.types.dataoneTypes_v2_0 as dataoneTypes
+from pythonjsonlogger import jsonlogger
 
 # Local imports
 from .d1_client_manager import D1ClientManager
@@ -148,9 +150,11 @@ class CoreHarvester(object):
         rejection occurs.
     logger : logging.Logger
         All events are recorded by this object.
-    logstrings : io.StringIO
+    _logstrings : io.StringIO
         If log_to_string is set to True, logs will also be stored here for
         later retrieval.
+    _log_to_json : bool
+        If true, log to JSON-compatible format.
     max_num_errors : int
         Abort if this threshold is reached.
     mn_base_url : str
@@ -188,7 +192,7 @@ class CoreHarvester(object):
                  num_documents=-1, num_workers=1, max_num_errors=3,
                  regex=None, retry=0, ignore_harvest_time=False,
                  no_harvest=False, log_to_string=False, log_to_stdout=True,
-                 sitemap_url=None):
+                 log_to_json=False, sitemap_url=None):
         """
         Parameters
         ----------
@@ -203,6 +207,8 @@ class CoreHarvester(object):
             be recovered.
         log_to_stdout : bool
             If true, log to sys.stdout.
+        log_to_json : bool
+            If true, log to JSON-compatible format.
         max_num_errors : int
             Abort if this threshold is reached.
         num_documents : int
@@ -211,9 +217,9 @@ class CoreHarvester(object):
         """
         self.mn_host = host
         self.setup_session(certificate, private_key)
-        self.setup_logging(id, verbosity,
-                           log_to_string=log_to_string,
-                           log_to_stdout=log_to_stdout)
+
+        self._log_to_json = log_to_json
+        self.setup_logging(id, verbosity, log_to_string, log_to_stdout)
 
         self.mn_base_url = f'https://{host}:{port}/mn'
         self.sys_meta_dict = {
@@ -300,8 +306,7 @@ class CoreHarvester(object):
             'From': 'jevans97@utk.edu'
         }
 
-    def setup_logging(self, logid, verbosity, log_to_string=False,
-                      log_to_stdout=True):
+    def setup_logging(self, logid, verbosity, log_to_string, log_to_stdout):
         """
         We will log both to STDOUT and to a file.
 
@@ -325,7 +330,10 @@ class CoreHarvester(object):
         # Do NOT change the formatting unless you review the
         # "extract_log_messages" method down below.
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        formatter = logging.Formatter(format)
+        if self._log_to_json:
+            formatter = jsonlogger.JsonFormatter(format)
+        else:
+            formatter = logging.Formatter(format)
 
         # Log to file no matter what.
         #
@@ -341,40 +349,27 @@ class CoreHarvester(object):
             stream.setFormatter(formatter)
             self.logger.addHandler(stream)
 
-        self.logstrings = io.StringIO()
+        self._logstrings = io.StringIO()
         if log_to_string:
-            stringstream = logging.StreamHandler(self.logstrings)
+            stringstream = logging.StreamHandler(self._logstrings)
             stringstream.setFormatter(formatter)
             self.logger.addHandler(stringstream)
 
-    def extract_log_messages(self):
+    def get_log_messages(self):
         """
         If log_to_string was specified as a constructor keyword argument, all
-        the log entries are stored in the "logstrings" attribute, making them
+        the log entries are stored in the "_logstrings" attribute, making them
         recoverable.
 
         Returns
         -------
         JSON array of log entries
         """
-        text = self.logstrings.getvalue()
-        msgs = []
-        for line in text.splitlines():
-            try:
-                datestr, loggerstr, levelstr, msg = line.split(' - ')
-            except ValueError:
-                # Not enough items to parse, just ignore
-                continue
-
-            timestamp = dateutil.parser.parse(datestr).isoformat()
-            obj = {
-                'level': levelstr,
-                'msg': msg,
-                'timestamp': timestamp,
-            }
-            msgs.append(obj)
-
-        return msgs
+        s = self._logstrings.getvalue()
+        if self._log_to_json:
+            log_entries = s.splitlines()
+            s = f"[{','.join(log_entries)}]"
+        return s
 
     def generate_system_metadata(self, *,
                                  scimeta_bytes=None,
