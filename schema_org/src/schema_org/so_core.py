@@ -102,27 +102,6 @@ class SchemaDotOrgHarvester(CoreHarvester):
         identifier = f"doi:{m.group('doi')}"
         return identifier
 
-    async def safe_retrieve_landing_page_content(self, landing_page_url):
-        """
-        Read the remote document.
-
-        Parameters
-        ----------
-        landing_page_url : str
-            URL for remote landing page HTML
-
-        Returns
-        -------
-        ElementTree
-            ElementTree corresponding to the HTML in the landing page
-        """
-        try:
-            doc = await self.retrieve_landing_page_content(landing_page_url)
-            return doc
-        except Exception as e:
-            self.logger.error(repr(e))
-            raise
-
     async def retrieve_landing_page_content(self, landing_page_url):
         """
         Read the remote document.

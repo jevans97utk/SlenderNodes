@@ -760,29 +760,3 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
             with self.assertRaises(RuntimeError):
                 obj.validate_document(doc)
-
-    def test_safe_retrieve_landing_page_content(self):
-        """
-        SCENARIO:   Retrieve landing page content via a way guaranteed to run
-        without throwing an exception.
-
-        EXPECTED RESULT:  No exception is thrown, and there is a log trail
-        """
-        content = ir.read_binary('tests.data.arm', 'nsaqcrad1longC2.c2.html')
-        status_code = 400
-        headers = {'Content-Type': 'application/html'}
-
-        harvester = SchemaDotOrgHarvester()
-
-        with aioresponses() as m:
-            m.get(self.regex,
-                  body=content, status=status_code, headers=headers)
-
-            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
-
-                err = aiohttp.client_exceptions.ClientResponseError
-                with self.assertRaises(err):
-                    url = 'https://www.archive.arm.gov/metadata/adc/html/nsaqcrad1longC2.c2.html'
-                    asyncio.run(harvester.safe_retrieve_landing_page_content(url))
-
-                self.assertLogLevelCallCount(cm.output, level='ERROR', n=1)
