@@ -8,6 +8,7 @@ except ImportError:  # pragma:  nocover
     import importlib_resources as ir
 import io
 import json
+import logging
 import re
 import string
 from unittest.mock import patch
@@ -16,6 +17,7 @@ from unittest.mock import patch
 import dateutil.parser
 import lxml.etree
 import numpy as np
+from pythonjsonlogger import jsonlogger
 
 # local imports
 from schema_org.core import CoreHarvester, SlenderNodeJob, SkipError
@@ -87,45 +89,6 @@ class TestSuite(TestCommon):
             records = obj.post_process_sitemap_records(records,
                                                        last_harvest_time)
         self.assertEqual(len(records), 3)
-
-    def test_log_to_string(self):
-        """
-        SCENARIO:  The sitemap lists 3 documents, but two of them are to be
-        excluded via regular expression.  We wish to log to a string.
-
-        EXPECTED RESULT:  The log messages are extracted as a JSON array.
-        """
-        xmlstr = b"""<?xml version="1.0" encoding="utf-8"?>
-        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-          <url>
-            <loc>http://get.iedadata.org/metadata/iso/609246</loc>
-            <lastmod>2018-06-21T22:05:27-04:00</lastmod>
-          </url>
-          <url>
-            <loc>http://get.iedadata.org/metadata/iso/600048</loc>
-            <lastmod>2018-06-21T22:05:24-04:00</lastmod>
-          </url>
-          <url>
-            <loc>http://get.iedadata.org/metadata/iso/609469</loc>
-            <lastmod>2018-06-21T22:05:27-04:00</lastmod>
-          </url>
-        </urlset>
-        """
-        doc = lxml.etree.parse(io.BytesIO(xmlstr))
-
-        last_harvest_time_str = '1900-01-01T00:00:00Z'
-        last_harvest_time = dateutil.parser.parse(last_harvest_time_str)
-
-        regex = re.compile('609469')
-
-        obj = CoreHarvester(regex=regex,
-                            log_to_string=True, log_to_stdout=False)
-        records = obj.extract_records_from_sitemap(doc)
-        records = obj.post_process_sitemap_records(records, last_harvest_time)
-
-        msgs = obj.get_log_messages()
-        num_messages = 4
-        self.assertEqual(len(msgs.splitlines()), num_messages)
 
     def test_sitemap_when_regex_applied(self):
         """
@@ -378,19 +341,27 @@ class TestSuite(TestCommon):
             messages = message.split()
             self.assertErrorLogMessage(cm.output, messages)
 
-    def test_json_logging(self):
+    def test_custom_logging(self):
         """
-        SCENARIO:  The sitemap has 3 documents.  Invoke with --log-to-json.
+        SCENARIO:  The sitemap has 3 documents.  Invoke with a custom JSON
+        logger that logs to a string.  We should see three documents.
 
         EXPECTED RESULT:  the get_log_messages method returns a string that
         can be loaded by the json module.
         """
-        kwargs = {
-            'log_to_string': True,
-            'log_to_json': True,
-            'log_to_stdout': False,
-        }
-        harvester = CoreHarvester(**kwargs)
+        logger = logging.getLogger('test')
+        logger.setLevel(logging.INFO)
+
+        logstrings = io.StringIO()
+        stream = logging.StreamHandler(logstrings)
+
+        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        formatter = jsonlogger.JsonFormatter(format)
+
+        stream.setFormatter(formatter)
+        logger.addHandler(stream)
+
+        harvester = CoreHarvester(logger=logger)
 
         content = ir.read_binary('tests.data.ieda', 'sitemap3.xml')
         doc = lxml.etree.parse(io.BytesIO(content))
@@ -399,7 +370,10 @@ class TestSuite(TestCommon):
         records = harvester.extract_records_from_sitemap(doc)
         records = harvester.post_process_sitemap_records(records, last_harvest)
 
-        s = harvester.get_log_messages()
+        # Retrieve the log messages from the string.
+        s = logstrings.getvalue()
+        log_entries = s.splitlines()
+        s = f"[{','.join(log_entries)}]"
         records = json.loads(s)
 
         self.assertEqual(len(records), 3)

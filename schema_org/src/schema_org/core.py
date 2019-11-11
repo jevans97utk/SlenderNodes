@@ -25,7 +25,6 @@ import d1_scimeta.validate
 import d1_common
 import d1_common.types.dataoneTypes_v2_0 as v2
 import d1_common.types.dataoneTypes_v2_0 as dataoneTypes
-from pythonjsonlogger import jsonlogger
 
 # Local imports
 from .d1_client_manager import D1ClientManager
@@ -191,8 +190,7 @@ class CoreHarvester(object):
                  private_key=None, verbosity='INFO', id='none',
                  num_documents=-1, num_workers=1, max_num_errors=3,
                  regex=None, retry=0, ignore_harvest_time=False,
-                 no_harvest=False, log_to_string=False, log_to_stdout=True,
-                 log_to_json=False, sitemap_url=None):
+                 no_harvest=False, logger=None, sitemap_url=None):
         """
         Parameters
         ----------
@@ -202,13 +200,8 @@ class CoreHarvester(object):
         certificate, private_key : str or path or None
             Paths to client side certificates.  None if no verification is
             desired.
-        log_to_string : bool
-            If true, log to a string and nowhere else.  The messages may later
-            be recovered.
-        log_to_stdout : bool
-            If true, log to sys.stdout.
-        log_to_json : bool
-            If true, log to JSON-compatible format.
+        logger : logging.Logger
+            Use this logger instead of the default.
         max_num_errors : int
             Abort if this threshold is reached.
         num_documents : int
@@ -218,8 +211,7 @@ class CoreHarvester(object):
         self.mn_host = host
         self.setup_session(certificate, private_key)
 
-        self._log_to_json = log_to_json
-        self.setup_logging(id, verbosity, log_to_string, log_to_stdout)
+        self.setup_logging(id, verbosity, logger=logger)
 
         self.mn_base_url = f'https://{host}:{port}/mn'
         self.sys_meta_dict = {
@@ -268,6 +260,7 @@ class CoreHarvester(object):
         """
         Return list of sitemaps (plural, in case the sitemap is nested).
         """
+        breakpoint()
         return self._sitemaps
 
     def get_sitemaps_urlset(self):
@@ -306,7 +299,7 @@ class CoreHarvester(object):
             'From': 'jevans97@utk.edu'
         }
 
-    def setup_logging(self, logid, verbosity, log_to_string, log_to_stdout):
+    def setup_logging(self, logid, verbosity, logger=None):
         """
         We will log both to STDOUT and to a file.
 
@@ -314,14 +307,15 @@ class CoreHarvester(object):
         ----------
         logid : str
             Use this to help name the physical log file.
-        log_to_string : bool
-            If true, additionally log to a StringIO object, which allows the
-            log records to be later recovered.
-        log_to_stdout : bool
-            If true, log to sys.stdout.
+        logger : logging.Logger
+            Use this logger instead of the default.
         verbosity : str
             Level of logging verbosity.
         """
+        if logger is not None:
+            self.logger = logger
+            return
+
         level = getattr(logging, verbosity)
 
         self.logger = logging.getLogger('datatone')
@@ -330,10 +324,7 @@ class CoreHarvester(object):
         # Do NOT change the formatting unless you review the
         # "extract_log_messages" method down below.
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        if self._log_to_json:
-            formatter = jsonlogger.JsonFormatter(format)
-        else:
-            formatter = logging.Formatter(format)
+        formatter = logging.Formatter(format)
 
         # Use UTC, and fix the millisecond format so that javaScript can use
         # it
@@ -348,33 +339,10 @@ class CoreHarvester(object):
         fh.setFormatter(formatter)
         self.logger.addHandler(fh)
 
-        # Also log to stdout unless directed not to do so
-        if log_to_stdout:
-            stream = logging.StreamHandler(sys.stdout)
-            stream.setFormatter(formatter)
-            self.logger.addHandler(stream)
-
-        self._logstrings = io.StringIO()
-        if log_to_string:
-            stringstream = logging.StreamHandler(self._logstrings)
-            stringstream.setFormatter(formatter)
-            self.logger.addHandler(stringstream)
-
-    def get_log_messages(self):
-        """
-        If log_to_string was specified as a constructor keyword argument, all
-        the log entries are stored in the "_logstrings" attribute, making them
-        recoverable.
-
-        Returns
-        -------
-        JSON array of log entries
-        """
-        s = self._logstrings.getvalue()
-        if self._log_to_json:
-            log_entries = s.splitlines()
-            s = f"[{','.join(log_entries)}]"
-        return s
+        # Also log to stdout
+        stream = logging.StreamHandler(sys.stdout)
+        stream.setFormatter(formatter)
+        self.logger.addHandler(stream)
 
     def generate_system_metadata(self, *,
                                  scimeta_bytes=None,
