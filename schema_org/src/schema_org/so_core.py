@@ -128,8 +128,14 @@ class SchemaDotOrgHarvester(CoreHarvester):
         Retrieve the JSON-LD from the landing page URL and validate it.
         """
         jsonld = self.extract_jsonld_from_landing_page(doc)
-        self._jsonld_validator.check(jsonld)
         return jsonld
+
+    def validate_dataone_so_jsonld(self, jsonld):
+        """
+        Validate JSON-LD as conforming to our particular flavor of schema.org.
+        Retrieve the JSON-LD from the landing page URL and validate it.
+        """
+        self._jsonld_validator.check(jsonld)
 
     async def retrieve_record(self, landing_page_url):
         """

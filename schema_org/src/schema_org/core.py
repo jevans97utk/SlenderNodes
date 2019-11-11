@@ -260,7 +260,6 @@ class CoreHarvester(object):
         """
         Return list of sitemaps (plural, in case the sitemap is nested).
         """
-        breakpoint()
         return self._sitemaps
 
     def get_sitemaps_urlset(self):
