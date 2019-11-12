@@ -47,6 +47,24 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         self.sys_meta_dict['rightsholder'] = 'CN=urn:node:mnTestHydroshare,DC=dataone,DC=org'  # noqa : E501
         self.sys_meta_dict['submitter'] = 'CN=urn:node:mnTestHydroshare,DC=dataone,DC=org'  # noqa : E501
 
+    async def retrieve_landing_page_content(self, landing_page_url):
+        """
+        Read the remote document.
+
+        Parameters
+        ----------
+        landing_page_url : str
+            URL for remote landing page HTML
+
+        Returns
+        -------
+        doc : ElementTree
+            ElementTree corresponding to the HTML in the landing page.
+        """
+        doc = super().retrieve_landing_page_content(landing_page_url)
+        self.preprocess_landing_page(doc)
+        return doc
+
     def preprocess_landing_page(self, landing_page_doc):
         """
         Check the landing page for any information we may need OTHER than

@@ -119,7 +119,6 @@ class SchemaDotOrgHarvester(CoreHarvester):
         self.logger.info(f"Requesting landing page {landing_page_url}...")
         content, _ = await self.retrieve_url(landing_page_url)
         doc = lxml.etree.HTML(content)
-        self.preprocess_landing_page(doc)
         return doc
 
     def get_jsonld(self, doc):

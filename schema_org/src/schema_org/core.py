@@ -1045,19 +1045,6 @@ class CoreHarvester(object):
                 # Reset the format ID to the one that worked.
                 self.sys_meta_dict['formatId_custom'] = format_id
 
-    def preprocess_landing_page(self, landing_page_doc):
-        """
-        Check the landing page for any information we may need OTHER than
-        JSON-LD.
-
-        Parameters
-        ----------
-        landing_page_doc : lxml element tree
-            Document corresponding to the HTML landing page.
-        """
-        # Nothing to do in the general case.
-        pass
-
     async def retrieve_record(self, document_url):
         """
         Parameters
