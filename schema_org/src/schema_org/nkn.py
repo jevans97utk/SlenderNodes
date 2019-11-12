@@ -121,14 +121,14 @@ class NKNHarvester(CoreHarvester):
         """
         self.logger.debug(f'retrieve_record')
         self.logger.info(f"Requesting {landing_page_url}...")
-        content = await self.retrieve_url(landing_page_url)
+        content, _ = await self.retrieve_url(landing_page_url)
         lxml.etree.HTML(content.decode('utf-8'))
 
         # Get the metadata document.  Right now the relative URL is just
         # "metadata.xml".
         url = f"{landing_page_url}/metadata.xml"
         try:
-            content = await self.retrieve_url(url)
+            content, _ = await self.retrieve_url(url)
         except aiohttp.ClientResponseError as e:
             if '404' in str(e):
                 msg = f"No metadata.xml document found in {landing_page_url}"

@@ -105,7 +105,7 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         """
         self.logger.debug(f'retrieve_record')
         self.logger.info(f"Requesting {landing_page_url}...")
-        content = await self.retrieve_url(landing_page_url)
+        content, _ = await self.retrieve_url(landing_page_url)
         self.logger.debug(f'got the landing page')
         doc = lxml.etree.HTML(content)
         self.logger.debug(f'got the doc')
@@ -184,7 +184,7 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         self.logger.debug(f'Requesting bagit zip archive: {url}')
 
         # Retrieve the metadata document.
-        zip_content = await self.retrieve_url(url)
+        zip_content, _ = await self.retrieve_url(url)
         self.logger.debug(f'zip archive length: {len(zip_content)}')
 
         b = io.BytesIO(zip_content)

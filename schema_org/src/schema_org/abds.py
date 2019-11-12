@@ -178,7 +178,7 @@ class AbdsIptHarvester(CoreHarvester):
         """
         self.logger.debug(f'retrieve_record')
         self.logger.info(f"Requesting {metadata_url}...")
-        content = await self.retrieve_url(metadata_url)
+        content, _ = await self.retrieve_url(metadata_url)
         doc = lxml.etree.parse(io.BytesIO(content))
 
         # Normally it would make sense to factor this out, but the schema.org,

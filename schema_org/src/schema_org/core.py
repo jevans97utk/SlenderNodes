@@ -632,7 +632,7 @@ class CoreHarvester(object):
         url = f"{self.mn_base_url}/v2/object/{existing_sid}"
 
         # Get the existing document.
-        content = await self.retrieve_url(url, headers={'Accept': 'text/xml'})
+        content, _ = await self.retrieve_url(url, headers={'Accept': 'text/xml'})  # noqa : E501
 
         old_doc = lxml.etree.parse(io.BytesIO(content))
 
@@ -815,7 +815,7 @@ class CoreHarvester(object):
         self.logger.info(msg)
         return records
 
-    async def retrieve_url(self, url, headers=None, check_xml_headers=False):
+    async def retrieve_url(self, url, headers=None):
         """
         Return the contents pointed to by a URL.
 
@@ -828,7 +828,7 @@ class CoreHarvester(object):
 
         Returns
         -------
-        Binary contents of the body of the response object.
+        Binary contents of the body of the response object, response headers
         """
         self.logger.debug(f'retrieve_url: {url}')
 
@@ -845,19 +845,16 @@ class CoreHarvester(object):
 
                 response.raise_for_status()
 
-                if check_xml_headers:
-                    self.check_xml_headers(response)
+                return await response.read(), response.headers
 
-                return await response.read()
-
-    def check_xml_headers(self, response):
+    def check_xml_headers(self, headers):
         """
         Check the headers returned by the sitemap request response.
 
         Parameters
         ----------
-        response : aiohttp.ClientResponse
-            Response for the sitemap.
+        headers : dict
+            HTTP response headers
         """
         exp_headers = [
             'text/xml',
@@ -865,8 +862,8 @@ class CoreHarvester(object):
             'application/x-gzip',
             'application/xml'
         ]
-        if response.headers['Content-Type'] not in exp_headers:
-            msg = f"get_sitemap_document: headers are {response.headers}"
+        if headers['Content-Type'] not in exp_headers:
+            msg = f"get_sitemap_document: headers are {headers}"
             self.logger.debug(msg)
             self.logger.warning(SITEMAP_NOT_XML_MESSAGE)
 
@@ -901,7 +898,7 @@ class CoreHarvester(object):
         msg = f'requesting {metadata_url}'
         self.logger.info(msg)
         # Retrieve the metadata document.
-        content = await self.retrieve_url(metadata_url)
+        content, _ = await self.retrieve_url(metadata_url)
 
         try:
             doc = lxml.etree.parse(io.BytesIO(content))
@@ -1124,8 +1121,8 @@ class CoreHarvester(object):
         self.logger.info(f'Requesting sitemap document from {sitemap_url}')
 
         try:
-            content = await self.retrieve_url(sitemap_url,
-                                              check_xml_headers=True)
+            content, headers = await self.retrieve_url(sitemap_url)
+            self.check_xml_headers(headers)
         except Exception as e:
             msg = f"{SITEMAP_RETRIEVAL_FAILURE_MESSAGE} due to {repr(e)}"
             self.logger.error(msg)

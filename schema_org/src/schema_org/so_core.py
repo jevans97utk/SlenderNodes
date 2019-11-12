@@ -118,7 +118,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
         """
         self.logger.debug(f'retrieve_record')
         self.logger.info(f"Requesting {landing_page_url}...")
-        content = await self.retrieve_url(landing_page_url)
+        content, _ = await self.retrieve_url(landing_page_url)
         doc = lxml.etree.HTML(content)
         self.preprocess_landing_page(doc)
         return doc
