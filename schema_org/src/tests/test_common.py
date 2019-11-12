@@ -155,13 +155,15 @@ class TestCommon(unittest.TestCase):
         ----------
         cm_output : list of str
             Log messages provided by assertLogs
+        level : str
+            Log level
         n : int
             How many log calls at the given level to verify.
         """
-        msgs = [msg for msg in cm_output if msg.startswith(level)]
-        actual_count = len(msgs)
+        actual_count = self.logLevelCallCount(cm_output, level=level)
 
         if actual_count > 0:
+            msgs = [msg for msg in cm_output if msg.startswith(level)]
             printable = '\n'.join(msgs)
             msg = (
                 f"Detected messages a log level {level} are as follows:"
@@ -172,6 +174,20 @@ class TestCommon(unittest.TestCase):
             msg = ''
 
         self.assertEqual(actual_count, n, msg)
+
+    def logLevelCallCount(self, cm_output, level='ERROR'):
+        """
+        Count the log messages with the specified level.
+
+        Parameters
+        ----------
+        cm_output : list of str
+            Log messages provided by assertLogs
+        level : str
+            Log level
+        """
+        msgs = [msg for msg in cm_output if msg.startswith(level)]
+        return len(msgs)
 
     def setUpRequestsMocking(self, obj, contents=None, status_codes=None,
                              headers=None, protocol='https'):

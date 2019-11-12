@@ -444,8 +444,9 @@ class TestSuite(TestCommon):
                 asyncio.run(harvester.harvest_document(doi, '1',
                                                        doc, record_date))
 
-            # Did we see a warning?
-            self.assertLogLevelCallCount(cm.output, level='INFO', n=1)
+            # Did we see at least one information message?
+            log_msg_count = self.logLevelCallCount(cm.output, level='INFO')
+            self.assertTrue(log_msg_count > 1)
 
             # Did we increase the update count?
             self.assertEqual(harvester.updated_count, update_count + 1)

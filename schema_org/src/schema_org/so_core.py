@@ -116,8 +116,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
         doc : ElementTree
             ElementTree corresponding to the HTML in the landing page.
         """
-        self.logger.debug(f'retrieve_record')
-        self.logger.info(f"Requesting {landing_page_url}...")
+        self.logger.info(f"Requesting landing page {landing_page_url}...")
         content, _ = await self.retrieve_url(landing_page_url)
         doc = lxml.etree.HTML(content)
         self.preprocess_landing_page(doc)

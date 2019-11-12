@@ -830,7 +830,7 @@ class CoreHarvester(object):
         -------
         Binary contents of the body of the response object, response headers
         """
-        self.logger.debug(f'retrieve_url: {url}')
+        self.logger.info(f'Retrieving URL {url}')
 
         headers = {
             'User-Agent': 'DataONE adapter for schema.org harvest',
