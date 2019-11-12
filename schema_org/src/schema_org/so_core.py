@@ -117,7 +117,9 @@ class SchemaDotOrgHarvester(CoreHarvester):
             ElementTree corresponding to the HTML in the landing page.
         """
         self.logger.info(f"Requesting landing page {landing_page_url}...")
-        content, _ = await self.retrieve_url(landing_page_url)
+        content, headers = await self.retrieve_url(landing_page_url)
+        if 'text/html' not in headers['Content-Type']:
+            raise RuntimeError('Landing page was not of type text/html.')
         doc = lxml.etree.HTML(content)
         return doc
 

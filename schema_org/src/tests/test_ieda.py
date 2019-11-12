@@ -223,7 +223,7 @@ class TestSuite(TestCommon):
         status_codes = [200, 200, 200, 200]
         headers = [
             {'Content-Type': 'application/xml'},
-            {'Content-Type': 'application/html'},
+            {'Content-Type': 'text/html'},
             {'Content-Type': 'application/xml'},
             {'Content-Type': 'application/xml'},
         ]
@@ -308,7 +308,7 @@ class TestSuite(TestCommon):
         status_codes = [200, 200, 200, 200]
         headers = [
             {'Content-Type': 'application/xml'},
-            {'Content-Type': 'application/html'},
+            {'Content-Type': 'text/html'},
             {'Content-Type': 'application/xml'},
             {'Content-Type': 'application/xml'},
         ]
@@ -384,7 +384,7 @@ class TestSuite(TestCommon):
         status_codes = [200, 200, 200]
         headers = [
             {'Content-Type': 'application/xml'},
-            {'Content-Type': 'application/html'},
+            {'Content-Type': 'text/html'},
             {'Content-Type': 'application/xml'},
         ]
         regex = [
