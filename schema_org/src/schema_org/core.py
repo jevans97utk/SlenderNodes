@@ -830,6 +830,7 @@ class CoreHarvester(object):
         -------
         Binary contents of the body of the response object, response headers
         """
+        breakpoint()
         self.logger.info(f'Retrieving URL {url}')
 
         headers = {

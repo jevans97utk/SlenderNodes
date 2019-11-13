@@ -119,7 +119,11 @@ class SchemaDotOrgHarvester(CoreHarvester):
         self.logger.info(f"Requesting landing page {landing_page_url}...")
         content, headers = await self.retrieve_url(landing_page_url)
         if 'text/html' not in headers['Content-Type']:
-            raise RuntimeError('Landing page was not of type text/html.')
+            msg = (
+                f"Landing page was {headers['Content-Type']} "
+                f"and not text/html."
+            )
+            raise RuntimeError(msg)
         doc = lxml.etree.HTML(content)
         return doc
 
