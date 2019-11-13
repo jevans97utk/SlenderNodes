@@ -377,3 +377,17 @@ class TestSuite(TestCommon):
         records = json.loads(s)
 
         self.assertEqual(len(records), 3)
+
+    def test_lowercase_charset_utf8_xml_header(self):
+        """
+        SCENARIO:  The Content-Type header for a sitemap is
+        'text/xml;charset=utf-8'.
+
+        EXPECTED RESULT:  No warnings are logged.
+        """
+        headers = {'Content-Type': 'text/xml;charset=utf-8'}
+        harvester = CoreHarvester()
+        with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+            harvester.check_xml_headers(headers)
+
+        self.assertWarningLogCallCount(cm.output, n=0)

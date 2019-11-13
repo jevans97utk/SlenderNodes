@@ -132,6 +132,21 @@ class TestCommon(unittest.TestCase):
         """
         self.assertLogMessage(cm_output, expected_messages, level='ERROR')
 
+    def assertWarningLogCallCount(self, cm_output, n=1):
+        """
+        Verify we see this many log messages at the WARNING level.
+
+        Parameters
+        ----------
+        cm_output : list of str
+            Log messages provided by assertLogs
+        n : int
+            How many log calls at the ERROR level to verify.
+        tokens : str or list
+            Verify that these strings appear in the messages.
+        """
+        self.assertLogLevelCallCount(cm_output, level='WARNING', n=n)
+
     def assertErrorLogCallCount(self, cm_output, n=1):
         """
         Verify we see this many log messages at the ERROR level.

@@ -830,7 +830,6 @@ class CoreHarvester(object):
         -------
         Binary contents of the body of the response object, response headers
         """
-        breakpoint()
         self.logger.info(f'Retrieving URL {url}')
 
         headers = {
@@ -857,13 +856,14 @@ class CoreHarvester(object):
         headers : dict
             HTTP response headers
         """
+        self.logger.debug('Checking XML headers...')
         exp_headers = [
             'text/xml',
-            'text/xml;charset=UTF-8',
+            'text/xml;charset=utf-8',
             'application/x-gzip',
             'application/xml'
         ]
-        if headers['Content-Type'] not in exp_headers:
+        if headers['Content-Type'].lower() not in exp_headers:
             msg = f"get_sitemap_document: headers are {headers}"
             self.logger.debug(msg)
             self.logger.warning(SITEMAP_NOT_XML_MESSAGE)
