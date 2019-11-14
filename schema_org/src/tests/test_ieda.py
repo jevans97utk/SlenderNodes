@@ -40,7 +40,7 @@ class TestSuite(TestCommon):
         doc = lxml.etree.HTML(contents)
 
         harvester = IEDAHarvester()
-        j = harvester.extract_jsonld_from_landing_page(doc)
+        j = harvester.get_jsonld(doc)
 
         sid = harvester.extract_series_identifier(j)
 
@@ -73,7 +73,7 @@ class TestSuite(TestCommon):
 
         harvester = IEDAHarvester()
 
-        j = harvester.extract_jsonld_from_landing_page(doc)
+        j = harvester.get_jsonld(doc)
         sid = harvester.extract_series_identifier(j)
 
         self.assertEqual(sid, 'urn:usap-dc:metadata:609246')

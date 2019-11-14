@@ -97,7 +97,7 @@ class TestSuite(TestCommon):
         obj = CUAHSIHarvester()
 
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
-            j = obj.extract_jsonld_from_landing_page(doc)
+            j = obj.get_jsonld(doc)
 
         # To make sure we have JSON, feed it to something that expects it.
         json.dumps(j)
@@ -118,7 +118,7 @@ class TestSuite(TestCommon):
 
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
             with self.assertRaises(JsonLdError):
-                obj.extract_jsonld_from_landing_page(doc)
+                obj.get_jsonld(doc)
 
     def test_retrieve_record(self):
         """

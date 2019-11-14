@@ -30,7 +30,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
 
         self._jsonld_validator = JSONLD_Validator(id=id, logger=self.logger)
 
-    def extract_jsonld_from_landing_page(self, doc):
+    def get_jsonld(self, doc):
         """
         Extract JSON-LD from HTML document.
 
@@ -44,7 +44,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
         -------
         Dictionary of JSON-LD data.
         """
-        self.logger.debug('extract_jsonld_from_landing_page:')
+        self.logger.debug('Retrieving JSON-LD from landing page...')
         path = './/script[@type="application/ld+json"]'
         scripts = doc.xpath(path)
         if len(scripts) == 0:
@@ -126,13 +126,6 @@ class SchemaDotOrgHarvester(CoreHarvester):
             raise RuntimeError(msg)
         doc = lxml.etree.HTML(content)
         return doc
-
-    def get_jsonld(self, doc):
-        """
-        Retrieve the JSON-LD from the landing page URL and validate it.
-        """
-        jsonld = self.extract_jsonld_from_landing_page(doc)
-        return jsonld
 
     def validate_dataone_so_jsonld(self, jsonld):
         """
