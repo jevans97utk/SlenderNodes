@@ -15,7 +15,7 @@ from .check_sitemap import D1CheckSitemap
 from .xml_validator import XMLValidator
 
 
-def setup_parser(id):
+def setup_common_parser(id):
     """
     All the harvesters use a common parser.
 
@@ -40,18 +40,6 @@ def setup_parser(id):
     choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
     parser.add_argument('-v', '--verbosity', choices=choices, default='INFO',
                         help=help)
-
-    help = "Harvest records to this DataOne member node."
-    parser.add_argument('--host', default='localhost', help=help)
-
-    help = "DataOne member node SSL port."
-    parser.add_argument('--port', default=443, type=int, help=help)
-
-    help = 'Path to dataone client-side certificate.'
-    parser.add_argument('--certificate', default=None, help=help)
-
-    help = 'Path to dataone host client-side key.'
-    parser.add_argument('--private-key', default=None, help=help)
 
     help = "Limit number of documents retrieved to this number."
     parser.add_argument('--num-documents', type=int, default=-1, help=help)
@@ -86,43 +74,45 @@ def setup_parser(id):
     return parser
 
 
+def add_member_node_parser_options(parser):
+    """
+    All the harvesters use a common parser.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+    """
+
+    help = "Harvest records to this DataOne member node."
+    parser.add_argument('--host', default='localhost', help=help)
+
+    help = "DataOne member node SSL port."
+    parser.add_argument('--port', default=443, type=int, help=help)
+
+    help = 'Path to dataone client-side certificate.'
+    parser.add_argument('--certificate', default=None, help=help)
+
+    help = 'Path to dataone host client-side key.'
+    parser.add_argument('--private-key', default=None, help=help)
+
+
 def d1_check_site():
 
-    parser = argparse.ArgumentParser()
+    parser = setup_common_parser("site-checker")
 
     help = "URL of site map"
-    parser.add_argument('sitemap', type=str, help=help)
-
-    help = f"Log verbosity level"
-    choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-    parser.add_argument('-v', '--verbose', choices=choices, default='INFO',
-                        help=help)
-
-    help = "Limit number of documents retrieved to this number."
-    parser.add_argument('--num-documents', type=int, default=-1, help=help)
-
-    help = (
-        "Limit number of workers operating asynchronously to this number. "
-    )
-    parser.add_argument('--num-workers', type=int, default=1, help=help)
-
-    help = (
-        "Limit number of errors to this number."
-    )
-    parser.add_argument('--max-num-errors', type=int, default=3, help=help)
+    parser.add_argument('sitemap_url', type=str, help=help)
 
     args = parser.parse_args()
 
-    obj = D1CheckSitemap(sitemap_url=args.sitemap,
-                         num_workers=args.num_workers,
-                         verbosity=args.verbose,
-                         num_documents=args.num_documents,
-                         max_num_errors=args.max_num_errors)
+    obj = D1CheckSitemap(**args.__dict__)
     asyncio.run(obj.run())
 
 
 def abds_ipt():
-    parser = setup_parser("abds_ipt")
+    parser = setup_common_parser("abds_ipt")
+    add_member_node_parser_options(parser)
+
     args = parser.parse_args()
 
     harvester = AbdsIptHarvester(**args.__dict__)
@@ -130,7 +120,9 @@ def abds_ipt():
 
 
 def arm():
-    parser = setup_parser("arm")
+    parser = setup_common_parser("arm")
+    add_member_node_parser_options(parser)
+
     args = parser.parse_args()
 
     harvester = ARMHarvester(**args.__dict__)
@@ -138,7 +130,9 @@ def arm():
 
 
 def cuahsi():
-    parser = setup_parser("cuahsi")
+    parser = setup_common_parser("cuahsi")
+    add_member_node_parser_options(parser)
+
     args = parser.parse_args()
 
     harvester = CUAHSIHarvester(**args.__dict__)
@@ -146,7 +140,9 @@ def cuahsi():
 
 
 def ieda():
-    parser = setup_parser("ieda")
+    parser = setup_common_parser("ieda")
+    add_member_node_parser_options(parser)
+
     args = parser.parse_args()
 
     harvester = IEDAHarvester(**args.__dict__)
@@ -154,7 +150,9 @@ def ieda():
 
 
 def nkn():
-    parser = setup_parser("nkn")
+    parser = setup_common_parser("nkn")
+    add_member_node_parser_options(parser)
+
     args = parser.parse_args()
 
     harvester = NKNHarvester(**args.__dict__)

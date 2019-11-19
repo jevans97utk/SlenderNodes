@@ -67,8 +67,7 @@ class TestSuite(TestCommon):
 
         harvester = ARMHarvester()
 
-        contents = ir.read_binary('tests.data.arm',
-                                  'nsaqcrad1longC2.c2.no_dataset_in_jsonld.html')
+        contents = ir.read_binary('tests.data.arm', 'nsaqcrad1longC2.c2.no_dataset_in_jsonld.html')  # noqa : E501
         status_code = 200
         headers = {'Content-Type': 'text/html'}
 
