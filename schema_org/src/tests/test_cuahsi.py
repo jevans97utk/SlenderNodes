@@ -36,17 +36,27 @@ class TestSuite(TestCommon):
         Such an element is needed because we only wish to harvest PUBLISHED
         documents.
 
-        EXPECTED RESULT:  No exception is raised.
+        EXPECTED RESULT:  The landing page document is parsed and returned.
         """
 
         package = 'tests.data.cuahsi.81e947faccf04de59392dddaac77bc75'
         contents = ir.read_text(package, 'landing_page.html')
-        doc = lxml.etree.HTML(contents)
+        headers = {'Content-Type': 'text/html'}
 
         obj = CUAHSIHarvester()
 
+        expected = lxml.etree.HTML(contents)
+
+        landing_page_url = 'https://www.hydroshare.org/something.html'
         with self.assertLogs(logger=obj.logger, level='DEBUG'):
-            obj.preprocess_landing_page(doc)
+            with aioresponses() as m:
+                m.get(self.regex, body=contents, headers=headers)
+
+                awaitable = obj.retrieve_landing_page_content(landing_page_url)
+                actual = asyncio.run(awaitable)
+
+        self.assertEqual(lxml.etree.tostring(actual),
+                         lxml.etree.tostring(expected))
 
     def test_landing_page_is_not_published(self):
         """

@@ -61,7 +61,7 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         doc : ElementTree
             ElementTree corresponding to the HTML in the landing page.
         """
-        doc = super().retrieve_landing_page_content(landing_page_url)
+        doc = await super().retrieve_landing_page_content(landing_page_url)
         self.preprocess_landing_page(doc)
         return doc
 
@@ -75,6 +75,8 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         landing_page_doc : lxml element tree
             Document corresponding to the HTML landing page.
         """
+
+        # We require the presense of a hl-sharing-status element.
         path = './/td[@id="hl-sharing-status"]/text()'
         elts = landing_page_doc.xpath(path)
         if len(elts) == 0:
@@ -84,6 +86,8 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
 
         sharing_status = elts[0].strip().upper()
 
+        # That hl-sharing-status element must be PUBLISHED.  It it is not, then
+        # we want to skip this document.
         self.logger.debug(f"Sharing status is {sharing_status}.")
         if sharing_status != 'PUBLISHED':
             msg = (
