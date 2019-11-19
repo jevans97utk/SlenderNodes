@@ -46,6 +46,29 @@ class TestSuite(TestCommon):
 
         self.assertEqual(sid, '10.15784/600048')
 
+    def test__landing_page_returns_bad_header(self):
+        """
+        SCENARIO:  A landing page does not identify itself as html.
+
+        EXPECTED RESULT:  RuntimeError
+        """
+
+        contents = ir.read_binary('tests.data.ieda', 'ieda609246.html')
+        status_code = 200
+        headers = {'Content-Type': 'application/html'}
+
+        obj = IEDAHarvester()
+
+        landing_page_url = 'http://get.iedadata.org/ieda609246.html'
+        with self.assertLogs(logger=obj.logger, level='DEBUG'):
+            with aioresponses() as m:
+                m.get(self.regex, body=contents, status=status_code,
+                      headers=headers)
+
+                awaitable = obj.retrieve_landing_page_content(landing_page_url)
+                with self.assertRaises(RuntimeError):
+                    asyncio.run(awaitable)
+
     def test_record_version__600048(self):
         """
         SCENARIO:  Extract the record version (pid) for an IEDA document.
