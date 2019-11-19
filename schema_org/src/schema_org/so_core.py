@@ -157,6 +157,8 @@ class SchemaDotOrgHarvester(CoreHarvester):
         doc = await self.retrieve_landing_page_content(landing_page_url)
         jsonld = self.get_jsonld(doc)
 
+        self.validate_dataone_so_jsonld(jsonld)
+
         sid = self.extract_series_identifier(jsonld)
         self.logger.debug(f"Series ID (sid): {sid}")
 
