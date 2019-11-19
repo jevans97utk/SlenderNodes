@@ -2,6 +2,7 @@
 import asyncio
 import datetime as dt
 import importlib.resources as ir
+import json
 import re
 from unittest.mock import patch
 
@@ -10,6 +11,7 @@ from aioresponses import aioresponses
 
 # local imports
 from schema_org.arm import ARMHarvester
+from schema_org.jsonld_validator import JsonLdError
 from .test_common import TestCommon
 
 
@@ -23,6 +25,60 @@ class TestSuite(TestCommon):
 
         # The IEDA harvesters will use these values.
         self.host, self.port = 'arm.mn.org', 443
+
+    def test__read_record__invalid_json(self):
+        """
+        SCENARIO:  A landing page is properly retrieved, but has invalid
+        JSON.
+
+        EXPECTED RESULT:  json.JSONDecodeError
+        """
+        url = (
+            'https://www.archive.arm.gov'
+            '/metadata/adc/html/nsaqcrad1longC2.c2.invalid_jsonld.html'
+        )
+
+        harvester = ARMHarvester()
+
+        contents = ir.read_binary('tests.data.arm',
+                                  'nsaqcrad1longC2.c2.invalid_jsonld.html')
+        status_code = 200
+        headers = {'Content-Type': 'text/html'}
+
+        regex = re.compile('https://www.archive.arm.gov/metadata/adc')
+
+        with aioresponses() as m:
+            m.get(regex, body=contents, status=status_code, headers=headers)
+            with self.assertRaises(json.JSONDecodeError):
+                with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                    asyncio.run(harvester.retrieve_record(url))
+
+    def test__read_record__invalid_jsonld(self):
+        """
+        SCENARIO:  A landing page is properly retrieved, but has invalid
+        JSON-LD.
+
+        EXPECTED RESULT:  JSON-LD error
+        """
+        url = (
+            'https://www.archive.arm.gov'
+            '/metadata/adc/html/nsaqcrad1longC2.c2.invalid_jsonld.html'
+        )
+
+        harvester = ARMHarvester()
+
+        contents = ir.read_binary('tests.data.arm',
+                                  'nsaqcrad1longC2.c2.no_dataset_in_jsonld.html')
+        status_code = 200
+        headers = {'Content-Type': 'text/html'}
+
+        regex = re.compile('https://www.archive.arm.gov/metadata/adc')
+
+        with aioresponses() as m:
+            m.get(regex, body=contents, status=status_code, headers=headers)
+            with self.assertRaises(JsonLdError):
+                with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                    asyncio.run(harvester.retrieve_record(url))
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
