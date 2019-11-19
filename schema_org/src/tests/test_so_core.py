@@ -137,7 +137,7 @@ class TestSuite(TestCommon):
         documents, though, was harvested since it was last modified.
 
         EXPECTED RESULT:  No errors are logged.  A message is logged that the
-        one record was skipped.
+        one record was skipped.  The single sitemap is tracked.
         """
 
         # Set the harvest time ahead of the lastmod time.  If we're still
@@ -184,6 +184,16 @@ class TestSuite(TestCommon):
 
                 expected = '1 records skipped'
                 self.assertInfoLogMessage(cm.output, expected)
+
+        # Verify that we kept track of that single sitemap.
+        expected = [harvester.sitemap_url]
+        actual = harvester.get_sitemaps()
+        self.assertEqual(actual, expected)
+
+        # Verify that there are NO items in the sitemap URL set (harvest time
+        # was impossibly too old).
+        actual = harvester.get_sitemaps_urlset()
+        self.assertEqual(len(actual), 0)
 
     def test_identifier_parsing_error__space(self):
         """
