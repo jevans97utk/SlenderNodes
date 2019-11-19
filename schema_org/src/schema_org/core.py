@@ -398,7 +398,7 @@ class CoreHarvester(object):
             sys_meta.identifier = record_version
 
         sys_meta.dateUploaded = record_date
-        sys_meta.dateSysMetadataModified = dt.datetime.now()
+        sys_meta.dateSysMetadataModified = dt.datetime.now(dt.timezone.utc)
         sys_meta.rightsHolder = self.sys_meta_dict['rightsholder']
         sys_meta.submitter = self.sys_meta_dict['submitter']
         sys_meta.authoritativeMemberNode = self.sys_meta_dict['authoritativeMN']  # noqa:  E501
