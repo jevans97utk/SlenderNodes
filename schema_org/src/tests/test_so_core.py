@@ -128,6 +128,154 @@ class TestSuite(TestCommon):
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test__last_harvest_time_lt_lastmod(self,
+                                           mock_harvest_time,
+                                           mock_check_if_identifier_exists,
+                                           mock_load_science_metadata):
+        """
+        SCENARIO:  We have a valid sitemap and valid documents.  One of the
+        documents, though, was harvested since it was last modified.
+
+        EXPECTED RESULT:  No errors are logged.  one record was skipped.
+        The single sitemap is tracked.  The URLset is tracked.
+        """
+
+        # Set the harvest time behind of the lastmod time.
+        mock_harvest_time.return_value = '2000-01-01T00:00:00Z'
+        mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
+        mock_load_science_metadata.return_value = True
+
+        harvester = SchemaDotOrgHarvester(host='test.arm.gov')
+        harvester.sitemap_url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
+
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) HTML document for record 1
+        #   3) XML document for record 1
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
+            ir.read_binary('tests.data.arm',
+                           'nsanimfraod1michC2.c1.fixed.html'),
+            ir.read_binary('tests.data.arm',
+                           'nsanimfraod1michC2.c1.fixed.xml'),
+        ]
+        status_codes = [200, 200, 200]
+        headers = [
+            {'Content-Type': 'application/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'application/xml'},
+        ]
+
+        z = zip(contents, status_codes, headers)
+        with aioresponses() as m:
+            for content, status_code, headers in z:
+                m.get(self.regex,
+                      body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                asyncio.run(harvester.run())
+
+                self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+                expected = "Successfully processed 1 records."
+                self.assertInfoLogMessage(cm.output, expected)
+
+                exp = 'Created a new object identified as doi:10.5439/1027370'
+                self.assertInfoLogMessage(cm.output, exp)
+
+        # Verify that we kept track of that single sitemap.
+        expected = [harvester.sitemap_url]
+        actual = harvester.get_sitemaps()
+        self.assertEqual(actual, expected)
+
+        # Verify that there is an item in the sitemap URL set.
+        actual = harvester.get_sitemaps_urlset()
+
+        doc = lxml.etree.parse(io.BytesIO(contents[0]))
+        nsmap = schema_org.core.SITEMAP_NS
+        url_elt = doc.xpath('sm:url/sm:loc', namespaces=nsmap)[0]
+        date_elt = doc.xpath('sm:url/sm:lastmod', namespaces=nsmap)[0]
+        date = dt.datetime.strptime(date_elt.text, '%Y-%m-%d')
+        date = date.replace(tzinfo=dt.timezone.utc)
+
+        expected = [(url_elt.text, date)]
+        self.assertEqual(actual, expected)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test__last_harvest_time_lt_lastmod__no_harvest(self,
+                                                       mock_harvest_time):
+        """
+        SCENARIO:  We have a valid sitemap and one valid document.  One of the
+        documents, though, was harvested since it was last modified.  However,
+        we supply the no_harvest document.
+
+        EXPECTED RESULT:  No errors are logged.  A message is logged that the
+        one record was skipped.  The single sitemap is tracked.
+        """
+
+        mock_harvest_time.return_value = '2000-01-01T00:00:00Z'
+
+        harvester = SchemaDotOrgHarvester(host='test.arm.gov', no_harvest=True)
+        harvester.sitemap_url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
+
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) HTML document for record 1
+        #   3) XML document for record 1
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'sitemap-1.xml'),
+            ir.read_binary('tests.data.arm',
+                           'nsanimfraod1michC2.c1.fixed.html'),
+            ir.read_binary('tests.data.arm',
+                           'nsanimfraod1michC2.c1.fixed.xml'),
+        ]
+        status_codes = [200, 200, 200]
+        headers = [
+            {'Content-Type': 'application/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'application/xml'},
+        ]
+
+        z = zip(contents, status_codes, headers)
+        with aioresponses() as m:
+            for content, status_code, headers in z:
+                m.get(self.regex,
+                      body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                asyncio.run(harvester.run())
+
+                self.assertLogLevelCallCount(cm.output, level='ERROR', n=0)
+                msg = "Successfully processed 1 records."
+                self.assertNotIn(msg, '\n'.join(cm.output))
+
+                exp = 'Created a new object identified as doi:10.5439/1027370'
+                self.assertNotIn(exp, '\n'.join(cm.output))
+
+        # Verify that we kept track of that single sitemap.
+        expected = [harvester.sitemap_url]
+        actual = harvester.get_sitemaps()
+        self.assertEqual(actual, expected)
+
+        # Verify that there is an item in the sitemap URL set.
+        actual = harvester.get_sitemaps_urlset()
+
+        doc = lxml.etree.parse(io.BytesIO(contents[0]))
+        nsmap = schema_org.core.SITEMAP_NS
+        url_elt = doc.xpath('sm:url/sm:loc', namespaces=nsmap)[0]
+        date_elt = doc.xpath('sm:url/sm:lastmod', namespaces=nsmap)[0]
+        date = dt.datetime.strptime(date_elt.text, '%Y-%m-%d')
+        date = date.replace(tzinfo=dt.timezone.utc)
+
+        expected = [(url_elt.text, date)]
+        self.assertEqual(actual, expected)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
     def test__last_harvest_time_gt_lastmod(self,
                                            mock_harvest_time,
                                            mock_check_if_identifier_exists,
@@ -194,6 +342,21 @@ class TestSuite(TestCommon):
         # was impossibly too old).
         actual = harvester.get_sitemaps_urlset()
         self.assertEqual(len(actual), 0)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_get_last_harvest_time__ignore_harvest_time(self,
+                                                        mock_harvest_time):
+        """
+        SCENARIO:  The @id field from the JSON-LD must be parsed, there is a
+        space in the @id entry.
+
+        EXPECTED RESULT:  None
+        """
+        mock_harvest_time.return_value = '2000-01-01T00:00:00Z'
+
+        harvester = SchemaDotOrgHarvester(ignore_harvest_time=True)
+        last_harvest_time = harvester.get_last_harvest_time()
+        self.assertIsNone(last_harvest_time)
 
     def test_identifier_parsing_error__space(self):
         """

@@ -64,9 +64,16 @@ def setup_common_parser(id):
     help = (
         "Ignore the last harvest time.  Use this switch to attempt to "
         "harvest records that may have failed for some reason on a recent "
-        "harvest attempt."
+        "harvest attempt.  The regex option may also be useful here."
     )
     parser.add_argument('--ignore-harvest-time', action='store_true',
+                        help=help)
+
+    help = (
+        "Retrieve and process all records, but do not attempt to harvest "
+        "the records to GMN."
+    )
+    parser.add_argument('--no-harvest', action='store_true',
                         help=help)
 
     help = "Retry a failed record this number of times."

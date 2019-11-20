@@ -147,13 +147,14 @@ class CoreHarvester(object):
         Counters for the different ways that records are handled.  "failed" is
         different from "rejected" in the sense that this code knows why a
         rejection occurs.
+    ignore_harvest_time : int
+        Ignore the last harvest time.  Use this to attempt to harvest
+        records that may have failed for some reason on a recent
+        harvest attempt.
+    no_harvest : int
+        If set to True, then stop processing before delivering to the GMN.
     logger : logging.Logger
         All events are recorded by this object.
-    _logstrings : io.StringIO
-        If log_to_string is set to True, logs will also be stored here for
-        later retrieval.
-    _log_to_json : bool
-        If true, log to JSON-compatible format.
     max_num_errors : int
         Abort if this threshold is reached.
     mn_base_url : str
