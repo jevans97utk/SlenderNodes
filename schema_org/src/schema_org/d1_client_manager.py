@@ -92,9 +92,12 @@ class D1ClientManager:
                 # harvester run so grab EVERYTHING.
                 return '1900-01-01T00:00:00Z'
         except Exception as e:
-            m = 'Failed to get last harvested time. Exiting program prematurely.'
-            self.logger.error(m)
             self.logger.error(e)
+            msg = (
+                "Failed to get last harvested time.  "
+                "Exiting program prematurely."
+            )
+            self.logger.error(msg)
             sys.exit(1)
 
     def check_if_identifier_exists(self, native_identifier_sid):
