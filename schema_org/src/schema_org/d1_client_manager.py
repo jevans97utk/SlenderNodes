@@ -92,7 +92,7 @@ class D1ClientManager:
                 # harvester run so grab EVERYTHING.
                 return '1900-01-01T00:00:00Z'
         except Exception as e:
-            m = 'Fail to get last harvested time. Exiting program prematurely.'
+            m = 'Failed to get last harvested time. Exiting program prematurely.'
             self.logger.error(m)
             self.logger.error(e)
             sys.exit(1)
@@ -115,7 +115,7 @@ class D1ClientManager:
             True if found or False if not (or a failed message if the
             check didn't work for some reason).
         """
-        msg = 'Checking for existance of {native_identifier_sid}'
+        msg = f"Checking for existance of {native_identifier_sid}"
         self.logger.info(msg)
 
         checkExistsDict = {}
