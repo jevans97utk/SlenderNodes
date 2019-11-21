@@ -32,10 +32,6 @@ kwargs = {
     'license': 'Apache License, Version 2.0',
     'packages': ['schema_org', 'schema_org.data'],
     'package_data': {'schema_org': ['data/*.ttl']},
-    'install_requires': [
-        'aiohttp', 'aioresponses', 'dataone.scimeta', 'importlib_resources',
-        'lxml', 'python-dateutil', 'requests', 'requests_mock',
-    ],
     'classifiers': [
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
