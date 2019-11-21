@@ -88,9 +88,9 @@ class D1ClientManager:
 
     def check_if_identifier_exists(self, native_identifier_sid):
         """
-        The main adapter script uses this function to determine if
-        a science metadata record retrieved in an OAI-PMH harvest
-        already exists in GMN.
+        The main adapter script uses this function to determine if a
+        science metadata record retrieved in a prior harvest already
+        exists in GMN.
 
         Parameters
         ------
@@ -104,18 +104,15 @@ class D1ClientManager:
             True if found or False if not (or a failed message if the
             check didn't work for some reason).
         """
+        msg = 'Checking for existance of {native_identifier_sid}'
+        self.logger.info(msg)
+
         checkExistsDict = {}
         try:
             sys_meta = self.client.getSystemMetadata(native_identifier_sid)
         except d1_common.types.exceptions.NotFound:
             checkExistsDict['outcome'] = 'no'
         except Exception as e:
-            msg = (
-                'Failed to check if {} exists - '
-                'record was not processed correctly'
-            )
-            msg = msg.format(native_identifier_sid)
-            self.logger.error(msg)
             self.logger.error(e)
             checkExistsDict['outcome'] = 'failed'
         else:
@@ -151,6 +148,13 @@ class D1ClientManager:
             allows the main program to track the number of successfully
             created objects.
         """
+        msg = (
+            f"Loading science metadata for SID {native_identifier_sid} "
+            f"with identifier/PID/checksum "
+            f"{system_metadata.identifier.value()}."
+        )
+        self.logger.info(msg)
+
         try:
             self.client.create(system_metadata.identifier.value(),
                                io.BytesIO(sci_metadata_bytes),
@@ -212,15 +216,19 @@ class D1ClientManager:
             allows the main program to track the number of updated
             objects in a given run.
         """
+        msg = (
+            f"Updating/obsoleting science metadata for existing PID "
+            f"{old_version_pid} and replacing with "
+            f"{system_metadata.identifier.value()}."
+        )
+        self.logger.info(msg)
+
         try:
             self.client.update(old_version_pid,
                                io.BytesIO(sci_metadata_bytes),
                                system_metadata.identifier.value(),
                                system_metadata)
         except Exception as e:
-            msg = 'Failed to UPDATE object with SID: {sid} / PID: {pid}'
-            msg = msg.format(sid=native_identifier_sid, pid=old_version_pid)
-            self.logger.error(msg)
             self.logger.error(e)
             return False
         else:

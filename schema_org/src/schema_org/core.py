@@ -568,6 +568,12 @@ class CoreHarvester(object):
                 self.updated_count += 1
                 self.logger.info(f'Updated {sid}.')
             else:
+                msg = (
+                    f"Failed to UPDATE object with SID: {sid} / "
+                    f"PID: {exists_dict['current_version_id']}"
+                )
+                self.logger.error(msg)
+
                 raise UnableToUpdateGmnRecord(f'Unable to update {sid}.')
 
         elif (
@@ -585,10 +591,7 @@ class CoreHarvester(object):
         elif exists_dict['outcome'] == 'failed':
             # if check failed for some reason, d1_client_manager would have
             # logged the error so just skip.
-            msg = (
-                f'The existance check for {sid} failed.  Is this '
-                f'logged anywhere?'
-            )
+            msg = f'The existance check for {sid} failed.'
             self.logger.warning(msg)
 
         elif exists_dict['outcome'] == 'no':
