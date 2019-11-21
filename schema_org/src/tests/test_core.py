@@ -376,7 +376,7 @@ class TestSuite(TestCommon):
         s = f"[{','.join(log_entries)}]"
         records = json.loads(s)
 
-        self.assertEqual(len(records), 3)
+        self.assertTrue(len(records) >= 3)
 
     def test_lowercase_charset_utf8_xml_header(self):
         """

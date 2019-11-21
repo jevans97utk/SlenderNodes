@@ -138,10 +138,9 @@ class TestD1ClientManager(unittest.TestCase):
 
         # mock_client.return_value.getSystemMetadata.return_value = expected
 
-        mock_logger = Mock()
         client_mgr = D1ClientManager(self.gmn_base_url,
                                      self.auth_cert, self.auth_cert_key,
-                                     mock_logger)
+                                     self.mock_logger)
         actual = client_mgr.check_if_identifier_exists('thing')
 
         expected = {
@@ -159,10 +158,9 @@ class TestD1ClientManager(unittest.TestCase):
         """
         mock_client.return_value.getSystemMetadata.side_effect = d1_common.types.exceptions.NotFound('bad')  # noqa: E501
 
-        mock_logger = Mock()
         client_mgr = D1ClientManager(self.gmn_base_url,
                                      self.auth_cert, self.auth_cert_key,
-                                     mock_logger)
+                                     self.mock_logger)
         actual = client_mgr.check_if_identifier_exists('thing')
 
         expected = {
@@ -179,18 +177,17 @@ class TestD1ClientManager(unittest.TestCase):
         exception is logged.
         """
         mock_client.return_value.getSystemMetadata.side_effect = RuntimeError('bad')  # noqa: E501
-        mock_logger = Mock()
 
         client_mgr = D1ClientManager(self.gmn_base_url,
                                      self.auth_cert, self.auth_cert_key,
-                                     mock_logger)
+                                     self.mock_logger)
         actual = client_mgr.check_if_identifier_exists('thing')
 
         expected = {
             'outcome': 'failed',
         }
         self.assertEqual(actual, expected)
-        self.assertEqual(mock_logger.error.call_count, 1)
+        self.assertEqual(self.mock_logger.error.call_count, 1)
 
     def test_load_science_metadata(self, mock_client):
         """
@@ -265,9 +262,9 @@ class TestD1ClientManager(unittest.TestCase):
         record_date = dt.datetime.now().isoformat()
         old_version_pid = 'b645a195302ca652ec39f1bf3b908dbf'
 
-        mock_logger = Mock()
         client_mgr = D1ClientManager(
-            self.gmn_base_url, self.auth_cert, self.auth_cert_key, mock_logger
+            self.gmn_base_url, self.auth_cert, self.auth_cert_key,
+            self.mock_logger
         )
         system_metadata = self._generate_system_metadata(sci_metadata_bytes,
                                                          sid,
@@ -296,12 +293,10 @@ class TestD1ClientManager(unittest.TestCase):
         record_date = dt.datetime.now().isoformat()
         old_version_pid = 'b645a195302ca652ec39f1bf3b908dbf'
 
-        mock_logger = Mock()
-
         client_mgr = D1ClientManager(
             self.gmn_base_url,
             self.auth_cert, self.auth_cert_key,
-            mock_logger
+            self.mock_logger
         )
         system_metadata = self._generate_system_metadata(sci_metadata_bytes,
                                                          sid,
@@ -315,7 +310,7 @@ class TestD1ClientManager(unittest.TestCase):
             system_metadata=system_metadata
         )
         self.assertFalse(actual)
-        self.assertEqual(mock_logger.error.call_count, 1)
+        self.assertEqual(self.mock_logger.error.call_count, 1)
 
     def test_archive_science_metadata(self, mock_client):
         """
@@ -328,7 +323,7 @@ class TestD1ClientManager(unittest.TestCase):
         client_mgr = D1ClientManager(
             self.gmn_base_url,
             self.auth_cert, self.auth_cert_key,
-            None
+            self.mock_logger
         )
         actual = client_mgr.archive_science_metadata(current_version_pid)
         self.assertTrue(actual)
@@ -363,6 +358,6 @@ class TestD1ClientManager(unittest.TestCase):
         D1ClientManager(
             self.gmn_base_url,
             '/path/to/cert', '/path/to/key',
-            None,
+            self.mock_logger,
         )
         self.assertTrue(True)

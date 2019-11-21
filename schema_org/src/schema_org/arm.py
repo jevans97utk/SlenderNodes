@@ -22,10 +22,12 @@ from .so_core import SchemaDotOrgHarvester
 
 class ARMHarvester(SchemaDotOrgHarvester):
 
-    def __init__(self, host='localhost', port=443, **kwargs):
+    def __init__(self, host='localhost', port=443, base_path='/arm', **kwargs):
         sitemap_url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'
         kwargs['sitemap_url'] = sitemap_url
-        super().__init__(id='arm', host=host, port=port, **kwargs)
+
+        super().__init__(id='arm', host=host, port=port, base_path=base_path,
+                         **kwargs)
 
         authoritative_mn = 'urn:node:mnTestARM'
         self.sys_meta_dict['authoritativeMN'] = authoritative_mn
@@ -34,5 +36,3 @@ class ARMHarvester(SchemaDotOrgHarvester):
         rightsholder = 'CN=urn:node:mnTestARM,DC=dataone,DC=org'
         self.sys_meta_dict['rightsholder'] = rightsholder
         self.sys_meta_dict['submitter'] = rightsholder
-
-        self.mn_base_url = f"https://{host}:{port}/arm"

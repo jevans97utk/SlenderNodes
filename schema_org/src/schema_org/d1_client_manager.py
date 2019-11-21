@@ -57,15 +57,15 @@ class D1ClientManager:
         )
         self.logger = logger
 
-        # msg = (
-        #     f"D1 client instantiated with\n"
-        #     f"GMN base URL:  {gmn_baseurl}\n"
-        #     f"certificate PEM path:  {auth_cert}\n"
-        #     f"certificate key path:  {auth_cert_key}\n"
-        #     f"timeout:  {auth_cert_key}\n"
-        #     f"verify_tls: {verify_tls}"
-        # )
-        # self.logger.info(msg)
+        msg = (
+            f"D1 client instantiated with\n"
+            f"GMN base URL:  {gmn_baseurl}\n"
+            f"certificate PEM path:  {auth_cert}\n"
+            f"certificate key path:  {auth_cert_key}\n"
+            f"timeout:  {auth_cert_key}\n"
+            f"verify_tls: {verify_tls}"
+        )
+        self.logger.info(msg)
 
     def get_last_harvest_time(self):
         """

@@ -824,10 +824,8 @@ class TestSuite(TestCommon):
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
-    @patch('schema_org.core.logging.getLogger')
     def test_document_is_unrecognized_but_successfully_harvested(
         self,
-        mock_logger,
         mock_check_if_identifier_exists,
         mock_load_science_metadata
     ):
@@ -841,17 +839,18 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = True
 
-        harvester = SchemaDotOrgHarvester()
         docbytes = ir.read_binary('tests.data.ieda', '600121iso.xml')
         doc = lxml.etree.parse(io.BytesIO(docbytes))
 
-        asyncio.run(harvester.harvest_document('doi.10000/abcde',
-                                               '1',
-                                               doc,
-                                               dt.datetime.now()))
+        harvester = SchemaDotOrgHarvester()
+        with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+            pargs = ('doi.10000/abcde', '1', doc, dt.datetime.now())
+            awaitable = harvester.harvest_document(*pargs)
+            asyncio.run(awaitable)
+
+            self.assertTrue(self.logLevelCallCount(cm.output, 'INFO') > 0)
 
         self.assertEqual(harvester.created_count, 1)
-        harvester.logger.info.assert_called_once()
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501

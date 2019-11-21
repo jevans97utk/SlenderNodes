@@ -188,6 +188,7 @@ class CoreHarvester(object):
     SITEMAP_NAMESPACE = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
 
     def __init__(self, host=None, port=None, certificate=None,
+                 base_path='/mn',
                  private_key=None, verbosity='INFO', id='none',
                  num_documents=-1, num_workers=1, max_num_errors=3,
                  regex=None, retry=0, ignore_harvest_time=False,
@@ -214,8 +215,7 @@ class CoreHarvester(object):
 
         self.setup_logging(id, verbosity, logger=logger)
 
-        # This might be overridden.
-        self.mn_base_url = f'https://{host}:{port}/mn'
+        self.mn_base_url = f'https://{host}:{port}{base_path}'
 
         self.sys_meta_dict = {
             'submitter': 'TBD',
