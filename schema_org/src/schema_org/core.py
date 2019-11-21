@@ -214,7 +214,9 @@ class CoreHarvester(object):
 
         self.setup_logging(id, verbosity, logger=logger)
 
+        # This might be overridden.
         self.mn_base_url = f'https://{host}:{port}/mn'
+
         self.sys_meta_dict = {
             'submitter': 'TBD',
             'rightsholder': 'TBD',

@@ -47,14 +47,25 @@ class D1ClientManager:
         else:
             verify_tls = True
 
+        timeout = 120.0
         self.client = d1_client.mnclient_2_0.MemberNodeClient_2_0(
             gmn_baseurl,
             cert_pem_path=auth_cert,
             cert_key_path=auth_cert_key,
-            timeout=120.0,
+            timeout=timeout,
             verify_tls=verify_tls
         )
         self.logger = logger
+
+        # msg = (
+        #     f"D1 client instantiated with\n"
+        #     f"GMN base URL:  {gmn_baseurl}\n"
+        #     f"certificate PEM path:  {auth_cert}\n"
+        #     f"certificate key path:  {auth_cert_key}\n"
+        #     f"timeout:  {auth_cert_key}\n"
+        #     f"verify_tls: {verify_tls}"
+        # )
+        # self.logger.info(msg)
 
     def get_last_harvest_time(self):
         """

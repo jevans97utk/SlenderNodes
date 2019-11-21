@@ -24,7 +24,7 @@ class TestSuite(TestCommon):
         self.regex = re.compile(self.pattern)
 
         # The IEDA harvesters will use these values.
-        self.host, self.port = 'arm.mn.org', 443
+        self.host, self.port = 'gmn.test.dataone.org', 443
 
     def test__read_record__invalid_json(self):
         """
@@ -134,7 +134,7 @@ class TestSuite(TestCommon):
             re.compile('https://www.archive.arm.gov/metadata/adc'),
             re.compile('https://www.archive.arm.gov/metadata/adc'),
             re.compile('https://www.archive.arm.gov/metadata/adc'),
-            re.compile('https://arm.mn.org:443/mn/v2/'),
+            re.compile(f"{harvester.mn_base_url}/v2/")
         ]
 
         with aioresponses() as m:
