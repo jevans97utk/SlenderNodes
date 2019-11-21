@@ -1,3 +1,4 @@
+name: slendernode
 channels:
   - conda-forge
 dependencies:
