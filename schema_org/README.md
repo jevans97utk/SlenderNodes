@@ -50,6 +50,72 @@ harvest-arm \
     --private-key $D1/certs/client/urn_node_mnTestARM/private/urn_node_mnTestARM.key 
 ```
 
+## Tips
+
+### Dealing With Single Document Failures
+
+Sometimes a single document might fail for unknown reasons.  For instance, the following shows a single failure in the initial harvest run on 193 ARM documents:
+
+```
+2019-11-22 13:57:09.206 - datatone - INFO - requesting https://www.archive.arm.gov/metadata/adc/xml/mfr10m.xml
+2019-11-22 13:57:09.206 - datatone - INFO - Retrieving URL https://www.archive.arm.gov/metadata/adc/xml/mfr10m.xml
+2019-11-22 13:57:09.407 - datatone - INFO - Checking for existance of doi:10.5439/1025224
+2019-11-22 13:57:09.424 - datatone - ERROR - name: ServiceFailure
+errorCode: 500
+detailCode: <unset>
+description: Response did not contain the expected Content-Type
+traceInformation:
+  < Accept-Encoding: gzip, deflate
+  < Accept: */*
+  < Charset: utf-8
+  < Connection: keep-alive
+  < GET /arm/v2/meta/doi:10.5439%2F1025224 HTTP/1.1
+  < Host: gmn.test.dataone.org:443
+  < User-Agent: DataONE-Python/3.4.7 +http://dataone.org/
+
+  > Connection: close
+  > Content-Length: 386
+  > Content-Type: text/html; charset=iso-8859-1
+  > Date: Fri, 22 Nov 2019 13:57:09 GMT
+  > HTTP/1.1 503 Service Unavailable
+  > Server: Apache/2.4.29 (Ubuntu)
+
+  <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+  <html><head>
+  <title>503 Service Unavailable</title>
+  </head><body>
+  <h1>Service Unavailable</h1>
+  <p>The server is temporarily unable to service your
+  request due to maintenance downtime or capacity
+  problems. Please try again later.</p>
+  <hr>
+  <address>Apache/2.4.29 (Ubuntu) Server at gmn.test.dataone.org Port 443</address>
+  </body></html>
+identifier: <unset>
+nodeId: <unset>
+
+2019-11-22 13:57:09.424 - datatone - WARNING - The existance check for doi:10.5439/1025224 failed.
+.
+.
+.
+2019-11-22 13:57:24.134 - datatone - INFO - Job Summary
+2019-11-22 13:57:24.134 - datatone - INFO - ===========
+2019-11-22 13:57:24.134 - datatone - INFO - There were 192 new records.
+2019-11-22 13:57:24.134 - datatone - INFO - There were 0 updated records.
+2019-11-22 13:57:24.137 - datatone - INFO - Successfully processed 193 records.
+```
+
+Trying to run the harvester again as-is will fail to consider any of the 193 documents because the last harvest time in the system is later than the last-modified time in the sitemap for every document.  There is a way around this, however.  The following will force the system to attempt to harvest just the one document.  The regex pattern is applied against the landing page URL.
+
+```
+harvest-arm                                                                           \
+    --host gmn.test.dataone.org                                                       \
+    --certificate $D1/certs/client/urn_node_mnTestARM/urn_node_mnTestARM.crt          \
+    --private-key $D1/certs/client/urn_node_mnTestARM/private/urn_node_mnTestARM.key  \
+    --regex=mfr10m                                                                    \
+    --ignore-harvest-time
+```
+
 # Commandline executables
 
 The following commandline utilities are included in this package and require Python 3.7.
