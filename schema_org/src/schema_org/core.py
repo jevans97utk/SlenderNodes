@@ -881,7 +881,7 @@ class CoreHarvester(object):
 
         try:
             await self.process_sitemap(self.sitemap_url, last_harvest_time)
-        except asyncio.exceptions.CancelledError as e:
+        except asyncio.CancelledError as e:
             self.logger.error(repr(e))
         except Exception as e:
             self.logger.error(repr(e))
