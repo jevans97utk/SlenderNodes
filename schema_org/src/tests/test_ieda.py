@@ -4,6 +4,7 @@ import datetime as dt
 import importlib.resources as ir
 import io
 import re
+import unittest
 from unittest.mock import patch
 
 # 3rd party library imports
@@ -200,6 +201,7 @@ class TestSuite(TestCommon):
             # Did we increase the update count?
             self.assertEqual(harvester.updated_count, update_count + 1)
 
+    @unittest.skip("Not yet compatible with SO tools")
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -284,6 +286,7 @@ class TestSuite(TestCommon):
         docbytes = lxml.etree.tostring(urlset)
         return docbytes
 
+    @unittest.skip("Not yet compatible with SO tools")
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -366,6 +369,7 @@ class TestSuite(TestCommon):
         expected = 'urn:usap-dc:metadata:609246'
         self.assertEqual(actual, expected)
 
+    @unittest.skip("Not yet compatible with SO tools")
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
