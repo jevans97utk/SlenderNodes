@@ -154,7 +154,10 @@ class SchemaDotOrgHarvester(CoreHarvester):
             metadata record to be archived.
         doc : ElementTree
         """
-        doc = await self.retrieve_landing_page_content(landing_page_url)
+        content, _ = await self.retrieve_url(landing_page_url)
+        html = content.decode('utf-8')
+        doc = lxml.etree.HTML(content)
+
         jsonld = self.get_jsonld(doc)
 
         self.validate_dataone_so_jsonld(jsonld)
@@ -163,7 +166,6 @@ class SchemaDotOrgHarvester(CoreHarvester):
         self.logger.debug(f"Series ID (sid): {sid}")
 
         import sotools
-        html = lxml.etree.tostring(doc).decode('utf-8')
         g = sotools.common.loadSOGraphFromHtml(html, landing_page_url)
         mlinks = sotools.common.getDatasetMetadataLinks(g)
         metadata_url = mlinks[0]['contentUrl']
