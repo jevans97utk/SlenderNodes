@@ -13,6 +13,7 @@ dependencies:
   - contextlib2=0.6.0.post1
   - cryptography=2.7
   - entrypoints=0.3
+  - graphviz=2.38.0
   - icu=64.2
   - idna=2.8
   - importlib_metadata
@@ -69,5 +70,6 @@ dependencies:
     - dataone-common==3.4.7
     - dataone-libclient==3.4.7
     - dataone-scimeta==3.4.7
+    - extruct==0.8.0
     - requests-toolbelt==0.9.1
     - zipstream==1.1.4
