@@ -9,6 +9,7 @@ import re
 
 # 3rd party library imports
 import lxml.etree
+import sotools
 
 # Local imports
 from .core import CoreHarvester, NO_JSON_LD_SCRIPT_ELEMENTS
@@ -162,7 +163,6 @@ class SchemaDotOrgHarvester(CoreHarvester):
         jsonld = self.get_jsonld(doc)
         self.validate_dataone_so_jsonld(jsonld)
 
-        import sotools
         g = sotools.common.loadSOGraphFromHtml(html, landing_page_url)
         mlinks = sotools.common.getDatasetMetadataLinks(g)
 
