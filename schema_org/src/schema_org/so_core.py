@@ -162,7 +162,12 @@ class SchemaDotOrgHarvester(CoreHarvester):
         sid = self.extract_series_identifier(jsonld)
         self.logger.debug(f"Series ID (sid): {sid}")
 
-        metadata_url = self.extract_metadata_url(jsonld)
+        import sotools
+        html = lxml.etree.tostring(doc).decode('utf-8')
+        g = sotools.common.loadSOGraphFromHtml(html, landing_page_url)
+        mlinks = sotools.common.getDatasetMetadataLinks(g)
+        metadata_url = mlinks[0]['contentUrl']
+        # metadata_url = self.extract_metadata_url(jsonld)
 
         doc = await self.retrieve_metadata_document(metadata_url)
 
