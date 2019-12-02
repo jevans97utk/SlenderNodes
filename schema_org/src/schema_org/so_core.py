@@ -158,17 +158,18 @@ class SchemaDotOrgHarvester(CoreHarvester):
         html = content.decode('utf-8')
         doc = lxml.etree.HTML(content)
 
+        # This section of code may be removable.
         jsonld = self.get_jsonld(doc)
-
         self.validate_dataone_so_jsonld(jsonld)
 
-        # extract the XML metadata URL
         import sotools
         g = sotools.common.loadSOGraphFromHtml(html, landing_page_url)
         mlinks = sotools.common.getDatasetMetadataLinks(g)
+
+        # extract the XML metadata URL
         metadata_url = mlinks[0]['contentUrl']
 
-        # extract the identifier
+        # extract the series identifier
         subjectOf = mlinks[0]['subjectOf']
         pattern = r'''(https?://dx.doi.org/(?P<doi>10\.\w+/\w+))'''
         regex = re.compile(pattern, re.VERBOSE)
@@ -182,9 +183,14 @@ class SchemaDotOrgHarvester(CoreHarvester):
         sid = f"doi:{m.group('doi')}"
         self.logger.debug(f"Series ID (sid): {sid}")
 
+        # extract the PID
+        # This is currently None for ARM.  Will it be the case for all SO
+        # documents?  None-SO docs must provide custom code to get the PID.
+        #pid = self.extract_record_version(doc, landing_page_url)
+        pid = None
+
         doc = await self.retrieve_metadata_document(metadata_url)
 
-        pid = self.extract_record_version(doc, landing_page_url)
         self.logger.debug(f"Record version (pid): {pid}")
 
         return sid, pid, doc
