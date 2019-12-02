@@ -65,6 +65,51 @@ class TestSuite(TestCommon):
         with self.assertRaises(RuntimeError):
             harvester.get_jsonld(doc)
 
+    def test__retrieve_record(self):
+        """
+        SCENARIO:  We have a valid landing page URL and JSON-LD document for
+        ARM.
+
+        EXPECTED RESULT:  The expected SID and PID are returned.
+        """
+        landing_page_url = (
+            'https://www.archive.arm.gov/metadata/adc/html/wsacrcrcal.html'
+        )
+        text = ir.read_binary('tests.data.arm', 'wsacrcrcal.html')
+
+        harvester = SchemaDotOrgHarvester()
+
+        # External calls to read the:
+        #
+        #   2) HTML document for the landing page
+        #   3) XML document associated with the landing page
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'wsacrcrcal.html'),
+            ir.read_binary('tests.data.arm', 'wsacrcrcal.xml'),
+        ]
+        status_codes = [200, 200, 200]
+        headers = [
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'application/xml'},
+        ]
+
+        z = zip(contents, status_codes, headers)
+        with aioresponses() as m:
+            for content, status_code, headers in z:
+                m.get(self.regex,
+                      body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
+                sid, pid, doc = asyncio.run(harvester.retrieve_record(landing_page_url))
+
+        self.assertEqual(sid, "doi:10.5439/1150280")
+        self.assertIsNone(pid)
+
+        actual = lxml.etree.tostring(doc)
+        expected = lxml.etree.tostring(lxml.etree.parse(io.BytesIO(contents[1])))
+        self.assertEqual(actual, expected)
+
     def test_jsonld_script_element_is_first(self):
         """
         SCENARIO:  In ARM, there are usually two <SCRIPT> elements with
