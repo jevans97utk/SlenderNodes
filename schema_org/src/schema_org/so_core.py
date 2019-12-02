@@ -165,11 +165,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
         sid = self.extract_series_identifier(jsonld)
         self.logger.debug(f"Series ID (sid): {sid}")
 
-        import sotools
-        g = sotools.common.loadSOGraphFromHtml(html, landing_page_url)
-        mlinks = sotools.common.getDatasetMetadataLinks(g)
-        metadata_url = mlinks[0]['contentUrl']
-        # metadata_url = self.extract_metadata_url(jsonld)
+        metadata_url = self.extract_metadata_url(html, landing_page_url)
 
         doc = await self.retrieve_metadata_document(metadata_url)
 
@@ -177,6 +173,24 @@ class SchemaDotOrgHarvester(CoreHarvester):
         self.logger.debug(f"Record version (pid): {pid}")
 
         return sid, pid, doc
+
+    def extract_metadata_url(self, html, landing_page_url):
+        """
+        Extract the URL for the XML metadata document from the landing page.
+
+        Parameters
+        ----------
+        html : str
+            landing page content
+        landing_page_url : str
+            URL of landing page
+        """
+        import sotools
+        g = sotools.common.loadSOGraphFromHtml(html, landing_page_url)
+        mlinks = sotools.common.getDatasetMetadataLinks(g)
+        metadata_url = mlinks[0]['contentUrl']
+        # metadata_url = self.extract_metadata_url(jsonld)
+        return metadata_url
 
     def extract_record_version(self, doc, landing_page_url):
         """
@@ -195,19 +209,3 @@ class SchemaDotOrgHarvester(CoreHarvester):
         The record version for GMN.
         """
         return None
-
-    def extract_metadata_url(self, jsonld):
-        """
-        Extract the URL for the XML metadata document.
-
-        Parameters
-        ----------
-        jsonld : dict
-            Dictionary of JSON-LD data.
-
-        Returns
-        -------
-        The URL for the XML metadata document.
-        """
-        metadata_url = jsonld['encoding']['contentUrl']
-        return metadata_url
