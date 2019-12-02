@@ -228,6 +228,9 @@ class CoreHarvester(object):
             'formatId_custom': 'http://www.isotc211.org/2005/gmd'
         }
 
+        self._certificate = certificate
+        self._private_key = private_key
+
         self.client_mgr = D1ClientManager(self.mn_base_url,
                                           certificate, private_key,
                                           self.logger)
@@ -453,6 +456,13 @@ class CoreHarvester(object):
         """
         if self.no_harvest:
             return
+
+        msg = (
+            f"GMN base URL:  {self.mn_base_url}\n"
+            f"certificate PEM path:  {self._certificate}\n"
+            f"certificate key path:  {self._private_key}\n"
+        )
+        self.logger.info(msg)
 
         self.logger.info("\n\n")
         self.logger.info("Job Summary")
@@ -881,6 +891,8 @@ class CoreHarvester(object):
 
         try:
             await self.process_sitemap(self.sitemap_url, last_harvest_time)
+        except asyncio.CancelledError as e:
+            self.logger.error(repr(e))
         except Exception as e:
             self.logger.error(repr(e))
 

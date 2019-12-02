@@ -24,7 +24,7 @@ from setuptools import setup
 
 kwargs = {
     'name': 'schema_org',
-    'version': '4.1.0',
+    'version': '4.1.1',
     'description': 'Interact with a schema.org resource provider',
     'author': 'DataONE Project',
     'author_email': 'developers@dataone.org',
