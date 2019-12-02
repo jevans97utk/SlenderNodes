@@ -162,10 +162,25 @@ class SchemaDotOrgHarvester(CoreHarvester):
 
         self.validate_dataone_so_jsonld(jsonld)
 
-        sid = self.extract_series_identifier(jsonld)
-        self.logger.debug(f"Series ID (sid): {sid}")
+        # extract the XML metadata URL
+        import sotools
+        g = sotools.common.loadSOGraphFromHtml(html, landing_page_url)
+        mlinks = sotools.common.getDatasetMetadataLinks(g)
+        metadata_url = mlinks[0]['contentUrl']
 
-        metadata_url = self.extract_metadata_url(html, landing_page_url)
+        # extract the identifier
+        subjectOf = mlinks[0]['subjectOf']
+        pattern = r'''(https?://dx.doi.org/(?P<doi>10\.\w+/\w+))'''
+        regex = re.compile(pattern, re.VERBOSE)
+        m = regex.search(subjectOf)
+        if m is None:
+            msg = (
+                f"DOI ID parsing error, could not parse an ID out of "
+                f"JSON-LD '@id' element \"{subjectOf}\""
+            )
+            raise JsonLdError(msg)
+        sid = f"doi:{m.group('doi')}"
+        self.logger.debug(f"Series ID (sid): {sid}")
 
         doc = await self.retrieve_metadata_document(metadata_url)
 
@@ -188,6 +203,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
         import sotools
         g = sotools.common.loadSOGraphFromHtml(html, landing_page_url)
         mlinks = sotools.common.getDatasetMetadataLinks(g)
+        breakpoint()
         metadata_url = mlinks[0]['contentUrl']
         # metadata_url = self.extract_metadata_url(jsonld)
         return metadata_url
