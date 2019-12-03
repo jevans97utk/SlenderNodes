@@ -1,3 +1,0 @@
-[submodule "schema_org/src/sotools"]
-	path = schema_org/src/sotools
-	url = https://github.com/datadavev/sotools
