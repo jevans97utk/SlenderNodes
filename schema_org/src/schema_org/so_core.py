@@ -176,10 +176,10 @@ class SchemaDotOrgHarvester(CoreHarvester):
         m = regex.search(subjectOf)
         if m is None:
             msg = (
-                f"DOI ID parsing error, could not parse an ID out of "
-                f"JSON-LD '@id' element \"{subjectOf}\""
+                f"DOI ID parsing error, could not parse a series ID from "
+                f"\"{subjectOf}\""
             )
-            raise JsonLdError(msg)
+            raise RuntimeError(msg)
         sid = f"doi:{m.group('doi')}"
         self.logger.debug(f"Series ID (sid): {sid}")
 
