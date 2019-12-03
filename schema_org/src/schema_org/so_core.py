@@ -9,11 +9,11 @@ import re
 
 # 3rd party library imports
 import lxml.etree
-import sotools
 
 # Local imports
 from .core import CoreHarvester, NO_JSON_LD_SCRIPT_ELEMENTS
 from .jsonld_validator import JSONLD_Validator, JsonLdError
+from . import sotools
 
 
 class SchemaDotOrgHarvester(CoreHarvester):
@@ -180,6 +180,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
                 f"\"{subjectOf}\""
             )
             raise RuntimeError(msg)
+
         sid = f"doi:{m.group('doi')}"
         self.logger.debug(f"Series ID (sid): {sid}")
 
