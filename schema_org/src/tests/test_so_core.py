@@ -75,7 +75,6 @@ class TestSuite(TestCommon):
         landing_page_url = (
             'https://www.archive.arm.gov/metadata/adc/html/wsacrcrcal.html'
         )
-        text = ir.read_binary('tests.data.arm', 'wsacrcrcal.html')
 
         harvester = SchemaDotOrgHarvester()
 
@@ -100,15 +99,56 @@ class TestSuite(TestCommon):
                 m.get(self.regex,
                       body=content, status=status_code, headers=headers)
 
-            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
-                sid, pid, doc = asyncio.run(harvester.retrieve_record(landing_page_url))
+            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                awaitable = harvester.retrieve_record(landing_page_url)
+                sid, pid, doc = asyncio.run(awaitable)
 
         self.assertEqual(sid, "doi:10.5439/1150280")
         self.assertIsNone(pid)
 
         actual = lxml.etree.tostring(doc)
-        expected = lxml.etree.tostring(lxml.etree.parse(io.BytesIO(contents[1])))
+
+        bf = io.BytesIO(contents[1])
+        expected = lxml.etree.tostring(lxml.etree.parse(bf))
         self.assertEqual(actual, expected)
+
+    def test__retrieve_record__bad_series_identifier(self):
+        """
+        SCENARIO:  We have a valid landing page URL but the JSON-LD document
+        has a series identifier that is not in the format that we want.
+
+        EXPECTED RESULT:  RuntimeError
+        """
+        landing_page_url = (
+            'https://www.archive.arm.gov/metadata/adc/html/wsacrcrcal.html'
+        )
+
+        harvester = SchemaDotOrgHarvester()
+
+        # External calls to read the:
+        #
+        #   2) HTML document for the landing page
+        #   3) XML document associated with the landing page
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'wsacrcrcal.bad_series_id.html'),
+            ir.read_binary('tests.data.arm', 'wsacrcrcal.xml'),
+        ]
+        status_codes = [200, 200, 200]
+        headers = [
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'application/xml'},
+        ]
+
+        z = zip(contents, status_codes, headers)
+        with aioresponses() as m:
+            for content, status_code, headers in z:
+                m.get(self.regex,
+                      body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                with self.assertRaises(RuntimeError):
+                    asyncio.run(harvester.retrieve_record(landing_page_url))
 
     def test_jsonld_script_element_is_first(self):
         """
