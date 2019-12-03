@@ -1029,7 +1029,7 @@ class CoreHarvester(object):
         """
         self.logger.debug(f'process_job:  starting')
 
-        series_id, version_id, doc = await self.retrieve_record(job.url)
+        series_id, version_id, date, doc = await self.retrieve_record(job.url)
 
         job.identifier = series_id
         self.validate_document(doc)

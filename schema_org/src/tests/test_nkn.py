@@ -97,10 +97,12 @@ class TestSuite(TestCommon):
                 m.get(self.regex, body=contents[0])
                 m.get(self.regex, body=contents[1])
 
-                sid, _, doc = asyncio.run(harvester.retrieve_record(url))
+                awaitable = harvester.retrieve_record(url)
+                sid, _, lastmod, doc = asyncio.run(awaitable)
 
         expected = '0a42d2bc-700a-4cf2-a7ac-ad6b892da7f0'
         self.assertEqual(sid, expected)
+        self.assertIsNone(lastmod)
 
     def test_retrieve_record__500_error(self):
         """

@@ -72,7 +72,8 @@ class TestSuite(TestCommon):
                 m.get(self.regex, body=content)
 
                 url = 'http://geo.abds.is/ipt/eml.do?r=arcod_2007p6'
-                identifier, _, _ = asyncio.run(harvester.retrieve_record(url))
+                awaitable = harvester.retrieve_record(url)
+                identifier, _, _, _ = asyncio.run(awaitable)
 
         self.assertEqual(identifier, '59876921-fda6-4fd5-af5d-cba2a7152527')
 

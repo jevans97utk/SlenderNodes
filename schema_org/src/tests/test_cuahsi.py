@@ -134,7 +134,8 @@ class TestSuite(TestCommon):
         """
         SCENARIO:  We have a URL for a landing page for a PUBLISHED document.
 
-        EXPECTED RESULT:  The identifier is retrieved.
+        EXPECTED RESULT:  The series identifier is retrieved.  The lastMod
+        time is None because this is only retrieved in schema.org.
         """
         url = (
             'https://www.hydroshare.org'
@@ -165,9 +166,11 @@ class TestSuite(TestCommon):
                 m.get(self.regex, body=contents1)
                 m.get(self.regex, body=contents2)
 
-                sid, pid, doc = asyncio.run(harvester.retrieve_record(url))
+                awaitable = harvester.retrieve_record(url)
+                sid, pid, lastmod, doc = asyncio.run(awaitable)
 
         self.assertEqual(sid, '10.4211/hs.81e947faccf04de59392dddaac77bc75')
+        self.assertIsNone(lastmod)
 
     def test_retrieve_record__no_url_for_zip_archive(self):
         """

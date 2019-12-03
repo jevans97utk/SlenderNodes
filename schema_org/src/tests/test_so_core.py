@@ -101,10 +101,11 @@ class TestSuite(TestCommon):
 
             with self.assertLogs(logger=harvester.logger, level='DEBUG'):
                 awaitable = harvester.retrieve_record(landing_page_url)
-                sid, pid, doc = asyncio.run(awaitable)
+                sid, pid, dateMod, doc = asyncio.run(awaitable)
 
         self.assertEqual(sid, "doi:10.5439/1150280")
         self.assertIsNone(pid)
+        self.assertEqual(dateMod, dt.datetime(2019, 11, 25, 16, 0, 21, 746316))
 
         actual = lxml.etree.tostring(doc)
 

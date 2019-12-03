@@ -2,16 +2,19 @@
 
 """
 
+import datetime as dt
 import io
+import json
+import logging
+import re
+
+import dateutil.parser
 from rdflib import ConjunctiveGraph, Namespace, URIRef
 from rdflib.namespace import NamespaceManager
 from rdflib.tools import rdf2dot
 import graphviz
-import json
 import requests
 from extruct.jsonld import JsonLdExtractor
-import logging
-import re
 
 SCHEMA_ORG = "https://schema.org/"
 SO_PREFIX = "SO"
@@ -238,6 +241,52 @@ def hasDataset(g):
     qres = g.query(q)
     return len(qres)
 
+
+def getDateModified(g):
+    """
+    Retrieve literal SO:Dataset dateModified entries
+
+    Args:
+        g (Graph): Graph containing ``SO:Dataset``
+
+    Returns:
+        list: A list of ``{value:, url:, propertyId:}`` with url=None and propertyId="Literal"
+    """
+    q = (
+        SPARQL_PREFIXES
+        + """
+        SELECT ?dateModified
+        WHERE
+        {
+            ?x rdf:type SO:Dataset .
+            ?x SO:encoding ?y .
+            ?y SO:dateModified ?dateModified .
+        }
+        """
+    )
+    qres = g.query(q)
+    items = list(qres)
+    if len(items) > 0:
+        return dateutil.parser.parse(str(items[0][0]))
+
+    # So look for it under the dataset element.
+    q = (
+        SPARQL_PREFIXES
+        + """
+        SELECT ?dateModified
+        WHERE
+        {
+            ?x rdf:type SO:Dataset .
+            ?x SO:dateModified ?dateModified .
+        }
+        """
+    )
+    qres = g.query(q)
+    items = list(qres)
+    if len(items) > 0:
+        return dateutil.parser.parse(str(items[0][0]))
+
+    return None
 
 def getLiteralDatasetIdentifiers(g):
     """

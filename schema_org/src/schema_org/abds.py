@@ -173,6 +173,8 @@ class AbdsIptHarvester(CoreHarvester):
             Ideally this is a DOI, but here it is a UUID.
         pid : str
             The version of the document.
+        lastMod : None
+            Rely on the RSS feed for this.
         doc : ElementTree
             Metadata document
         """
@@ -189,7 +191,7 @@ class AbdsIptHarvester(CoreHarvester):
         pid = doc.getroot().attrib['packageId']
         self.logger.debug(f"Have extracted the version ID {pid}...")
 
-        return sid, pid, doc
+        return sid, pid, None, doc
 
     def extract_series_identifier(self, doc):
         """

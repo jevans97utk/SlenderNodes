@@ -153,6 +153,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
         pid : str
             Intended to be the GMN unique identifier of the science
             metadata record to be archived.
+        last_modified : datetime or None
         doc : ElementTree
         """
         content, _ = await self.retrieve_url(landing_page_url)
@@ -190,8 +191,10 @@ class SchemaDotOrgHarvester(CoreHarvester):
         #pid = self.extract_record_version(doc, landing_page_url)
         pid = None
 
+        dateModified = sotools.common.getDateModified(g)
+
         doc = await self.retrieve_metadata_document(metadata_url)
 
         self.logger.debug(f"Record version (pid): {pid}")
 
-        return sid, pid, doc
+        return sid, pid, dateModified, doc

@@ -113,9 +113,11 @@ class NKNHarvester(CoreHarvester):
         Returns
         -------
         sid : str
-            Ideally this is a DOI, but here it is a UUID.
+            Should be a DOI
         pid : None
             There is no record version available.
+        lastMod : None
+            Rely on the RSS feed for this.
         doc : ElementTree
             Metadata document
         """
@@ -148,4 +150,4 @@ class NKNHarvester(CoreHarvester):
         sid = self.extract_series_identifier(doc)
         self.logger.debug(f"Have extracted the series ID {sid}...")
 
-        return sid, None, doc
+        return sid, None, None, doc

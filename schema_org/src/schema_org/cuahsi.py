@@ -124,6 +124,17 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         ----------
         landing_page_url : str
             URL for remote landing page HTML
+
+        Returns
+        -------
+        sid : str
+            Ideally this is a DOI, but here it is a UUID.
+        pid : None
+            There is no record version available.
+        lastMod : None
+            Rely on the RSS feed for this.
+        doc : ElementTree
+            Metadata document
         """
         self.logger.debug(f'retrieve_record')
         self.logger.info(f"Requesting {landing_page_url}...")
@@ -162,7 +173,7 @@ class CUAHSIHarvester(SchemaDotOrgHarvester):
         # Must transform the document.
         doc = self.transform_to_dataone_simple_dc(doc)
 
-        return sid, pid, doc
+        return sid, pid, None, doc
 
     def extract_series_identifier(self, jsonld):
         """
