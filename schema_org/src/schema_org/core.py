@@ -556,19 +556,38 @@ class CoreHarvester(object):
         }
         sys_metadata = self.generate_system_metadata(**kwargs)
 
+        # The outcome of exists_dict determines how to
+        # handle the record.
         exists_dict = self.client_mgr.check_if_identifier_exists(sid)
 
         if (
             exists_dict['outcome'] == 'yes'
-            and exists_dict['record_date'] != record_date
+            and exists_dict['record_date'] > record_date
+        ):
+            # This is a bit of an edge case and might not ever happen.
+            # The record is already in GMN, but the record claims that its
+            # lastModified time is prior to the last harvest time, which means
+            # that we should skip it.  The owners of the site should check
+            # their documents against their sitemap.
+            msg = (
+                f"Skipping {sid}, "
+                f"it already exists but GMN claims that its record date "
+                f"{exists_dict['record_date']} is later than the "
+                f"lastModified time claimed by the "
+                f"landing page {record_date}.  The owners of the site should "
+                f"check their sitemap against their documents."
+            )
+            raise SkipError(msg)
+
+        elif (
+            exists_dict['outcome'] == 'yes'
+            and exists_dict['record_date'] < record_date
         ):
             current_sid = exists_dict['current_version_id']
             await self.check_if_can_be_updated(docbytes, sid, current_sid)
 
-            # the outcome of exists_dict determines how to
-            # handle the record.  if identifier exists in GMN but
-            # record date is different, this truly is an update so
-            # call update method.
+            # If identifier exists in GMN but the record date is later, this
+            # truly is an update so issue an update.
             kwargs = {
                 'sci_metadata_bytes': docbytes,
                 'native_identifier_sid': sid,
@@ -1029,7 +1048,11 @@ class CoreHarvester(object):
         """
         self.logger.debug(f'process_job:  starting')
 
-        series_id, version_id, date, doc = await self.retrieve_record(job.url)
+        series_id, version_id, lastmod, doc = await self.retrieve_record(job.url)
+        if lastmod is not None:
+            # If dateModified was found in the JSON-LD, then it trumps the
+            # lastmod value found in the sitemap.
+            job.lastmod = lastmod
 
         job.identifier = series_id
         self.validate_document(doc)

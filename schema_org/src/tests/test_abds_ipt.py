@@ -16,6 +16,7 @@ import lxml.etree
 
 # local imports
 from schema_org.abds import AbdsIptHarvester
+from schema_org.d1_client_manager import DATETIME_FORMAT
 from .test_common import TestCommon
 
 
@@ -130,8 +131,8 @@ class TestSuite(TestCommon):
         just the UUID.
         """
 
-        record_date = dt.datetime.now()
-        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+        record_date = dt.datetime(2019, 1, 1, tzinfo=dt.timezone.utc)
+        mock_harvest_time.return_value = record_date.strftime(DATETIME_FORMAT)
         mock_check_if_identifier_exists.return_value = {
             'outcome': 'yes',
             'record_date': record_date - dt.timedelta(days=1),

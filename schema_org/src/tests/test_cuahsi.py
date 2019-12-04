@@ -16,6 +16,7 @@ import lxml.etree
 # local imports
 from schema_org.core import SkipError, XMLMetadataParsingError
 from schema_org.cuahsi import CUAHSIHarvester
+from schema_org.d1_client_manager import DATETIME_FORMAT
 from schema_org.jsonld_validator import JsonLdError
 from .test_common import TestCommon
 
@@ -381,8 +382,8 @@ class TestSuite(TestCommon):
         the zip archive.
         """
 
-        record_date = dt.datetime.now()
-        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+        record_date = dt.datetime(1949, 1, 1, tzinfo=dt.timezone.utc)
+        mock_harvest_time.return_value = record_date.strftime(DATETIME_FORMAT)
         mock_check_if_identifier_exists.return_value = {
             'outcome': 'yes',
             'record_date': record_date - dt.timedelta(days=1),
@@ -437,8 +438,9 @@ class TestSuite(TestCommon):
             for regex, content, status_code, headers in z:
                 m.get(regex, body=content, status=status_code, headers=headers)
 
-            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+            with self.assertLogs(logger=harvester.logger, level='DEBUG') as cm:
                 asyncio.run(harvester.run())
+                print('\n'.join(cm.output))
 
         self.assertEqual(mock_load_science_metadata.call_count, 0),
         self.assertEqual(mock_update_science_metadata.call_count, 1),

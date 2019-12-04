@@ -76,8 +76,6 @@ class TestSuite(TestCommon):
             'https://www.archive.arm.gov/metadata/adc/html/wsacrcrcal.html'
         )
 
-        harvester = SchemaDotOrgHarvester()
-
         # External calls to read the:
         #
         #   2) HTML document for the landing page
@@ -99,13 +97,18 @@ class TestSuite(TestCommon):
                 m.get(self.regex,
                       body=content, status=status_code, headers=headers)
 
+            harvester = SchemaDotOrgHarvester()
+
             with self.assertLogs(logger=harvester.logger, level='DEBUG'):
                 awaitable = harvester.retrieve_record(landing_page_url)
                 sid, pid, dateMod, doc = asyncio.run(awaitable)
 
         self.assertEqual(sid, "doi:10.5439/1150280")
         self.assertIsNone(pid)
-        self.assertEqual(dateMod, dt.datetime(2019, 11, 25, 16, 0, 21, 746316))
+
+        expected = dt.datetime(2019, 11, 25, 16, 0, 21, 746316,
+                               tzinfo=dt.timezone.utc)
+        self.assertEqual(dateMod, expected)
 
         actual = lxml.etree.tostring(doc)
 

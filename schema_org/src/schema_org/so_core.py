@@ -187,8 +187,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
 
         # extract the PID
         # This is currently None for ARM.  Will it be the case for all SO
-        # documents?  None-SO docs must provide custom code to get the PID.
-        #pid = self.extract_record_version(doc, landing_page_url)
+        # documents?  Non-SO docs must provide custom code to get the PID.
         pid = None
 
         dateModified = sotools.common.getDateModified(g)

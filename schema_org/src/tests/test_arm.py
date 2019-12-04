@@ -11,6 +11,7 @@ from aioresponses import aioresponses
 
 # local imports
 from schema_org.arm import ARMHarvester
+from schema_org.d1_client_manager import DATETIME_FORMAT
 from schema_org.jsonld_validator import JsonLdError
 from .test_common import TestCommon
 
@@ -97,7 +98,7 @@ class TestSuite(TestCommon):
         document and the SID set to the DOI.
         """
 
-        record_date = dt.datetime.now()
+        record_date = dt.datetime(2019, 6, 17, tzinfo=dt.timezone.utc)
         mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
         mock_check_if_identifier_exists.return_value = {
             'outcome': 'yes',
@@ -233,6 +234,90 @@ class TestSuite(TestCommon):
         actual = kwargs['system_metadata'].seriesId.value()
         expected = 'doi:10.5439/1021460'
         self.assertEqual(actual, expected)
+
+    @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.update_science_metadata')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
+    @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
+    def test_load_run_with_jsonld_lasmod_prior_to_last_harvest(
+        self,
+        mock_harvest_time,
+        mock_check_if_identifier_exists,
+        mock_update_science_metadata,
+        mock_load_science_metadata
+    ):
+        """
+        SCENARIO:  We encounter a document where the sitemap last modification
+        time is after the last harvest time, but the JSON-LD lastmod time is
+        before the last harvest time.  We preferentially take the JSON-LD time.
+
+        EXPECTED RESULT:  The document is not harvested.
+        """
+
+        last_harvest_time = dt.datetime(2019, 1, 1)
+        mock_harvest_time.return_value = last_harvest_time.strftime(DATETIME_FORMAT)  # noqa : E501
+
+        mock_check_if_identifier_exists.return_value = {
+            'outcome': 'yes',
+            'record_date': last_harvest_time,
+            'current_version_id': 1,
+        }
+
+        # None of these should actually be called.
+        mock_update_science_metadata.return_value = True
+        mock_load_science_metadata.return_value = True
+
+        # Setup the sitemap to show that the lastmod time there is after the
+        # last harvest time.  This should normally cause the document to be
+        # harvested.
+        data = """
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          <url>
+            <loc>https://www.archive.arm.gov/metadata/adc/html/nsasondewnpnS01.b1.html</loc>
+            <lastmod>2019-01-02</lastmod>
+          </url>
+        </urlset>
+        """
+        sitemap_content = data.encode('utf-8')
+
+        # External calls to read the:
+        #
+        #   1) sitemap
+        #   2) Remote HTML document for record 1
+        #   3) Remote XML document for record 1
+        #
+        contents = [
+            sitemap_content,
+            ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.fixed.lastmod_before_harvest.html'),  # noqa : E501
+            ir.read_binary('tests.data.arm', 'nsasondewnpnS01.b1.fixed.xml'),
+        ]
+        status_codes = [200, 200, 200]
+        headers = [
+            {'Content-Type': 'application/xml'},
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'application/xml'},
+        ]
+        regex = [
+            re.compile('https://www.archive.arm.gov/metadata/adc'),
+            re.compile('https://www.archive.arm.gov/metadata/adc'),
+            re.compile('https://www.archive.arm.gov/metadata/adc'),
+        ]
+
+        with aioresponses() as m:
+            z = zip(regex, contents, status_codes, headers)
+            for regex, content, status_code, headers in z:
+                m.get(regex, body=content, status=status_code, headers=headers)
+
+            harvester = ARMHarvester(host=self.host, port=self.port)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                asyncio.run(harvester.run())
+
+        self.assertEqual(mock_check_if_identifier_exists.call_count, 1),
+
+        # These are the critical ones.  None of them should have been called.
+        self.assertEqual(mock_load_science_metadata.call_count, 0),
+        self.assertEqual(mock_update_science_metadata.call_count, 0),
 
     @patch('schema_org.d1_client_manager.D1ClientManager.get_last_harvest_time')  # noqa: E501
     def test_metadata_document_retrieval_failure(self, mock_harvest_time):

@@ -9,6 +9,7 @@ import logging
 import re
 
 import dateutil.parser
+import dateutil.tz
 from rdflib import ConjunctiveGraph, Namespace, URIRef
 from rdflib.namespace import NamespaceManager
 from rdflib.tools import rdf2dot
@@ -267,7 +268,9 @@ def getDateModified(g):
     qres = g.query(q)
     items = list(qres)
     if len(items) > 0:
-        return dateutil.parser.parse(str(items[0][0]))
+        date = dateutil.parser.parse(str(items[0][0]))
+        date = date.replace(tzinfo=date.tzinfo or dateutil.tz.gettz("UTC"))
+        return date
 
     # So look for it under the dataset element.
     q = (
@@ -284,7 +287,9 @@ def getDateModified(g):
     qres = g.query(q)
     items = list(qres)
     if len(items) > 0:
-        return dateutil.parser.parse(str(items[0][0]))
+        date = dateutil.parser.parse(str(items[0][0]))
+        date = date.replace(tzinfo=date.tzinfo or dateutil.tz.gettz("UTC"))
+        return date
 
     return None
 

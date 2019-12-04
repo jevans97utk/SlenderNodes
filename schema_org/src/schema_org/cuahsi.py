@@ -2,7 +2,8 @@
 DATAONE adapter for CUAHSI
 
 Hydroshare/CUAHSI has nested sitemaps and partially implements Schema.Org.  The
-SO implementation is not fully to our liking, however
+SO implementation is not fully to our liking, however.  Neither is the sitemap
+implementation, as it has no lastmod entries.
 
 metadata URL:
     This is indirect.  The landing page provides a URL for downloading a "bagit

@@ -16,6 +16,7 @@ import lxml.etree
 
 # local imports
 from schema_org.core import SkipError, XMLValidationError
+from schema_org.d1_client_manager import DATETIME_FORMAT
 from schema_org.nkn import NKNHarvester, MissingMetadataFileIdentifierError
 from .test_common import TestCommon
 
@@ -224,15 +225,15 @@ class TestSuite(TestCommon):
                         mock_load_science_metadata):
         """
         SCENARIO:  One document is to be updated.
-        be updated.
 
         EXPECTED RESULT:  The document is updated, not loaded for the first
         time.  Verify that the sid is a UUID and that the pid is the MD5SUM of
         the metadata document.
         """
 
-        record_date = dt.datetime.now()
-        mock_harvest_time.return_value = '1900-01-01T00:00:00Z'
+        record_date = dt.datetime(2017, 4, 28, 10, 44, 0,
+                                  tzinfo=dt.timezone.utc)
+        mock_harvest_time.return_value = record_date.strftime(DATETIME_FORMAT)
         mock_check_if_identifier_exists.return_value = {
             'outcome': 'yes',
             'record_date': record_date - dt.timedelta(days=1),

@@ -19,6 +19,8 @@ import d1_common.const
 import d1_client.mnclient_2_0
 import d1_common.checksum
 
+DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
+
 
 class D1ClientManager:
     # Initialize the client manager with an instance of a member node client
@@ -75,8 +77,7 @@ class D1ClientManager:
             objcount = self.client.listObjects(start=0, count=0).total
             if objcount > 0:
                 obj = self.client.listObjects(start=objcount - 1, count=1)
-                fmt = '%Y-%m-%dT%H:%M:%SZ'
-                return obj.objectInfo[0].dateSysMetadataModified.strftime(fmt)
+                return obj.objectInfo[0].dateSysMetadataModified.strftime(DATETIME_FORMAT)  # noqa : E501
             else:
                 # if 0 objects are returned, then this is the first ever
                 # harvester run so grab EVERYTHING.

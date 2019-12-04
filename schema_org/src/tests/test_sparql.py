@@ -38,7 +38,8 @@ class TestSuite(unittest.TestCase):
 
         g = sotools.common.loadSOGraph(data=data)
         actual = sotools.common.getDateModified(g)
-        expected = dt.datetime(2019, 10, 10, 12, 43, 11, 123450)
+        expected = dt.datetime(2019, 10, 10, 12, 43, 11, 123450,
+                               tzinfo=dt.timezone.utc)
         self.assertEqual(actual, expected)
 
     def test_dateModified_in_encoding(self):
@@ -68,7 +69,8 @@ class TestSuite(unittest.TestCase):
 
         g = sotools.common.loadSOGraph(data=data)
         actual = sotools.common.getDateModified(g)
-        expected = dt.datetime(2019, 12, 10, 12, 43, 11, 123450)
+        expected = dt.datetime(2019, 12, 10, 12, 43, 11, 123450,
+                               tzinfo=dt.timezone.utc)
         self.assertEqual(actual, expected)
 
     def test_dateModified_in_both_encoding_and_dataset(self):
@@ -100,7 +102,8 @@ class TestSuite(unittest.TestCase):
 
         g = sotools.common.loadSOGraph(data=data)
         actual = sotools.common.getDateModified(g)
-        expected = dt.datetime(2019, 12, 10, 12, 43, 11, 123450)
+        expected = dt.datetime(2019, 12, 10, 12, 43, 11, 123450,
+                               tzinfo=dt.timezone.utc)
         self.assertEqual(actual, expected)
 
     def test_dateModified_in_neither_encoding_nor_dataset(self):
