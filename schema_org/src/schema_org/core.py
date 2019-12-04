@@ -196,6 +196,10 @@ class CoreHarvester(object):
         """
         Parameters
         ----------
+        base_path : str
+            The default installation instructions for GMN imply that this
+            should be '/mn' but the ARM install uses '/arm', so we have to
+            make this optional.
         host, port : str, int
             This fully identifies the DataONE host and port number where we
             will be sending metadata records.
