@@ -58,7 +58,8 @@ _TOO_OLD_HARVEST_DATETIME = dateutil.parser.parse('1950-01-01T00:00:00Z')
 @dataclass
 class SlenderNodeJob(object):
     """
-    Represents a job for processing a single document.
+    Represents a "job" for harvesting a single document.  We pass these
+    structures into the asynchronous workers.
 
     Use dataclasses instead of a named tuple because named tuples are
     immutable and we want to keep track of the number of failures with any
