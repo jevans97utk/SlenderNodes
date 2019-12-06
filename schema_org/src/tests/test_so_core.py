@@ -708,7 +708,7 @@ class TestSuite(TestCommon):
 
             # Did we see at least one information message?
             log_msg_count = self.logLevelCallCount(cm.output, level='INFO')
-            self.assertTrue(log_msg_count > 1)
+            self.assertTrue(log_msg_count > 0)
 
             # Did we increase the update count?
             self.assertEqual(harvester.updated_count, update_count + 1)

@@ -156,6 +156,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
         last_modified : datetime or None
         doc : ElementTree
         """
+        self.logger.info(f"Retrieving landing page {landing_page_url}")
         content, _ = await self.retrieve_url(landing_page_url)
         html = content.decode('utf-8')
         doc = lxml.etree.HTML(content)
@@ -192,6 +193,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
 
         dateModified = sotools.common.getDateModified(g)
 
+        self.logger.info(f"Retrieving XML metadata document {metadata_url}")
         doc = await self.retrieve_metadata_document(metadata_url)
 
         self.logger.debug(f"Record version (pid): {pid}")

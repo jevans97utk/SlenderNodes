@@ -870,7 +870,7 @@ class CoreHarvester(object):
         -------
         Binary contents of the body of the response object, response headers
         """
-        self.logger.info(f'Retrieving URL {url}')
+        self.logger.debug(f'Retrieving URL {url}')
 
         headers = {
             'User-Agent': 'DataONE adapter for schema.org harvest',
@@ -936,11 +936,11 @@ class CoreHarvester(object):
 
         Returns
         -------
-        The ElementTree document.
+        the ElementTree object corresponding to the XML document
         """
-        msg = f'requesting {metadata_url}'
-        self.logger.info(msg)
-        # Retrieve the metadata document.
+        msg = f'Requesting metadata URL {metadata_url}'
+        self.logger.debug(msg)
+
         content, _ = await self.retrieve_url(metadata_url)
 
         try:
@@ -971,10 +971,10 @@ class CoreHarvester(object):
         while True:
             try:
                 job = await sitemap_queue.get()
+                self.logger.debug(f"sitemap_consumer[{idx}] ==>  {job.url}")
                 msg = (
-                    f"sitemap_consumer[{idx}] ==>  {job.url}, "
-                    f"{job.lastmod}:  "
-                    f"job failure count = {job.num_failures}, "
+                    f"last mod = {job.lastmod}:  "
+                    f"num failures so far = {job.num_failures}, "
                     f"queue size = {sitemap_queue.qsize()}"
                 )
                 self.logger.info(msg)
