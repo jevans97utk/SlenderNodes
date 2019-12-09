@@ -15,7 +15,7 @@ from .check_sitemap import D1CheckSitemap
 from .xml_validator import XMLValidator
 
 
-def setup_common_parser(id):
+def setup_common_parser(description=None, epilog=None):
     """
     All the harvesters use a common parser.
 
@@ -23,13 +23,10 @@ def setup_common_parser(id):
     ----------
     id : str
         Name of the harvester, i.e. "arm" or "ieda".
+    epilog : str
+        Additional description for the utility.
     """
 
-    description = f"Harvest metadata from {id.upper()}."
-    epilog = (
-        "Not supplying an argument to both the certificate and key arguments "
-        "will disable client side authentication."
-    )
     parser = argparse.ArgumentParser(
         description=description,
         epilog=epilog,
@@ -64,7 +61,7 @@ def setup_common_parser(id):
     return parser
 
 
-def add_harvesting_options(parser):
+def add_harvesting_options(parser, id):
     """
     These are options that only make sense for actual harvesters, such as ARM.
     They do not make sense for utilities that do not perform harvesting, such
@@ -101,10 +98,17 @@ def add_harvesting_options(parser):
     help = 'Path to dataone host client-side key.'
     parser.add_argument('--private-key', default=None, help=help)
 
+    parser.description = f"Harvest metadata from {id.upper()}."
+    parser.epilog = (
+        "Not supplying an argument to both the certificate and key arguments "
+        "will disable client side authentication."
+    )
+
 
 def d1_check_site():
 
-    parser = setup_common_parser("site-checker")
+    description = "Crawl a sitemap, check metadata for validity."
+    parser = setup_common_parser(description=description)
 
     help = "URL of site map"
     parser.add_argument('sitemap_url', type=str, help=help)
@@ -116,8 +120,9 @@ def d1_check_site():
 
 
 def abds_ipt():
-    parser = setup_common_parser("abds_ipt")
-    add_harvesting_options(parser)
+
+    parser = setup_common_parser()
+    add_harvesting_options(parser, "abds_ipt")
 
     args = parser.parse_args()
 
@@ -126,8 +131,8 @@ def abds_ipt():
 
 
 def arm():
-    parser = setup_common_parser("arm")
-    add_harvesting_options(parser)
+    parser = setup_common_parser()
+    add_harvesting_options(parser, "arm")
 
     args = parser.parse_args()
 
@@ -136,8 +141,8 @@ def arm():
 
 
 def cuahsi():
-    parser = setup_common_parser("cuahsi")
-    add_harvesting_options(parser)
+    parser = setup_common_parser()
+    add_harvesting_options(parser, "cuahsi")
 
     args = parser.parse_args()
 
@@ -146,8 +151,8 @@ def cuahsi():
 
 
 def ieda():
-    parser = setup_common_parser("ieda")
-    add_harvesting_options(parser)
+    parser = setup_common_parser()
+    add_harvesting_options(parser, "ieda")
 
     args = parser.parse_args()
 
@@ -156,8 +161,8 @@ def ieda():
 
 
 def nkn():
-    parser = setup_common_parser("nkn")
-    add_harvesting_options(parser)
+    parser = setup_common_parser()
+    add_harvesting_options(parser, "nkn")
 
     args = parser.parse_args()
 
