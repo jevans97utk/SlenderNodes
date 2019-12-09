@@ -15,9 +15,9 @@ from .check_sitemap import D1CheckSitemap
 from .xml_validator import XMLValidator
 
 
-def setup_common_parser(description=None, epilog=None):
+def setup_common_parser(id, description=None, epilog=None):
     """
-    All the harvesters use a common parser.
+    All the harvesters and utilities use a common parser.
 
     Parameters
     ----------
@@ -107,8 +107,9 @@ def add_harvesting_options(parser, id):
 
 def d1_check_site():
 
+    id = 'site-checker'
     description = "Crawl a sitemap, check metadata for validity."
-    parser = setup_common_parser(description=description)
+    parser = setup_common_parser(id, description=description)
 
     help = "URL of site map"
     parser.add_argument('sitemap_url', type=str, help=help)
@@ -121,8 +122,9 @@ def d1_check_site():
 
 def abds_ipt():
 
-    parser = setup_common_parser()
-    add_harvesting_options(parser, "abds_ipt")
+    id = "abds_ipt"
+    parser = setup_common_parser(id)
+    add_harvesting_options(parser, id)
 
     args = parser.parse_args()
 
@@ -131,8 +133,10 @@ def abds_ipt():
 
 
 def arm():
-    parser = setup_common_parser()
-    add_harvesting_options(parser, "arm")
+
+    id = "arm"
+    parser = setup_common_parser(id)
+    add_harvesting_options(parser, id)
 
     args = parser.parse_args()
 
@@ -141,8 +145,10 @@ def arm():
 
 
 def cuahsi():
-    parser = setup_common_parser()
-    add_harvesting_options(parser, "cuahsi")
+
+    id = "cuahsi"
+    parser = setup_common_parser(id)
+    add_harvesting_options(parser, id)
 
     args = parser.parse_args()
 
@@ -151,8 +157,10 @@ def cuahsi():
 
 
 def ieda():
-    parser = setup_common_parser()
-    add_harvesting_options(parser, "ieda")
+
+    id = "ieda"
+    parser = setup_common_parser(id)
+    add_harvesting_options(parser, id)
 
     args = parser.parse_args()
 
@@ -161,8 +169,10 @@ def ieda():
 
 
 def nkn():
-    parser = setup_common_parser()
-    add_harvesting_options(parser, "nkn")
+
+    id = "nkn"
+    parser = setup_common_parser(id)
+    add_harvesting_options(parser, id)
 
     args = parser.parse_args()
 
