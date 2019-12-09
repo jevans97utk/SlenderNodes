@@ -61,6 +61,16 @@ def setup_common_parser(id):
     )
     parser.add_argument('--max-num-errors', type=int, default=1, help=help)
 
+    return parser
+
+
+def add_harvesting_options(parser):
+    """
+    These are options that only make sense for actual harvesters, such as ARM.
+    They do not make sense for utilities that do not perform harvesting, such
+    as the sitemap checker.
+    """
+
     help = (
         "Ignore the last harvest time.  Use this switch to attempt to "
         "harvest records that may have failed for some reason on a recent "
@@ -78,17 +88,6 @@ def setup_common_parser(id):
 
     help = "Retry a failed record this number of times."
     parser.add_argument('--retry', type=int, default=1, help=help)
-    return parser
-
-
-def add_member_node_parser_options(parser):
-    """
-    All the harvesters use a common parser.
-
-    Parameters
-    ----------
-    parser : argparse.ArgumentParser
-    """
 
     help = "Harvest records to this DataOne member node."
     parser.add_argument('--host', default='localhost', help=help)
@@ -118,7 +117,7 @@ def d1_check_site():
 
 def abds_ipt():
     parser = setup_common_parser("abds_ipt")
-    add_member_node_parser_options(parser)
+    add_harvesting_options(parser)
 
     args = parser.parse_args()
 
@@ -128,7 +127,7 @@ def abds_ipt():
 
 def arm():
     parser = setup_common_parser("arm")
-    add_member_node_parser_options(parser)
+    add_harvesting_options(parser)
 
     args = parser.parse_args()
 
@@ -138,7 +137,7 @@ def arm():
 
 def cuahsi():
     parser = setup_common_parser("cuahsi")
-    add_member_node_parser_options(parser)
+    add_harvesting_options(parser)
 
     args = parser.parse_args()
 
@@ -148,7 +147,7 @@ def cuahsi():
 
 def ieda():
     parser = setup_common_parser("ieda")
-    add_member_node_parser_options(parser)
+    add_harvesting_options(parser)
 
     args = parser.parse_args()
 
@@ -158,7 +157,7 @@ def ieda():
 
 def nkn():
     parser = setup_common_parser("nkn")
-    add_member_node_parser_options(parser)
+    add_harvesting_options(parser)
 
     args = parser.parse_args()
 

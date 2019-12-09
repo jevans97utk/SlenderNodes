@@ -1,3 +1,2 @@
-from . import sotools
-from . import arm, ieda, commandline
-from .check_sitemap import D1CheckSitemap
+from . import sotools, arm, ieda, commandline  # noqa : E501
+from .check_sitemap import D1CheckSitemap  # noqa : E501

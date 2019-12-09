@@ -1053,7 +1053,7 @@ class CoreHarvester(object):
         """
         self.logger.debug(f'process_job:  starting')
 
-        series_id, version_id, lastmod, doc = await self.retrieve_record(job.url)
+        series_id, pid, lastmod, doc = await self.retrieve_record(job.url)
         if lastmod is not None:
             # If dateModified was found in the JSON-LD, then it trumps the
             # lastmod value found in the sitemap.
@@ -1062,7 +1062,7 @@ class CoreHarvester(object):
         job.identifier = series_id
         self.validate_document(doc)
 
-        await self.harvest_document(series_id, version_id, doc, job.lastmod)
+        await self.harvest_document(series_id, pid, doc, job.lastmod)
 
         self.logger.debug(f'process_job:  finished')
 
