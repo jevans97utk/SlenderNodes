@@ -30,7 +30,7 @@ kwargs = {
     'author_email': 'developers@dataone.org',
     'url': 'https://github.com/DataONEorg/d1_python',
     'license': 'Apache License, Version 2.0',
-    'packages': ['schema_org', 'schema_org.data'],
+    'packages': ['schema_org', 'schema_org.data', 'schema_org.sotools'],
     'package_data': {'schema_org': ['data/*.ttl']},
     'classifiers': [
         'Development Status :: 5 - Production/Stable',
