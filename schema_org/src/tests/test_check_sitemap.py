@@ -218,6 +218,7 @@ class TestSuite(TestCommon):
         with self.assertLogs(logger=obj.logger, level='DEBUG') as cm:
             asyncio.run(obj.run())
 
+            print('\n'.join(cm.output))
             self.assertErrorLogMessage(cm.output, "Bad Request")
             self.assertSuccessfulDebugIngest(cm.output)
 

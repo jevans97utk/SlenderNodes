@@ -38,7 +38,20 @@ class JSONLD_Validator(object):
         self.id = id
         self.logger = logger
 
-        self.shacl_graph_src = ir.read_text('schema_org.data', 'shacl.ttl')
+        primary_txt = ir.read_text('schema_org.data', 'shacl.ttl')
+
+        txt = ir.read_text('schema_org.data', 'namespace.ttl')
+        if self.id == 'arm':
+            # Grandfather ARM in here.  They technically get the namespace
+            # bad, but we didn't catch that at first.
+            namespace_txt = txt.format(namespace_severity='sh:Warning')
+        else:
+            namespace_txt = txt.format(namespace_severity='sh:Violation')
+
+        # Join them together.  If we were to use the format method on the text
+        # from a single file, the "primary" text would have to be altered as
+        # well.
+        self.shacl_graph_src = '\n'.join([primary_txt, namespace_txt])
 
     def pre_shacl_checks(self, j):
         """
@@ -165,8 +178,12 @@ class JSONLD_Validator(object):
             if 'sh:Warning' in report['Severity']:
                 self.logger.warning(report['Message'])
             else:
-                error_count += 1
                 self.logger.error(report['Message'])
+                error_count += 1
+
+                # Sometimes this can provide useful information.
+                if report['Value Node'] is not None:
+                    self.logger.error(report['Value Node'])
 
         if error_count > 0:
             raise JsonLdError("JSON-LD does not conform.")
@@ -207,42 +224,98 @@ class JSONLD_Validator(object):
 
             d = {}
 
-            try:
-                value_node = [
-                    line.strip() for line in item.splitlines()
-                    if 'Value Node:' in line
-                ][0]
-                value_node = ' '.join(value_node.split(' ')[2:])
-            except IndexError:
-                d['Value Node'] = ''
-            else:
-                d['Value Node'] = value_node
-
-            message = [
-                line.strip() for line in item.splitlines()
-                if 'Message:' in line
-            ][0]
-            message = ' '.join(message.split(' ')[1:])
-            d['Message'] = message
-
-            severity = [
-                line.strip() for line in item.splitlines()
-                if 'Severity:' in line
-            ]
-            severity = ' '.join(severity[0].split(' ')[1:])
-            d['Severity'] = severity
-
-            result_path = [
-                line.strip() for line in item.splitlines()
-                if 'Result Path:' in line
-            ]
-            result_path = ' '.join(result_path[0].split(' ')[2:])
-            d['Result Path'] = result_path
-
-            # The Message field will be an amalgamation.
-            if d['Value Node'] != '':
-                d['Message'] += f"  The value found was {d['Value Node']}"
+            d['Value Node'] = self._parse_value_node(item)
+            d['Message'] = self._parse_message(item)
+            d['Severity'] = self._parse_severity(item)
+            d['Result Path'] = self._parse_result_path(item)
 
             reports.append(d)
 
         return reports
+
+    def _parse_severity(self, text):
+        """
+        If possible, parse the Severity item from the report text
+
+        Parameters
+        ----------
+        text : str
+            text describing the violation raised by SHACL
+    
+        Returns
+        -------
+        the severity text
+        """
+        severity = [
+            line.strip() for line in text.splitlines()
+            if 'Severity:' in line
+        ]
+        severity = ' '.join(severity[0].split(' ')[1:])
+        return severity
+
+    def _parse_message(self, text):
+        """
+        If possible, parse the Message item from the report text
+
+        Parameters
+        ----------
+        text : str
+            text describing the violation raised by SHACL
+        """
+        message = [
+            line.strip() for line in text.splitlines()
+            if 'Message:' in line
+        ][0]
+        message = ' '.join(message.split(' ')[1:])
+
+        return message
+
+    def _parse_value_node(self, text):
+        """
+        If possible, parse the Value Node item from the report text
+
+        Parameters
+        ----------
+        text : str
+            text describing the violation raised by SHACL
+
+        Returns
+        -------
+        the value node text
+        """
+        try:
+            value_node = [
+                line.strip() for line in text.splitlines()
+                if 'Value Node:' in line
+            ][0]
+            value_node = ' '.join(value_node.split(' ')[2:])
+        except IndexError:
+            value_node = None
+
+        return value_node
+
+    def _parse_result_path(self, text):
+        """
+        If possible, parse the path of the node that triggered the error.
+
+        Parameters
+        ----------
+        text : str
+            text describing the violation raised by SHACL
+
+        Returns
+        -------
+        the text describing the Result Path
+        """
+        result_path = [
+            line.strip() for line in text.splitlines()
+            if 'Result Path:' in line
+        ]
+        try:
+            result_path = ' '.join(result_path[0].split(' ')[2:])
+        except IndexError:
+            # "Result Path" was not in the text.
+            result_path = ''
+        
+        return result_path
+

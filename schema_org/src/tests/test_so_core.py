@@ -234,7 +234,7 @@ class TestSuite(TestCommon):
         mock_check_if_identifier_exists.return_value = {'outcome': 'no'}
         mock_load_science_metadata.return_value = True
 
-        harvester = SchemaDotOrgHarvester(host='test.arm.gov')
+        harvester = SchemaDotOrgHarvester(id='arm', host='test.arm.gov')
         harvester.sitemap_url = 'https://www.archive.arm.gov/metadata/adc/sitemap.xml'  # noqa: E501
 
         # External calls to read the:

@@ -34,6 +34,29 @@ class TestSuite(TestCommon):
                             level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
 
+    def test__so_namespace_missing_trailing_slash(self):
+        """
+        SCENARIO:  The SO namespace is "https://schema.org", lacking the
+        trailing slash.
+
+        EXPECTED RESULT.  A RuntimeError is issued.
+        """
+        text = """
+        {
+            "@context": {
+              "@vocab": "https://schema.org"
+            },
+            "@id": "http://dx.doi.org/10.5439/1027372",
+            "@type":"Dataset",
+            "name": "https, no trailing slash"
+        }
+        """
+        j = json.loads(text)
+
+        v = JSONLD_Validator(logger=self.logger)
+        with self.assertRaises(RuntimeError):
+            v.check(j)
+
     def test_missing_top_level_type_key(self):
         """
         SCENARIO:  The JSON-LD does not have the '@type': 'Dataset' keypair.
