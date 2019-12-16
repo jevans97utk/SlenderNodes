@@ -136,6 +136,7 @@ class JSONLD_Validator(object):
         j : dict
             JSON extracted from a landing page <SCRIPT> element.
         """
+        breakpoint()
         self.logger.debug(f'{__name__}:check_shacl')
         pyshacl.monkey.apply_patches()
 

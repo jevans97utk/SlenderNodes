@@ -7,3 +7,12 @@ d1:DatasetBad1Shape
         sh:path rdf:type ;
         sh:minCount 1;
     ].
+d1:DatasetBad2Shape
+    a sh:NodeShape ;
+    sh:targetClass <http://schema.org/Dataset> ;
+    sh:severity {namespace_severity} ;
+    sh:message "Expecting SO namespace of <https://schema.org/> not <http://schema.org/>" ;
+    sh:not [
+        sh:path rdf:type ;
+        sh:minCount 1;
+    ].
