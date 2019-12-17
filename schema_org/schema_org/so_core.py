@@ -11,7 +11,7 @@ import re
 import lxml.etree
 
 # Local imports
-from .core import CoreHarvester, NO_JSON_LD_SCRIPT_ELEMENTS
+from .core import CoreHarvester, NO_JSON_LD_SCRIPT_ELEMENTS, SkipError
 from .jsonld_validator import JSONLD_Validator, JsonLdError
 from . import sotools
 
@@ -167,6 +167,11 @@ class SchemaDotOrgHarvester(CoreHarvester):
 
         g = sotools.common.loadSOGraphFromHtml(html, landing_page_url)
         mlinks = sotools.common.getDatasetMetadataLinks(g)
+        if len(mlinks) == 0:
+            mlinks = sotools.common.getDatasetMetadataLinksFromSubjectOf(g)
+            if len(mlinks) == 0:
+                msg = f"Unable to extract metadata links from {landing_page_url}."
+                raise RuntimeError(msg)
 
         # extract the XML metadata URL
         metadata_url = mlinks[0]['contentUrl']

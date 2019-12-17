@@ -415,6 +415,78 @@ def getDatasetMetadataLinksFromEncoding(g):
     return res
 
 
+def _getDatasetMetadataLinksFromSubjectOf_creative_work(g):
+    q = (
+        SPARQL_PREFIXES
+        + """
+        SELECT ?dateModified ?encodingFormat ?contentUrl ?description ?additionalDatatype ?about
+        WHERE {
+            ?about rdf:type SO:Dataset .
+            ?about SO:subjectOf ?y .
+            ?y SO:url ?contentUrl .
+            ?y SO:encodingFormat ?encodingFormat .
+            OPTIONAL {
+              ?y SO:dateModified ?dateModified .
+            } .    
+            OPTIONAL {
+              ?y SO:description ?description .
+            } .    
+            OPTIONAL {
+                ?y SO:additionalType ?additionalType .
+            } .
+        }
+        """
+    )
+
+    qres = g.query(q)
+    res = _extract_DatasetMetadataLinksFromSubjectOf(qres)
+    return res
+
+
+def _getDatasetMetadataLinksFromSubjectOf_datadownload(g):
+    q = (
+        SPARQL_PREFIXES
+        + """
+        SELECT ?dateModified ?encodingFormat ?contentUrl ?description ?additionalType ?about
+        WHERE {
+            ?about rdf:type SO:Dataset .
+            ?about SO:subjectOf ?y .
+            ?y rdf:type SO:DataDownload .
+            ?y SO:encodingFormat ?encodingFormat .
+            ?y SO:contentUrl ?contentUrl .
+            OPTIONAL {
+                ?y SO:description ?description .
+            } .
+            OPTIONAL {
+                ?y SO:dateModified ?dateModified .
+            } .
+            OPTIONAL {
+                ?y SO:additionalType ?additionalType .
+            } .
+        }
+        """
+    )
+
+    qres = g.query(q)
+    res = _extract_DatasetMetadataLinksFromSubjectOf(qres)
+    return res
+
+def _extract_DatasetMetadataLinksFromSubjectOf(qres):
+    res = []
+    for item in qres:
+        encodingFormat = str(item[1])
+        if encodingFormat == 'application/xml':
+            encodingFormat = str(item[4])
+        entry = {
+            "dateModified": item[0],
+            "encodingFormat": encodingFormat,
+            "contentUrl": str(item[2]),
+            "description": str(item[3]),
+            "subjectOf": str(item[5]),
+        }
+        res.append(entry)
+    return res
+
 def getDatasetMetadataLinksFromSubjectOf(g):
     """
     Extract list of metadata links from SO.Dataset.subjectOf
@@ -429,33 +501,14 @@ def getDatasetMetadataLinksFromSubjectOf(g):
 
     .. jupyter-execute:: examples/code/eg_metadatalinks_subjectof.py
     """
-    q = (
-        SPARQL_PREFIXES
-        + """
-    SELECT ?dateModified ?encodingFormat ?url ?description ?about
-    WHERE {
-        ?about rdf:type SO:Dataset .
-        ?about SO:subjectOf ?y .
-        ?y SO:url ?url .
-        ?y SO:encodingFormat ?encodingFormat .
-        OPTIONAL {
-          ?y SO:dateModified ?dateModified .
-          ?y SO:description ?description .
-        }    
-    }
-    """
-    )
-    res = []
-    qres = g.query(q)
-    for item in qres:
-        entry = {
-            "dateModified": item[0],
-            "encodingFormat": str(item[1]),
-            "contentUrl": str(item[2]),
-            "description": str(item[3]),
-            "subjectOf": str(item[4]),
-        }
-        res.append(entry)
+    # In a perfect world populated by people genetically and intellectually
+    # superior to this guy, this could be done with a single SPARQL query.
+    # I am not smart enough to do that.
+    res = _getDatasetMetadataLinksFromSubjectOf_creative_work(g)
+    if len(res) > 0:
+        return res
+
+    res = _getDatasetMetadataLinksFromSubjectOf_datadownload(g)
     return res
 
 

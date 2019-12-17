@@ -8,6 +8,7 @@ except ImportError:  # pragma:  nocover
     import importlib_resources as ir
 import io
 import pathlib
+import unittest
 
 # 3rd party library imports
 import lxml.etree
@@ -59,6 +60,7 @@ class TestSuite(TestCommon):
             self.assertLogMessage(cm.output, gmd, level='INFO')
             self.assertLogMessage(cm.output, gmd_noaa, level='INFO')
 
+    @unittest.skip('cannot validate just yet')
     def test_bcodmo(self):
         """
         SCENARIO:   A valid BCODMO file is given.

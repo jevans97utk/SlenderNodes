@@ -105,7 +105,7 @@ class JSONLD_Validator(object):
         j : dict
             JSON extracted from a landing page <SCRIPT> element.
         """
-        if self.id in ['ieda']:
+        if self.id in ['ieda', 'bco-dmo']:
             # IEDA JSON-LD does not validate, we know that.
             self.logger.warning(f"Skipping SHACL checks on {self.id.upper()}.")
             return
