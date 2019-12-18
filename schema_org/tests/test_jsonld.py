@@ -38,7 +38,7 @@ class TestSuite(TestCommon):
         """
         SCENARIO:  we have BCO-DMO-style SO content.
 
-        EXPECTED RESULT:  so_core.SOFlavor.BCO_DMO
+        EXPECTED RESULT:  The flavor is identifies as so_core.SOFlavor.BCO_DMO
         """
         v = JSONLD_Validator(logger=self.logger)
 
@@ -47,6 +47,19 @@ class TestSuite(TestCommon):
 
         flavor = v.get_so_flavor(j)
         self.assertEqual(flavor, SOFlavor.BCO_DMO)
+
+    def test_bcodmo(self):
+        """
+        SCENARIO:  we have BCO-DMO-style SO content.
+
+        EXPECTED RESULT:  It validates.
+        """
+        v = JSONLD_Validator(logger=self.logger)
+
+        text = ir.read_text('tests.data.bcodmo.559701', 'so.json')
+        j = json.loads(text)
+        v.check(j)
+        self.assertTrue(True)
 
     def test_flavor_is_arm(self):
         """

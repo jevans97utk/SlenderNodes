@@ -50,7 +50,14 @@ class JSONLD_Validator(object):
         self.id = id
         self.logger = logger
 
-        self.shacl_graph_src = ir.read_text('schema_org.data', 'shacl.ttl')
+        # There are two flavors of SO content and we have different SHACL
+        # constraints for them.
+        self.encoding_shacl_graph_src = ir.read_text(
+            'schema_org.data', 'shacl.ttl'
+        )
+        self.subjectOf_shacl_graph_src = ir.read_text(
+            'schema_org.data', 'shacl_dataset_subjectof.ttl'
+        )
 
     def get_so_flavor(self, j):
         """
@@ -159,15 +166,22 @@ class JSONLD_Validator(object):
                                                       rdf_format='json-ld',
                                                       do_owl_imports=False)
 
-        shacl_graph = pyshacl.rdfutil.load_from_source(self.shacl_graph_src,
+        options = {
+            'inference': 'rdfs',
+            'abort_on_error': False
+        }
+
+        if self.get_so_flavor(j) == SOFlavor.ARM:
+            source = self.encoding_shacl_graph_src
+        else:
+            source = self.subjectOf_shacl_graph_src
+            options['advanced'] = True
+
+        shacl_graph = pyshacl.rdfutil.load_from_source(source,
                                                        rdf_format='turtle',
                                                        do_owl_imports=False)
 
         try:
-            options = {
-                'inference': 'rdfs',
-                'abort_on_error': False
-            }
             validator = Validator(data_graph,
                                   shacl_graph=shacl_graph,
                                   options=options)
