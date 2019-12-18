@@ -60,7 +60,7 @@ class TestSuite(TestCommon):
             self.assertLogMessage(cm.output, gmd, level='INFO')
             self.assertLogMessage(cm.output, gmd_noaa, level='INFO')
 
-    @unittest.skip('cannot validate just yet')
+    # @unittest.skip('cannot validate just yet')
     def test_bcodmo(self):
         """
         SCENARIO:   A valid BCODMO file is given.
