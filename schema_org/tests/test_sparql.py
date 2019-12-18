@@ -196,7 +196,6 @@ class TestSuite(unittest.TestCase):
         g = sotools.common.loadSOGraphFromHtml(html, landing_page_url)
         mlinks = sotools.common.getDatasetMetadataLinks(g)
 
-
         expected = 'https://my.server.org/data/ds-02/metadata.xml'
         self.assertEqual(mlinks[0]['contentUrl'], expected)
 
@@ -207,6 +206,6 @@ class TestSuite(unittest.TestCase):
 
         actual = set([mlinks[0]['encodingFormat'],
                       mlinks[1]['encodingFormat']])
-        expected = set(['application/rdf+xml',
+        expected = set(['None',
                         'http://ns.dataone.org/metadata/schema/onedcx/v1.0'])
         self.assertEqual(actual, expected)

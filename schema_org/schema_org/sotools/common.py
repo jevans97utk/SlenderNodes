@@ -6,6 +6,7 @@ import datetime as dt
 import io
 import json
 import logging
+import mimetypes
 import re
 
 import dateutil.parser
@@ -16,6 +17,10 @@ from rdflib.tools import rdf2dot
 import graphviz
 import requests
 from extruct.jsonld import JsonLdExtractor
+
+# Add one mimetype to the global map.
+mimetypes.init()
+mimetypes.add_type('application/rdf+xml', '.rdf')
 
 SCHEMA_ORG = "https://schema.org/"
 SO_PREFIX = "SO"
@@ -472,11 +477,21 @@ def _getDatasetMetadataLinksFromSubjectOf_datadownload(g):
     return res
 
 def _extract_DatasetMetadataLinksFromSubjectOf(qres):
+    """
+    We have a result set from the getDatasetMetadataLinksFromSubject query.  We
+    need to post process it to extract the proper information out of it.  In
+    particular, the encodingFormat value that we want might be either in the
+    encodingFormat field or in the additionalDatatype field.
+    """
     res = []
     for item in qres:
         encodingFormat = str(item[1])
-        if encodingFormat == 'application/xml':
+
+        # If the encodingFormat is a mime type, then that's a hint that the
+        # value we really want was in the "additionalType"
+        if encodingFormat in mimetypes.types_map.values():
             encodingFormat = str(item[4])
+
         entry = {
             "dateModified": item[0],
             "encodingFormat": encodingFormat,
