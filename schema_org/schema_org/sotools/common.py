@@ -527,6 +527,25 @@ def getDatasetMetadataLinksFromSubjectOf(g):
     return res
 
 
+def getFlavorSO(g, SOFlavor):
+    """
+    Determine the "flavor" of the SO content.
+
+    Args:
+        g(Graph): Graph containing an ``SO:Dataset``
+
+    Returns:
+        Enumerated constant corresponding to the flavor.
+    """
+    # This gets info from BCO-DMO style content.
+    res = _getDatasetMetadataLinksFromSubjectOf_datadownload(g)
+    if len(res) > 0:
+        return SOFlavor.BCO_DMO
+    else:
+        #  So the default will be ARM.
+        return SOFlavor.ARM
+
+
 def getDatasetMetadataLinksFromAbout(g):
     """
     Extract a list of metadata links SO:about(SO:Dataset)

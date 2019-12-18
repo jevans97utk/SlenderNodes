@@ -1,4 +1,5 @@
 # Standard library imports
+from enum import Enum
 import importlib.resources as ir
 import json
 import urllib.parse
@@ -9,6 +10,17 @@ import pyshacl.rdfutil
 import pyshacl.monkey
 
 # Local imports
+from . import sotools
+
+
+class SOFlavor(Enum):
+    """
+    There are two recognized "flavors" of Schema.org content.  ARM style has
+    the necessary details in either the top level or the "encoding" element,
+    while BCO-DMO style has details in the subjectOf element.
+    """
+    ARM = 1
+    BCO_DMO = 2
 
 
 class JsonLdError(RuntimeError):
@@ -40,13 +52,29 @@ class JSONLD_Validator(object):
 
         self.shacl_graph_src = ir.read_text('schema_org.data', 'shacl.ttl')
 
+    def get_so_flavor(self, j):
+        """
+        Determine the "flavor" of the SO content.
+
+        Parameters
+        ----------
+        j : obj
+            JSON extracted from a landing page <SCRIPT> element.
+
+        Returns
+        -------
+        Either SOFlavor.ARM or SOFlavor.BCO_DMO
+        """
+        g = sotools.loadSOGraph(data=json.dumps(j))
+        return sotools.getFlavorSO(g, SOFlavor)
+
     def pre_shacl_checks(self, j):
         """
         Run JSON-LD compliance checks that do not include SHACL.
 
         Parameters
         ----------
-        j : dict
+        j : obj
             JSON extracted from a landing page <SCRIPT> element.
         """
         self.logger.debug(f'{__name__}:pre_shacl_checks')
