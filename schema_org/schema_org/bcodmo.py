@@ -15,6 +15,7 @@ SID (series ID):
 # Standard library imports
 
 # Local imports
+from .core import ISO_NSMAP
 from .so_core import SchemaDotOrgHarvester
 
 

@@ -103,7 +103,7 @@ class TestSuite(TestCommon):
                 awaitable = harvester.retrieve_record(landing_page_url)
                 sid, pid, dateMod, doc = asyncio.run(awaitable)
 
-        self.assertEqual(sid, "doi:10.5439/1150280")
+        self.assertEqual(sid, "http://dx.doi.org/10.5439/1150280")
         self.assertIsNone(pid)
 
         expected = dt.datetime(2019, 11, 25, 16, 0, 21, 746316,
@@ -115,44 +115,6 @@ class TestSuite(TestCommon):
         bf = io.BytesIO(contents[1])
         expected = lxml.etree.tostring(lxml.etree.parse(bf))
         self.assertEqual(actual, expected)
-
-    def test__retrieve_record__bad_series_identifier(self):
-        """
-        SCENARIO:  We have a valid landing page URL but the JSON-LD document
-        has a series identifier that is not in the format that we want.
-
-        EXPECTED RESULT:  RuntimeError
-        """
-        landing_page_url = (
-            'https://www.archive.arm.gov/metadata/adc/html/wsacrcrcal.html'
-        )
-
-        harvester = SchemaDotOrgHarvester()
-
-        # External calls to read the:
-        #
-        #   2) HTML document for the landing page
-        #   3) XML document associated with the landing page
-        #
-        contents = [
-            ir.read_binary('tests.data.arm', 'wsacrcrcal.bad_series_id.html'),
-            ir.read_binary('tests.data.arm', 'wsacrcrcal.xml'),
-        ]
-        status_codes = [200, 200, 200]
-        headers = [
-            {'Content-Type': 'text/html'},
-            {'Content-Type': 'application/xml'},
-        ]
-
-        z = zip(contents, status_codes, headers)
-        with aioresponses() as m:
-            for content, status_code, headers in z:
-                m.get(self.regex,
-                      body=content, status=status_code, headers=headers)
-
-            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
-                with self.assertRaises(RuntimeError):
-                    asyncio.run(harvester.retrieve_record(landing_page_url))
 
     def test_jsonld_script_element_is_first(self):
         """
@@ -185,34 +147,6 @@ class TestSuite(TestCommon):
         harvester = SchemaDotOrgHarvester()
         j = harvester.get_jsonld(doc)
         self.assertEqual(j['@type'], 'Dataset')
-
-    @patch('schema_org.core.logging.getLogger')
-    def test_identifier_parsing(self, mock_logger):
-        """
-        SCENARIO:  The @id field from the JSON-LD must be parsed, we are
-        presented with http://dx.doi.org/10.5439/1027257.
-
-        EXPECTED RESULT:  The ID "10.5439/1027257" is returned.
-        """
-        jsonld = {'@id': 'http://dx.doi.org/10.5439/1027257'}
-        harvester = SchemaDotOrgHarvester()
-        identifier = harvester.extract_series_identifier(jsonld)
-
-        self.assertEqual(identifier, 'doi:10.5439/1027257')
-
-    @patch('schema_org.core.logging.getLogger')
-    def test_identifier_parsing_error(self, mock_logger):
-        """
-        SCENARIO:  The @id field from the JSON-LD must be parsed, but the given
-        field is bad.
-
-        EXPECTED RESULT:  A RuntimeError is raised.
-        """
-        jsonld = {'@id': 'http://dx.doi.orggg/10.5439/1027257'}
-        harvester = SchemaDotOrgHarvester()
-
-        with self.assertRaises(RuntimeError):
-            harvester.extract_series_identifier(jsonld)
 
     @patch('schema_org.d1_client_manager.D1ClientManager.load_science_metadata')  # noqa: E501
     @patch('schema_org.d1_client_manager.D1ClientManager.check_if_identifier_exists')  # noqa: E501
@@ -270,7 +204,7 @@ class TestSuite(TestCommon):
                 expected = "Successfully processed 1 records."
                 self.assertInfoLogMessage(cm.output, expected)
 
-                exp = 'Created a new object identified as doi:10.5439/1027370'
+                exp = 'Created a new object identified as http://dx.doi.org/10.5439/1027370'
                 self.assertInfoLogMessage(cm.output, exp)
 
         # Verify that we kept track of that single sitemap.
@@ -455,9 +389,8 @@ class TestSuite(TestCommon):
         EXPECTED RESULT:  RuntimeError
         """
         harvester = SchemaDotOrgHarvester()
-        jsonld = {'@id': " doi:10.15784/601015"}
         with self.assertRaises(RuntimeError):
-            harvester.extract_series_identifier(jsonld)
+            harvester.extract_series_identifier(" doi:10.15784/601015")
 
     def test_metadata_document_retrieval(self):
         """

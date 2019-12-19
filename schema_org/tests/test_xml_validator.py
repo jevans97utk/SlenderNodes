@@ -75,7 +75,6 @@ class TestSuite(TestCommon):
 
         with self.assertLogs(logger=validator.logger, level='INFO') as cm:
             validator.validate(path, format_id=gmd_noaa)
-            print('\n'.join(cm.output))
 
             self.assertErrorLogCallCount(cm.output, n=0)
             self.assertLogMessage(cm.output, gmd_noaa, level='INFO')

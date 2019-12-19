@@ -363,3 +363,71 @@ class TestSuite(TestCommon):
                 self.assertErrorLogMessage(cm.output, "Bad Request")
 
         self.assertEqual(harvester.failed_count, failed_count + 1)
+
+    def test__retrieve_record__bad_series_identifier(self):
+        """
+        SCENARIO:  We have a valid landing page URL but the JSON-LD document
+        has a series identifier that is not in the format that we want.
+
+        EXPECTED RESULT:  RuntimeError
+        """
+        landing_page_url = (
+            'https://www.archive.arm.gov/metadata/adc/html/wsacrcrcal.html'
+        )
+
+        harvester = ARMHarvester()
+
+        # External calls to read the:
+        #
+        #   2) HTML document for the landing page
+        #   3) XML document associated with the landing page
+        #
+        contents = [
+            ir.read_binary('tests.data.arm', 'wsacrcrcal.bad_series_id.html'),
+            ir.read_binary('tests.data.arm', 'wsacrcrcal.xml'),
+        ]
+        status_codes = [200, 200, 200]
+        headers = [
+            {'Content-Type': 'text/html'},
+            {'Content-Type': 'application/xml'},
+        ]
+
+        z = zip(contents, status_codes, headers)
+        with aioresponses() as m:
+            for content, status_code, headers in z:
+                m.get(self.regex,
+                      body=content, status=status_code, headers=headers)
+
+            with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                with self.assertRaises(RuntimeError):
+                    asyncio.run(harvester.retrieve_record(landing_page_url))
+
+    @patch('schema_org.core.logging.getLogger')
+    def test_identifier_parsing_error(self, mock_logger):
+        """
+        SCENARIO:  The @id field from the JSON-LD must be parsed, but the given
+        field is bad.
+
+        EXPECTED RESULT:  A RuntimeError is raised.
+        """
+        jsonld = {'@id': 'http://dx.doi.orggg/10.5439/1027257'}
+        harvester = ARMHarvester()
+
+        with self.assertRaises(RuntimeError):
+            harvester.extract_series_identifier(jsonld['@id'])
+
+    @patch('schema_org.core.logging.getLogger')
+    def test_identifier_parsing(self, mock_logger):
+        """
+        SCENARIO:  The @id field from the JSON-LD must be parsed, we are
+        presented with http://dx.doi.org/10.5439/1027257.
+
+        EXPECTED RESULT:  The ID "10.5439/1027257" is returned.
+        """
+        jsonld = {'@id': 'http://dx.doi.org/10.5439/1027257'}
+        harvester = ARMHarvester()
+        identifier = harvester.extract_series_identifier(jsonld['@id'])
+
+        self.assertEqual(identifier, 'doi:10.5439/1027257')
+
+
