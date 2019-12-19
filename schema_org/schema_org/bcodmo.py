@@ -47,6 +47,8 @@ class BCODMOHarvester(SchemaDotOrgHarvester):
         records : list
             Each item in the list is composed of a URL and a last modification
             date.
+        last_harvest_time : datetime
+            datetime of last harvest
         """
         # If we do not wish to ignore the last harvest time, then only those
         # records in the sitemap that are newer than the last harvest time will
