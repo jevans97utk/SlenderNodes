@@ -697,7 +697,6 @@ class CoreHarvester(object):
             f"{self.sitemap_url}/{url}" if not url.startswith('http') else url
             for url in urls
         ]
-
         lastmods = doc.xpath(self.SITEMAP_LASTMOD_PATH,
                              namespaces=self.SITEMAP_NAMESPACE)
         if len(lastmods) == 0:
@@ -717,7 +716,7 @@ class CoreHarvester(object):
 
         records = [(url, lastmod) for url, lastmod in zip(urls, lastmods)]
 
-        msg = f"Extracted {len(urls)} from the sitemap document."
+        msg = f"Extracted {len(records)} from the sitemap document."
         self.logger.info(msg)
         return records
 
@@ -826,6 +825,7 @@ class CoreHarvester(object):
         self.logger.debug('Checking XML headers...')
         exp_headers = [
             'text/xml',
+            'text/xml; charset=utf-8',
             'text/xml;charset=utf-8',
             'application/x-gzip',
             'application/xml'
