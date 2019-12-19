@@ -70,7 +70,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
 
     def extract_series_identifier(self, sid):
         """
-        Parse the DOI from the json['@id'] value.
+        Retrieve (or at least validate) the series identifier.
 
         Parameters
         ----------
@@ -79,7 +79,7 @@ class SchemaDotOrgHarvester(CoreHarvester):
 
         Returns
         -------
-        the DOI identifier
+        the identifier
         """
         # Just make sure we can parse it as a URL.
         p = urllib.parse.urlparse(sid)
@@ -152,6 +152,9 @@ class SchemaDotOrgHarvester(CoreHarvester):
         content, _ = await self.retrieve_url(landing_page_url)
         html = content.decode('utf-8')
         doc = lxml.etree.HTML(content)
+        if doc is None:
+            msg = "The landing page at {landing_page_url} has no content."
+            raise RuntimeError(msg)
 
         # This section of code may be removable.
         jsonld = self.get_jsonld(doc)

@@ -27,6 +27,29 @@ class TestSuite(TestCommon):
         # The IEDA harvesters will use these values.
         self.host, self.port = 'gmn.test.dataone.org', 443
 
+    def test__landing_page_is_empty(self):
+        """
+        SCENARIO:  A landing page has absolutely no content.
+        JSON.
+
+        EXPECTED RESULT:  RuntimeError
+        """
+        url = 'https://www.archive.arm.gov/metadata/adc/html/met.html'
+
+        harvester = ARMHarvester()
+
+        contents = ir.read_binary('tests.data.arm', 'met.html')
+        status_code = 200
+        headers = {'Content-Type': 'text/html'}
+
+        regex = re.compile('https://www.archive.arm.gov/metadata/adc')
+
+        with aioresponses() as m:
+            m.get(regex, body=contents, status=status_code, headers=headers)
+            with self.assertRaises(RuntimeError):
+                with self.assertLogs(logger=harvester.logger, level='DEBUG'):
+                    asyncio.run(harvester.retrieve_record(url))
+
     def test__read_record__invalid_json(self):
         """
         SCENARIO:  A landing page is properly retrieved, but has invalid

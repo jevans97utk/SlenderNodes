@@ -590,7 +590,6 @@ class CoreHarvester(object):
             and exists_dict['record_date'] < record_date
         ):
             current_sid = exists_dict['current_version_id']
-            await self.check_if_can_be_updated(docbytes, sid, current_sid)
 
             # If identifier exists in GMN but the record date is later, this
             # truly is an update so issue an update.
@@ -652,79 +651,6 @@ class CoreHarvester(object):
                     f'Unable to create new object identified as {sid}.'
                 )
                 raise UnableToCreateNewGMNObject(msg)
-
-    async def check_if_can_be_updated(self, new_doc_bytes, doi, existing_sid):
-        """
-        We have an existing document in the system and have been give a
-        proposed update document.  We need to decide if an update is warranted.
-
-        The tie-breakers are:
-
-            i)  the value of the MD_ProgressCode.
-            ii) the value of the dateStamp.
-
-        We can currently only do this check when the format ID is the default.
-        """
-        if self.sys_meta_dict['formatId_custom'] != 'http://www.isotc211.org/2005/gmd':  # noqa:  E501
-            return True
-
-        new_doc = lxml.etree.parse(io.BytesIO(new_doc_bytes))
-
-        url = f"{self.mn_base_url}/v2/object/{existing_sid}"
-
-        # Get the existing document.
-        content, _ = await self.retrieve_url(url, headers={'Accept': 'text/xml'})  # noqa : E501
-
-        old_doc = lxml.etree.parse(io.BytesIO(content))
-
-        # Get the progress code
-        parts = [
-            'gmd:identificationInfo',
-            'gmd:MD_DataIdentification',
-            'gmd:status',
-            'gmd:MD_ProgressCode',
-            'text()'
-        ]
-        path = '/'.join(parts)
-        new_progress_code = new_doc.xpath(path, namespaces=ISO_NSMAP)[0]
-        old_progress_code = old_doc.xpath(path, namespaces=ISO_NSMAP)[0]  # noqa:  F841
-
-        # Get the metadata timestamp.  There are two possible paths.
-        path = (
-            'gmd:dateStamp/gco:Date/text()'
-            '|'
-            'gmd:dateStamp/gco:DateTime/text()'
-        )
-        s = new_doc.xpath(path, namespaces=ISO_NSMAP)[0]
-        new_timestamp = dateutil.parser.parse(s)
-        s = old_doc.xpath(path, namespaces=ISO_NSMAP)[0]
-        old_timestamp = dateutil.parser.parse(s)
-
-        if (
-            new_progress_code.lower() in ['complete', 'completed']
-            and old_progress_code.lower() not in ['complete', 'completed']
-        ):
-            # Yes, we should update.  The new document is finished while the
-            # old document is not.
-            return
-        elif (
-            new_progress_code.lower() in ['complete', 'completed']
-            and old_progress_code.lower() in ['complete', 'completed']
-            and new_timestamp > old_timestamp
-        ):
-            # We have a tie between the progress codes, but the proposed
-            # update document has a newer timestamp.
-            return
-        else:
-            msg = (
-                f"The existing document identified by {doi} with SID "
-                f"{existing_sid} has an MD_ProgressCode of "
-                f"\"{old_progress_code}\" and a metadata timestamp of "
-                f"{old_timestamp} while the proposed updating "
-                f"document has MD_ProgressCode \"{new_progress_code}\" and a "
-                f"metadata timestamp of {new_timestamp}."
-            )
-            raise RefusedToUpdateRecord(msg)
 
     def is_sitemap_index_file(self, doc):
         """
@@ -975,7 +901,7 @@ class CoreHarvester(object):
                 self.logger.debug(f"sitemap_consumer[{idx}] ==>  {job.url}")
                 msg = (
                     f"last mod = {job.lastmod}:  "
-                    f"num failures so far = {job.num_failures}, "
+                    f"num failures so far = {self.failed_count}, "
                     f"queue size = {sitemap_queue.qsize()}"
                 )
                 self.logger.info(msg)
@@ -1007,7 +933,10 @@ class CoreHarvester(object):
 
                 self.job_records.append(copy.copy(job))
 
-                msg = f"Unable to process {job.url}:  {e}"
+                msg = (
+                    f"Unable to process {job.url}:  {e}, "
+                    f"{job.identifier} failures so far = {job.num_failures}"
+                )
                 self.logger.error(msg)
 
                 self.failed_count += 1
