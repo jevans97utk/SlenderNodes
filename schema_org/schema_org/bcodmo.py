@@ -25,8 +25,8 @@ class BCODMOHarvester(SchemaDotOrgHarvester):
         sitemap_url = 'https://www.bco-dmo.org/sitemap.xml'
         kwargs['sitemap_url'] = sitemap_url
 
-        super().__init__(id='bco-dmo', host=host, port=port, base_path='/arm',
-                         **kwargs)
+        super().__init__(id='bco-dmo', host=host, port=port,
+                         base_path='/bcodmo', **kwargs)
 
         authoritative_mn = 'urn:node:mnTestBCODMO'
         self.sys_meta_dict['authoritativeMN'] = authoritative_mn
